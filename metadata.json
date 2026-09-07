@@ -1,0 +1,6 @@
+{
+  "name": "MENTISERA OBE360™",
+  "description": "Outcome-Based Course Creator enabling teachers, instructional designers, and course developers to design complete, measurable, outcome-aligned courses from CLOs to assessment evidence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
