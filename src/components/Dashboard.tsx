@@ -29,11 +29,17 @@ import {
   FileSpreadsheet,
   Share2,
   Printer,
+  ChevronDown,
+  MoreHorizontal,
+  LifeBuoy,
+  Lock,
 } from 'lucide-react';
 import { Course } from '../types';
 import { calculateCourseAudit } from '../utils/obeCalculator';
 import { downloadCoursesCSV } from '../utils/csvExport';
 import { downloadCourseDocx } from '../utils/docxExport';
+import { downloadCoursePDF } from '../utils/pdfExport';
+import { triggerWithLeadGate, isLeadGateUnlocked } from '../services/leadService';
 import { TemplateModal } from './TemplateModal';
 import { AlignmentAnalysisModal } from './AlignmentAnalysis/AlignmentAnalysisModal';
 import { DashboardAnalyticsView } from './DashboardAnalyticsView';
@@ -45,6 +51,7 @@ import { GoogleDriveSyncModal } from './GoogleDriveSyncModal';
 import { PDFPreviewModal } from './PDFPreviewModal';
 import { LMSIntegrationModal } from './LMSIntegrationModal';
 import { PrintFriendlyView } from './CourseCreator/PrintFriendlyView';
+import { SyllabusGeneratorModal } from './CourseCreator/SyllabusGeneratorModal';
 import { isGoogleDriveSyncEnabled } from '../services/googleDriveService';
 
 const HighlightMatch: React.FC<{ text: string; query: string }> = ({ text, query }) => {
@@ -131,6 +138,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [printFriendlyCourse, setPrintFriendlyCourse] = useState<Course | null>(null);
   const [lmsModalOpen, setLmsModalOpen] = useState<boolean>(false);
   const [lmsModalCourse, setLmsModalCourse] = useState<Course | null>(null);
+
+  // Standardized Menu Dropdown States
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
+  const [openHeaderMenu, setOpenHeaderMenu] = useState<'tools' | null>(null);
+  const [openBulkExportMenu, setOpenBulkExportMenu] = useState<boolean>(false);
+  const [syllabusModalCourse, setSyllabusModalCourse] = useState<Course | null>(null);
+
+  // Close menus on outside click or Escape key
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest('.dashboard-dropdown-container')) {
+        setOpenCardMenuId(null);
+        setOpenHeaderMenu(null);
+        setOpenBulkExportMenu(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenCardMenuId(null);
+        setOpenHeaderMenu(null);
+        setOpenBulkExportMenu(false);
+      }
+    };
+    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleOpenVersionHistory = (courseId?: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -330,33 +368,166 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Primary Action */}
               <button
-                onClick={() => {
-                  setAnalyticsCourseId(undefined);
-                  setDashboardView(dashboardView === 'analytics' ? 'courses' : 'analytics');
-                }}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border font-bold text-xs shadow-xs transition cursor-pointer ${
-                  dashboardView === 'analytics'
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200'
-                    : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
-                }`}
-                title="Outcome Alignment Analytics across all active courses"
+                type="button"
+                id="dashboard-header-create-btn"
+                onClick={onCreateCourse}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm shadow-indigo-200 transition cursor-pointer"
               >
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
-                <span>{dashboardView === 'analytics' ? 'Course Catalog' : 'Alignment Analytics'}</span>
+                <Plus className="w-4 h-4" />
+                <span>Create New Course</span>
               </button>
 
-              <button
-                onClick={() => handleOpenVersionHistory()}
-                className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition cursor-pointer"
-                title="View course save history & restore checkpoints (last 5 saves)"
-              >
-                <History className="w-4 h-4 text-indigo-600" />
-                <span>Version History (Last 5 Saves)</span>
-              </button>
+              {/* Standardized Workspace Tools Dropdown */}
+              <div className="relative dashboard-dropdown-container">
+                <button
+                  type="button"
+                  id="dashboard-header-tools-menu-btn"
+                  onClick={() => setOpenHeaderMenu(openHeaderMenu === 'tools' ? null : 'tools')}
+                  className={`inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border font-bold text-xs transition cursor-pointer ${
+                    openHeaderMenu === 'tools'
+                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
+                      : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                  }`}
+                  title="Workspace authoring tools, analytics, history, and LMS integrations"
+                >
+                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <span>Workspace Tools</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openHeaderMenu === 'tools' ? 'rotate-180' : ''}`} />
+                </button>
 
+                {openHeaderMenu === 'tools' && (
+                  <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Authoring & Blueprints
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenHeaderMenu(null);
+                        setTemplateModalMode('load');
+                        setSelectedCourseForTemplate(undefined);
+                        setTemplateModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Bookmark className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Load Saved Template</div>
+                        <div className="text-[11px] text-slate-500">Create from pre-built OBE blueprint</div>
+                      </div>
+                    </button>
+
+                    <div className="my-1 border-t border-slate-100"></div>
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Analytics & Quality
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenHeaderMenu(null);
+                        setAnalyticsCourseId(undefined);
+                        setDashboardView(dashboardView === 'analytics' ? 'courses' : 'analytics');
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <BarChart3 className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">
+                          {dashboardView === 'analytics' ? 'Course Catalog' : 'Alignment Analytics'}
+                        </div>
+                        <div className="text-[11px] text-slate-500">Cross-course outcome coverage metrics</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenHeaderMenu(null);
+                        handleOpenVersionHistory();
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <History className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Version History (Last 5 Saves)</div>
+                        <div className="text-[11px] text-slate-500">View recent autosave restore checkpoints</div>
+                      </div>
+                    </button>
+
+                    <div className="my-1 border-t border-slate-100"></div>
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Integrations & Tour
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenHeaderMenu(null);
+                        const targetCourse = courses[0];
+                        if (targetCourse) {
+                          setLmsModalCourse(targetCourse);
+                          setLmsModalOpen(true);
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <GraduationCap className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">LMS Connectors Hub</div>
+                        <div className="text-[11px] text-slate-500">Moodle, Blackboard, Canvas & Cartridge</div>
+                      </div>
+                    </button>
+                    <div className="my-1 border-t border-slate-100"></div>
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Developer Support
+                    </div>
+                    <button
+                      type="button"
+                      id="dashboard-tools-report-issue-btn"
+                      onClick={() => {
+                        setOpenHeaderMenu(null);
+                        window.dispatchEvent(
+                          new CustomEvent('open_feedback_modal', {
+                            detail: {
+                              category: 'bug',
+                              subject: 'Dashboard / Workspace Issue Report',
+                            },
+                          })
+                        );
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-rose-50 text-xs text-slate-700 hover:text-rose-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <LifeBuoy className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Report Issue / Dev Feedback</div>
+                        <div className="text-[11px] text-slate-500">Send bug or query with course telemetry</div>
+                      </div>
+                    </button>
+                    {onNavigateMarketing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenHeaderMenu(null);
+                          onNavigateMarketing();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-purple-50 text-xs text-purple-700 hover:text-purple-900 flex items-start space-x-2.5 transition cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-purple-900">Platform Tour</div>
+                          <div className="text-[11px] text-purple-600">Accreditation standards & feature guide</div>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Settings & Cloud Utility */}
               <button
+                type="button"
+                id="dashboard-header-settings-btn"
                 onClick={() => {
                   setSettingsInitialTab('cloud');
                   setSettingsModalOpen(true);
@@ -369,55 +540,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {driveEnabled && (
                   <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" title="Google Drive sync active" />
                 )}
-              </button>
-
-              {onNavigateMarketing && (
-                <button
-                  type="button"
-                  onClick={onNavigateMarketing}
-                  className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-700 font-bold text-xs shadow-xs transition cursor-pointer"
-                  title="View MENTISERA OBE360 Platform Tour, Accreditation Standards & ROI"
-                >
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                  <span>Platform Tour</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                id="dashboard-header-lms-hub-btn"
-                onClick={() => {
-                  const targetCourse = courses[0];
-                  if (targetCourse) {
-                    setLmsModalCourse(targetCourse);
-                    setLmsModalOpen(true);
-                  }
-                }}
-                className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 font-bold text-xs shadow-xs transition cursor-pointer"
-                title="LMS Connectors: Deploy courses to Moodle, Blackboard, Canvas or export IMS Common Cartridge"
-              >
-                <GraduationCap className="w-4 h-4 text-indigo-600" />
-                <span>LMS Connectors</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setTemplateModalMode('load');
-                  setSelectedCourseForTemplate(undefined);
-                  setTemplateModalOpen(true);
-                }}
-                className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <Bookmark className="w-4 h-4 text-indigo-600" />
-                <span>Load Saved Template</span>
-              </button>
-
-              <button
-                onClick={onCreateCourse}
-                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm shadow-indigo-200 transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create New Course</span>
               </button>
             </div>
           </div>
@@ -844,125 +966,300 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <span>{formatRelativeTime(course.updatedAt)}</span>
                       </span>
 
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={(e) => handleOpenVersionHistory(course.id, e)}
-                          className="p-1.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition cursor-pointer"
-                          title="View version history & restore checkpoints (last 5 saves)"
-                        >
-                          <History className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewPdfCourse(course);
-                          }}
-                          className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                          title="Preview PDF dossier using temporary blob URL"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          id={`course-card-print-friendly-btn-${course.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPrintFriendlyCourse(course);
-                          }}
-                          className="p-1.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
-                          title="Open Print-Friendly View (stripped of UI for physical printing or simplified reading)"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          id={`course-card-export-docx-btn-${course.id}`}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              await downloadCourseDocx(course);
-                            } catch (err) {
-                              console.error('Failed to export Word document:', err);
-                            }
-                          }}
-                          className="p-1.5 rounded text-slate-400 hover:text-blue-700 hover:bg-blue-50 transition cursor-pointer"
-                          title="Download course as formatted Microsoft Word document (.docx)"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => handleOpenSingleDriveSync(course, e)}
-                          className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                          title="Sync course dossier to Google Drive"
-                        >
-                          <UploadCloud className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          id={`course-card-share-btn-${course.id}`}
-                          onClick={(e) => handleOpenShareModal(course, e)}
-                          className="p-1.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
-                          title="Export read-only course snapshot to Google Drive & generate shareable link (anyone with the link)"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          id={`course-card-lms-btn-${course.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLmsModalCourse(course);
-                            setLmsModalOpen(true);
-                          }}
-                          className="p-1.5 rounded text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 transition cursor-pointer"
-                          title="Deploy course to LMS (Moodle, Blackboard, Canvas) or export Common Cartridge (.imscc)"
-                        >
-                          <GraduationCap className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Quick Duplicate Button */}
                       <button
+                        type="button"
+                        id={`course-card-quick-duplicate-${course.id}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setAnalyticsCourseId(course.id);
-                          setDashboardView('analytics');
+                          onDuplicateCourse(course.id);
                         }}
-                        className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                        title="View CLO & Assessment Alignment Analytics for this course"
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setAlignmentCourse(course)}
-                        className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                        title="Audit CLO vs. Assessment Plan Alignment"
-                      >
-                        <Scale className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedCourseForTemplate(course);
-                          setTemplateModalMode('save');
-                          setTemplateModalOpen(true);
-                        }}
-                        className="p-1.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                        title="Save as reusable template"
-                      >
-                        <Bookmark className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDuplicateCourse(course.id)}
-                        className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                        title="Duplicate course"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                        title="Quick Duplicate Course"
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => onDeleteCourse(course.id)}
-                        className="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        title="Delete course"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+
+                      {/* Standardized Actions Dropdown */}
+                      <div className="relative dashboard-dropdown-container">
+                        <button
+                          type="button"
+                          id={`course-card-actions-menu-btn-${course.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenCardMenuId(openCardMenuId === course.id ? null : course.id);
+                          }}
+                          className={`px-2 py-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition cursor-pointer ${
+                            openCardMenuId === course.id
+                              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
+                              : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                          }`}
+                          title="Course Actions & Export Menu"
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                          <ChevronDown className={`w-3 h-3 transition-transform ${openCardMenuId === course.id ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {openCardMenuId === course.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 bottom-full mb-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto"
+                          >
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Documents & Export
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setSyllabusModalCourse(course);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <GraduationCap className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Course Syllabus Document</div>
+                                <div className="text-[11px] text-slate-500">Generate formatted PDF / docx</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                triggerWithLeadGate(
+                                  () => downloadCoursePDF(course),
+                                  {
+                                    featureTitle: `${course.code} PDF Accreditation Dossier`,
+                                    featureDescription: `Verify your academic affiliation to download the formatted PDF specification for ${course.title}.`,
+                                    source: 'dashboard_card_pdf',
+                                    framework: course.accreditationFramework,
+                                  }
+                                );
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Download className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900 flex items-center justify-between">
+                                  <span>Download PDF Dossier (.pdf)</span>
+                                  {!isLeadGateUnlocked() && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center space-x-0.5">
+                                      <Lock className="w-2 h-2" />
+                                      <span>Gate</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-slate-500">Fully formatted accreditation dossier</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                triggerWithLeadGate(
+                                  async () => {
+                                    await downloadCourseDocx(course);
+                                  },
+                                  {
+                                    featureTitle: `${course.code} Word Specification (.docx)`,
+                                    featureDescription: `Verify your academic affiliation to download the editable Word document specification for ${course.title}.`,
+                                    source: 'dashboard_card_docx',
+                                    framework: course.accreditationFramework,
+                                  }
+                                );
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <FileText className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900 flex items-center justify-between">
+                                  <span>Export Word (.docx)</span>
+                                  {!isLeadGateUnlocked() && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center space-x-0.5">
+                                      <Lock className="w-2 h-2" />
+                                      <span>Gate</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-slate-500">Fully formatted editable specification</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setPreviewPdfCourse(course);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Preview PDF Dossier</div>
+                                <div className="text-[11px] text-slate-500">In-browser print preview</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setPrintFriendlyCourse(course);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Printer className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Print-Friendly View</div>
+                                <div className="text-[11px] text-slate-500">Clean view for physical printing</div>
+                              </div>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100"></div>
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Integrations & Cloud
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setLmsModalCourse(course);
+                                setLmsModalOpen(true);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <GraduationCap className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">LMS Integration (.imscc)</div>
+                                <div className="text-[11px] text-slate-500">Deploy to Canvas / Moodle / Cartridge</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                setOpenCardMenuId(null);
+                                handleOpenSingleDriveSync(course, e);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <UploadCloud className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Google Drive Sync</div>
+                                <div className="text-[11px] text-slate-500">Backup dossier to Google Drive</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                setOpenCardMenuId(null);
+                                handleOpenShareModal(course, e);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Share2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Share Public Link</div>
+                                <div className="text-[11px] text-slate-500">Generate read-only shareable snapshot</div>
+                              </div>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100"></div>
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Analysis & Quality
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setAlignmentCourse(course);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Scale className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Audit CLO Alignment</div>
+                                <div className="text-[11px] text-slate-500">Cognitive depth & assessment audit</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setAnalyticsCourseId(course.id);
+                                setDashboardView('analytics');
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <BarChart3 className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Alignment Analytics</div>
+                                <div className="text-[11px] text-slate-500">Coverage charts & distributions</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                setOpenCardMenuId(null);
+                                handleOpenVersionHistory(course.id, e);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <History className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Version History (5 Saves)</div>
+                                <div className="text-[11px] text-slate-500">Restore previous checkpoints</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                setSelectedCourseForTemplate(course);
+                                setTemplateModalMode('save');
+                                setTemplateModalOpen(true);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Bookmark className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Save as Template</div>
+                                <div className="text-[11px] text-slate-500">Store as reusable blueprint</div>
+                              </div>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100"></div>
+                            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Management
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                onDuplicateCourse(course.id);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                            >
+                              <Copy className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-slate-900">Duplicate Course</div>
+                                <div className="text-[11px] text-slate-500">Create a cloned copy</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                onDeleteCourse(course.id);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-rose-50 text-xs text-rose-600 hover:text-rose-700 flex items-start space-x-2.5 transition cursor-pointer group"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500 group-hover:text-rose-600 mt-0.5 shrink-0" />
+                              <div>
+                                <div className="font-semibold text-rose-700">Delete Course</div>
+                                <div className="text-[11px] text-rose-500">Permanently delete course</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                   </div>
                 </div>
               </div>
@@ -1033,41 +1330,79 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              id="bulk-action-export-csv-btn"
-              onClick={handleBulkExportCSV}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition shadow-xs cursor-pointer"
-              title="Export selected courses into a CSV spreadsheet for external reporting & accreditation"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
-              <span>Export CSV</span>
-            </button>
+            {/* Standardized Bulk Export & Sync Dropdown */}
+            <div className="relative dashboard-dropdown-container">
+              <button
+                type="button"
+                id="bulk-action-export-menu-btn"
+                onClick={() => setOpenBulkExportMenu(!openBulkExportMenu)}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-100 transition cursor-pointer border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Export & Sync</span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${openBulkExportMenu ? 'rotate-180' : ''}`} />
+              </button>
 
-            <button
-              type="button"
-              onClick={handleBulkExportJSON}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition cursor-pointer"
-              title="Export selected courses as JSON archive"
-            >
-              <Download className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Export JSON</span>
-            </button>
+              {openBulkExportMenu && (
+                <div className="absolute bottom-full mb-2 left-0 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 text-slate-200">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Bulk Export Formats
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenBulkExportMenu(false);
+                      handleBulkExportCSV();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Export CSV Spreadsheet</div>
+                      <div className="text-[11px] text-slate-400">Accreditation matrix export</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenBulkExportMenu(false);
+                      handleBulkExportJSON();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Export JSON Archive</div>
+                      <div className="text-[11px] text-slate-400">Full structured course data</div>
+                    </div>
+                  </button>
 
-            <button
-              type="button"
-              onClick={handleOpenBulkDriveSync}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition shadow-sm cursor-pointer"
-              title="Sync selected courses to Google Drive"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              <span>Sync to Google Drive</span>
-            </button>
+                  <div className="my-1 border-t border-slate-800"></div>
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Cloud Storage
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenBulkExportMenu(false);
+                      handleOpenBulkDriveSync();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
+                  >
+                    <UploadCloud className="w-4 h-4 text-blue-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Sync to Google Drive</div>
+                      <div className="text-[11px] text-slate-400">Cloud backup & shared folder</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={() => setBulkDeleteModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-xs font-semibold text-white transition cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
               title="Delete selected courses"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1225,6 +1560,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
             setLmsModalOpen(false);
             setLmsModalCourse(null);
           }}
+        />
+      )}
+
+      {/* Syllabus Generator Modal */}
+      {syllabusModalCourse && (
+        <SyllabusGeneratorModal
+          isOpen={!!syllabusModalCourse}
+          onClose={() => setSyllabusModalCourse(null)}
+          course={syllabusModalCourse}
         />
       )}
     </div>

@@ -7,12 +7,32 @@ import { Dashboard } from './components/Dashboard';
 import { CourseWizard } from './components/CourseCreator/CourseWizard';
 import { CopilotPanel } from './components/CourseCreator/CopilotPanel';
 import { MarketingLandingPage } from './components/MarketingLandingPage';
+import { FeedbackModal } from './components/FeedbackModal';
+import { SignInModal } from './components/SignInModal';
+import { LeadGenerationModal } from './components/LeadGenerationModal';
+import { LeadManagementModal } from './components/LeadManagementModal';
+import { AuthUserState, getStoredAuthUser, signOutUser } from './services/authService';
+import { LeadGateActionOptions } from './services/leadService';
+import { FeedbackCategory } from './types/feedback';
 import { useAutosave } from './hooks/useAutosave';
 import { getCourseVersions, saveCourseVersion } from './services/versionHistoryService';
 
 const STORAGE_KEY = 'mentisera_obe360_courses_v1';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<AuthUserState | null>(() => getStoredAuthUser());
+  const [signInModalOpen, setSignInModalOpen] = useState<boolean>(false);
+  const [leadModalOpen, setLeadModalOpen] = useState<boolean>(false);
+  const [leadManagementModalOpen, setLeadManagementModalOpen] = useState<boolean>(false);
+
+  // Overlay Gate for High-Value Advanced Features & Downloads
+  const [gateModalOpen, setGateModalOpen] = useState<boolean>(false);
+  const [gateFeatureTitle, setGateFeatureTitle] = useState<string>('Accreditation Dossier Export');
+  const [gateFeatureDescription, setGateFeatureDescription] = useState<string | undefined>(undefined);
+  const [gatePendingAction, setGatePendingAction] = useState<(() => void | Promise<void>) | null>(null);
+  const [gateSource, setGateSource] = useState<string>('export_overlay_gate');
+  const [gateFramework, setGateFramework] = useState<string | undefined>(undefined);
+
   const [courses, setCourses] = useState<Course[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -32,6 +52,59 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'creator' | 'marketing'>('creator');
   const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
   const [externalCopilotPrompt, setExternalCopilotPrompt] = useState<string | undefined>(undefined);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('bug');
+  const [feedbackSubject, setFeedbackSubject] = useState<string>('');
+
+  // Global event listener to allow any component to open modals
+  useEffect(() => {
+    const handleOpenFeedbackEvent = (e: Event) => {
+      const customEv = e as CustomEvent<{ category?: FeedbackCategory; subject?: string }>;
+      if (customEv.detail?.category) setFeedbackCategory(customEv.detail.category);
+      if (customEv.detail?.subject) setFeedbackSubject(customEv.detail.subject);
+      setFeedbackModalOpen(true);
+    };
+
+    const handleOpenSignIn = () => setSignInModalOpen(true);
+    const handleOpenLead = () => setLeadModalOpen(true);
+    const handleOpenLeadManagement = () => setLeadManagementModalOpen(true);
+    const handleOpenLeadGate = (e: Event) => {
+      const customEv = e as CustomEvent<{
+        action?: () => void | Promise<void>;
+        options?: LeadGateActionOptions;
+      }>;
+      if (customEv.detail?.action) {
+        setGatePendingAction(() => customEv.detail.action);
+      } else {
+        setGatePendingAction(null);
+      }
+      setGateFeatureTitle(customEv.detail?.options?.featureTitle || 'Accreditation Dossier Export');
+      setGateFeatureDescription(customEv.detail?.options?.featureDescription);
+      setGateSource(customEv.detail?.options?.source || 'export_overlay_gate');
+      setGateFramework(customEv.detail?.options?.framework);
+      setGateModalOpen(true);
+    };
+    const handleAuthStateChanged = (e: Event) => {
+      const customEv = e as CustomEvent<{ user: AuthUserState | null }>;
+      setCurrentUser(customEv.detail?.user ?? null);
+    };
+
+    window.addEventListener('open_feedback_modal', handleOpenFeedbackEvent);
+    window.addEventListener('open_signin_modal', handleOpenSignIn);
+    window.addEventListener('open_lead_modal', handleOpenLead);
+    window.addEventListener('open_lead_management_modal', handleOpenLeadManagement);
+    window.addEventListener('open_lead_gate', handleOpenLeadGate);
+    window.addEventListener('auth_state_changed', handleAuthStateChanged);
+
+    return () => {
+      window.removeEventListener('open_feedback_modal', handleOpenFeedbackEvent);
+      window.removeEventListener('open_signin_modal', handleOpenSignIn);
+      window.removeEventListener('open_lead_modal', handleOpenLead);
+      window.removeEventListener('open_lead_management_modal', handleOpenLeadManagement);
+      window.removeEventListener('open_lead_gate', handleOpenLeadGate);
+      window.removeEventListener('auth_state_changed', handleAuthStateChanged);
+    };
+  }, []);
 
   // Seed baseline version history for existing courses if empty
   useEffect(() => {
@@ -191,10 +264,23 @@ export default function App() {
         onNewCourse={handleCreateNewCourse}
         onJumpToAudit={handleJumpToAudit}
         onAskCopilot={handleAskCopilot}
+        onOpenFeedback={() => {
+          setFeedbackCategory('bug');
+          setFeedbackSubject('');
+          setFeedbackModalOpen(true);
+        }}
         autoSaveStatus={autoSaveStatus}
         autoSaveLastSaved={autoSaveLastSaved}
         autoSaveError={autoSaveError}
         onSaveNow={handleSaveNowWithVersion}
+        currentUser={currentUser}
+        onOpenSignIn={() => setSignInModalOpen(true)}
+        onOpenLeadModal={() => setLeadModalOpen(true)}
+        onOpenLeadManagement={() => setLeadManagementModalOpen(true)}
+        onSignOut={() => {
+          signOutUser();
+          setCurrentUser(null);
+        }}
       />
 
       {/* Main View Area */}
@@ -235,6 +321,8 @@ export default function App() {
             onNavigateDashboard={() => setCurrentView('dashboard')}
             onAskCopilot={handleAskCopilot}
             onLoadCourse={handleCourseCreatedFromTemplate}
+            onDuplicateCourse={handleDuplicateCourse}
+            onDeleteCourse={handleDeleteCourse}
             autoSaveStatus={autoSaveStatus}
             autoSaveLastSaved={autoSaveLastSaved}
             autoSaveError={autoSaveError}
@@ -250,6 +338,66 @@ export default function App() {
         onClose={() => setCopilotOpen(false)}
         externalPrompt={externalCopilotPrompt}
         onClearExternalPrompt={() => setExternalCopilotPrompt(undefined)}
+      />
+
+      {/* Developer Feedback & Report Issue Modal */}
+      <FeedbackModal
+        isOpen={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
+        currentCourse={currentCourse}
+        currentView={currentView}
+        initialCategory={feedbackCategory}
+        initialSubject={feedbackSubject}
+      />
+
+      {/* Institutional Sign-In / User Switcher Modal */}
+      <SignInModal
+        isOpen={signInModalOpen}
+        onClose={() => setSignInModalOpen(false)}
+        currentUser={currentUser}
+        onUserChanged={(user) => setCurrentUser(user)}
+      />
+
+      {/* Lead Generation Modal (Campus Demo & Institutional Sales) */}
+      <LeadGenerationModal
+        isOpen={leadModalOpen}
+        onClose={() => setLeadModalOpen(false)}
+        initialSource="app_navbar_lead_cta"
+        currentUser={currentUser}
+      />
+
+      {/* High-Value Advanced Features & Downloads Overlay Gate */}
+      <LeadGenerationModal
+        isOpen={gateModalOpen}
+        onClose={() => {
+          setGateModalOpen(false);
+          setGatePendingAction(null);
+        }}
+        isGateMode={true}
+        gateFeatureTitle={gateFeatureTitle}
+        gateFeatureDescription={gateFeatureDescription}
+        initialSource={gateSource}
+        initialFramework={gateFramework || currentCourse?.accreditationFramework}
+        currentUser={currentUser}
+        onGateUnlocked={() => {
+          if (gatePendingAction) {
+            try {
+              gatePendingAction();
+            } catch (err) {
+              console.error('Failed executing gated action after unlock:', err);
+            }
+          }
+        }}
+      />
+
+      {/* Institutional Sales Inquiries Management Drawer */}
+      <LeadManagementModal
+        isOpen={leadManagementModalOpen}
+        onClose={() => setLeadManagementModalOpen(false)}
+        onOpenNewLeadModal={() => {
+          setLeadManagementModalOpen(false);
+          setLeadModalOpen(true);
+        }}
       />
     </div>
   );

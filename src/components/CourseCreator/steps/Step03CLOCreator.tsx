@@ -38,6 +38,7 @@ import { BloomsCLOTagger } from '../BloomsCLOTagger';
 import { BatchCLOTaggerModal } from '../BatchCLOTaggerModal';
 import { BloomsTaxonomyWheel } from '../BloomsTaxonomyWheel';
 import { BloomsWheelModal } from '../BloomsWheelModal';
+import { evaluateStage } from '../../../utils/stageProgress';
 
 interface StepProps {
   course: Course;
@@ -74,6 +75,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
 
   const selectedCLO = course.clos.find((c) => c.id === selectedCLOId) || course.clos[0];
   const totalWeightage = course.clos.reduce((acc, c) => acc + (c.weightage || 0), 0);
+  const stageEval = evaluateStage(course, 3, 'granular15');
 
   // Detect vague non-measurable verbs in active statement
   const detectedVagueVerb = useMemo(() => {
@@ -337,6 +339,37 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
               <Plus className="w-4 h-4" />
               <span>Add CLO</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stage 3 Live Accreditation Readiness Card */}
+      <div
+        id="granular-step03-accreditation-card"
+        className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          stageEval.isCompleted
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+            : 'bg-amber-50/80 border-amber-200 text-amber-900'
+        }`}
+      >
+        <div className="flex items-start space-x-2.5">
+          {stageEval.isCompleted ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          )}
+          <div>
+            <div className="font-bold flex items-center gap-1.5">
+              <span>{stageEval.isCompleted ? 'Outcomes (CLOs) Validated & Compliant' : 'CLO Compliance Incomplete'}</span>
+              <span className="text-[10px] font-normal px-1.5 py-0.2 rounded-md bg-white/70 border border-current">
+                Stage 03 • Granular Flow
+              </span>
+            </div>
+            <div className="text-[11px] opacity-90 mt-0.5">
+              {stageEval.isCompleted
+                ? stageEval.summary
+                : `Action required: ${stageEval.missingRequirements.join(', ')}`}
+            </div>
           </div>
         </div>
       </div>

@@ -137,12 +137,13 @@ export function generateSyllabusPDF(course: Course, config: SyllabusConfig): jsP
   let currentY = 16;
 
   // Colors
-  const colorPrimary = [30, 41, 59]; // Slate 800
-  const colorAccent = [67, 56, 202]; // Indigo 700
-  const colorSecondary = [71, 85, 105]; // Slate 600
-  const colorBorder = [203, 213, 225]; // Slate 300
-  const colorLightBg = [248, 250, 252]; // Slate 50
-  const colorAccentBg = [238, 242, 255]; // Indigo 50
+  type RGB = [number, number, number];
+  const colorPrimary: RGB = [30, 41, 59]; // Slate 800
+  const colorAccent: RGB = [67, 56, 202]; // Indigo 700
+  const colorSecondary: RGB = [71, 85, 105]; // Slate 600
+  const colorBorder: RGB = [203, 213, 225]; // Slate 300
+  const colorLightBg: RGB = [248, 250, 252]; // Slate 50
+  const colorAccentBg: RGB = [238, 242, 255]; // Indigo 50
 
   const checkAddPage = (neededSpace: number) => {
     if (currentY + neededSpace > pageHeight - 18) {
@@ -1295,4 +1296,20 @@ export function generateSyllabusMarkdown(course: Course, config: SyllabusConfig)
 
   md += `---\n*Generated automatically with OBE360 Curriculum System.*`;
   return md;
+}
+
+export function exportSyllabusPDF(course: Course, institution?: any): void {
+  const config = getDefaultSyllabusConfig(course);
+  if (institution?.name) config.institutionName = institution.name;
+  if (institution?.faculty) config.facultyName = institution.faculty;
+  if (institution?.department) config.departmentName = institution.department;
+  downloadSyllabusPDF(course, config);
+}
+
+export async function exportSyllabusDOCX(course: Course, institution?: any): Promise<void> {
+  const config = getDefaultSyllabusConfig(course);
+  if (institution?.name) config.institutionName = institution.name;
+  if (institution?.faculty) config.facultyName = institution.faculty;
+  if (institution?.department) config.departmentName = institution.department;
+  await downloadSyllabusDocx(course, config);
 }

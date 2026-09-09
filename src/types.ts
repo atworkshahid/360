@@ -325,6 +325,133 @@ export interface CQIActionPlan {
   targetMetricGoal?: string;
 }
 
+export type CourseStatus = 'draft' | 'ready_for_review' | 'submitted' | 'changes_requested' | 'approved' | 'archived';
+
+export type UserRole = 'admin' | 'faculty' | 'reviewer';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department?: string;
+  title?: string;
+  avatar?: string;
+}
+
+export type OutcomeMappingScale = 'numeric_1_3' | 'irm';
+
+export interface Institution {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  facultySchool: string;
+  department: string;
+  country: string;
+  academicCalendar: 'Semester' | 'Quarter' | 'Trimester' | 'Annual';
+  semesterSystem: 'Fall-Spring-Summer' | 'Spring-Fall' | 'Custom';
+  defaultCourseDurationWeeks: number;
+  defaultLanguage: string;
+  defaultMappingScale: OutcomeMappingScale;
+  defaultFrameworkId: string;
+  defaultBloomTaxonomyVersion: string;
+}
+
+export type FrameworkTypeBadge =
+  | 'International Recognition Framework'
+  | 'Accreditation Commission'
+  | 'National Higher Education Framework'
+  | 'Educational Framework'
+  | 'Institutional Framework';
+
+export interface Framework {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  badge: FrameworkTypeBadge;
+  discipline: string;
+  jurisdiction: string;
+  description: string;
+  outcomeModel: string;
+  recommendedMappingApproach: string;
+  applicableTerminology: string;
+  notes: string;
+  active: boolean;
+}
+
+export interface FrameworkVersion {
+  id: string;
+  frameworkId: string;
+  versionName: string;
+  effectiveDate: string;
+  status: 'Active' | 'Deprecated' | 'Draft';
+}
+
+export interface FrameworkOutcome {
+  id: string;
+  frameworkVersionId: string;
+  code: string;
+  title: string;
+  description: string;
+  outcomeType: 'Graduate Attribute' | 'Student Outcome' | 'Program Learning Outcome' | 'General Outcome';
+  sequence: number;
+}
+
+export interface FrameworkTerminology {
+  id: string;
+  frameworkVersionId: string;
+  conceptKey: 'program_outcome' | 'student_outcome' | 'graduate_attribute' | 'course_learning_outcome';
+  displayName: string;
+}
+
+export type CourseType =
+  | 'Core'
+  | 'Elective'
+  | 'General Education'
+  | 'Major'
+  | 'Supporting'
+  | 'Lab'
+  | 'Capstone'
+  | 'Other';
+
+export interface WeeklyCoursePlanItem {
+  weekNumber: number;
+  topic: string;
+  subtopics?: string;
+  linkedCLOIds: string[];
+  bloomLevel?: BloomLevel;
+  learningActivity?: string;
+  contactHours?: number;
+  independentStudyHours?: number;
+  requiredReading?: string;
+  notes?: string;
+}
+
+export interface CourseReviewComment {
+  id: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewerRole: string;
+  section: string;
+  comment: string;
+  suggestedChanges?: string;
+  decision?: 'Approve' | 'Request Changes';
+  createdAt: string;
+  status: 'open' | 'addressed' | 'resolved';
+}
+
+export interface CourseValidationRuleResult {
+  rule: string;
+  ruleTitle: string;
+  severity: 'Error' | 'Warning' | 'Suggestion' | 'Passed';
+  message: string;
+  affectedEntity: 'Course' | 'CLO' | 'WeeklyPlan' | 'Assessment' | 'Activity' | 'Mapping';
+  affectedEntityId?: string;
+  recommendation: string;
+  targetStep: number;
+}
+
 export interface CourseBlueprint {
   purpose: string;
   learnerNeed: string;
@@ -335,7 +462,11 @@ export interface CourseBlueprint {
 
 export interface Course {
   id: string;
-  // Step 1: Course Setup
+  // Step 1: Framework & Setup
+  frameworkId?: string;
+  frameworkVersionId?: string;
+
+  // Step 2: Course Information
   title: string;
   code: string;
   slug: string;
@@ -343,57 +474,72 @@ export interface Course {
   programme: string;
   department?: string;
   instructorName?: string;
+  courseCoordinator?: string;
+  degreeLevel?: string;
+  semester?: string;
+  courseType?: CourseType;
+  academicYear?: string;
   passingBenchmark?: number;
   creditHours: number;
+  theoryHours?: number;
+  labHours?: number;
+  contactHours?: number;
   durationWeeks: number;
   modulesCount: number;
   deliveryMode: DeliveryMode;
   courseLevel: CourseLevel;
   targetLearners: string;
   prerequisites: string;
+  corequisites?: string;
+
+  // Step 3: Course Description & Purpose
   description: string;
+  courseRationale?: string;
+  courseAim?: string;
+  courseObjectives?: string[];
+  prerequisiteKnowledge?: string;
+  expectedStudentProfile?: string;
   overview: string;
   learningPromise: string;
   expectedStudyTimeHours: number;
   capstoneGoal: string; // "What should the learner be capable of doing after completing this course?"
 
-  // Step 2: Course Blueprint
+  // Course Blueprint
   blueprint: CourseBlueprint;
 
-  // Step 3 & 4: Outcomes & Mappings
+  // Step 4 & 5: Outcomes & Mappings
   plos: PLO[];
   clos: CLO[];
 
-  // Step 5 & 6: Modules & MLOs
+  // Step 6: Weekly Course Plan
+  weeklyPlan?: WeeklyCoursePlanItem[];
+
+  // Step 7: Modules, MLOs & Activities
   modules: CourseModule[];
   mlos: MLO[];
-
-  // Step 7: Lessons
   lessons: Lesson[];
-
-  // Step 8: Activities
   activities: Activity[];
 
-  // Step 9 & 10: Assessments & Questions
+  // Step 8: Assessments & Questions
   assessments: Assessment[];
-
-  // Step 11: Rubrics
   rubrics: Rubric[];
-
-  // Step 12: Evidence Rules
   evidenceRules: EvidenceRule[];
 
-  // Step 15: Review & CQI
+  // Step 9 & 10: Review, CQI & Versioning
   academicReview?: AcademicReview;
   cqiPlan?: CQIActionPlan;
+  reviewerComments?: CourseReviewComment[];
+  versionNumber?: string;
+  versionChangeNote?: string;
 
   // Stakeholder Feedback & Element Discussions
   comments?: CourseElementComment[];
 
-  // Metadata
-  status: 'draft' | 'submitted' | 'approved';
+  // Metadata & Workflow Status
+  status: CourseStatus;
   isTemplate?: boolean;
   completedStages?: number[];
+  completionPercentage?: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -441,6 +587,10 @@ export interface CourseAuditReport {
   gaps: AuditGap[];
   issues?: AuditGap[];
   recommendations: string[];
+  readinessScore?: number;
+  passedCount?: number;
+  totalChecks?: number;
+  isCompliant?: boolean;
 }
 
 export interface CourseTemplate {

@@ -33,6 +33,8 @@ import {
   calculateAlignmentTimeEstimate,
   STAGE_DEFINITIONS,
   CATEGORY_DEFINITIONS,
+  OBE10_STAGE_DEFINITIONS,
+  OBE10_CATEGORY_DEFINITIONS,
   StageTimeEstimate,
 } from '../../utils/stageProgress';
 
@@ -42,6 +44,7 @@ interface CourseWizardStepperProps {
   onJumpToStep: (stepNumber: number) => void;
   onToggleCurrentStageCompleted?: (stepNumber?: number) => void;
   onOpenAlignmentAudit?: () => void;
+  mode?: 'obe10' | 'granular15';
 }
 
 export const CourseWizardStepper: React.FC<CourseWizardStepperProps> = ({
@@ -50,15 +53,19 @@ export const CourseWizardStepper: React.FC<CourseWizardStepperProps> = ({
   onJumpToStep,
   onToggleCurrentStageCompleted,
   onOpenAlignmentAudit,
+  mode = 'obe10',
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [showTimePopover, setShowTimePopover] = useState<boolean>(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Compute progress and alignment time estimation
-  const timeProgress = calculateAlignmentTimeEstimate(course);
-  const generalProgress = calculateCourseProgress(course);
+  const activeMode: 'obe10' | 'granular15' = mode === 'granular15' ? 'granular15' : 'obe10';
+
+  // Compute progress and alignment time estimation with active mode
+  const timeProgress = calculateAlignmentTimeEstimate(course, activeMode);
+  const generalProgress = calculateCourseProgress(course, activeMode);
+  const activeCategories = activeMode === 'obe10' ? OBE10_CATEGORY_DEFINITIONS : CATEGORY_DEFINITIONS;
 
   const currentStageStatus = timeProgress.stageEstimates.find((s) => s.stepNumber === currentStep);
   const isCurrentStageCompleted = currentStageStatus?.isCompleted ?? false;
@@ -81,23 +88,27 @@ export const CourseWizardStepper: React.FC<CourseWizardStepperProps> = ({
   // Filter stages if category filter is active
   const displayedStages = activeCategoryFilter
     ? timeProgress.stageEstimates.filter((s) => {
-        const cat = CATEGORY_DEFINITIONS.find((c) => c.id === activeCategoryFilter);
+        const cat = activeCategories.find((c) => c.id === activeCategoryFilter);
         return cat?.steps.includes(s.stepNumber);
       })
     : timeProgress.stageEstimates;
 
   const getCategoryIcon = (id: string) => {
     switch (id) {
+      case 'obe_framework':
       case 'foundation':
         return <BookOpen className="w-3.5 h-3.5" />;
+      case 'obe_design':
       case 'outcomes':
         return <Target className="w-3.5 h-3.5" />;
+      case 'obe_curriculum':
       case 'modular':
-        return <Layers className="w-3.5 h-3.5" />;
       case 'delivery':
-        return <FileText className="w-3.5 h-3.5" />;
+        return <Layers className="w-3.5 h-3.5" />;
+      case 'obe_alignment':
       case 'measurement':
         return <Scale className="w-3.5 h-3.5" />;
+      case 'obe_governance':
       case 'quality':
         return <ShieldCheck className="w-3.5 h-3.5" />;
       default:

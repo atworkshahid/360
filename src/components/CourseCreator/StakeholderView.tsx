@@ -28,6 +28,9 @@ import { Course, CLO, PLO, Assessment, AcademicReview } from '../../types';
 import { calculateCourseAudit } from '../../utils/obeCalculator';
 import { downloadCourseDocx } from '../../utils/docxExport';
 import { PrintFriendlyView } from './PrintFriendlyView';
+import { CollaborationService } from '../../services/collaborationService';
+import { AuditTrailModal } from '../Collaboration/AuditTrailModal';
+import { AuditLogEntry, DigitalSignOff, ReviewerPresence } from '../../types/collaboration';
 
 interface StakeholderViewProps {
   course: Course;
@@ -59,6 +62,40 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
   const [isDocxDownloading, setIsDocxDownloading] = useState<boolean>(false);
   const [printFriendlyOpen, setPrintFriendlyOpen] = useState<boolean>(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
+  const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
+  const [digitalSignOffs, setDigitalSignOffs] = useState<DigitalSignOff[]>([]);
+  const [activeReviewers, setActiveReviewers] = useState<ReviewerPresence[]>([]);
+
+  // Fetch collaboration data & send presence heartbeat
+  React.useEffect(() => {
+    let isMounted = true;
+    const loadCollab = async () => {
+      try {
+        const state = await CollaborationService.getCourseCollaboration(course.id);
+        if (isMounted) {
+          setAuditEntries(state.auditTrail);
+          setDigitalSignOffs(state.digitalSignOffs);
+          setActiveReviewers(state.activeReviewers);
+        }
+      } catch (err) {
+        console.error('Failed to load course collaboration:', err);
+      }
+    };
+    loadCollab();
+
+    // Send heartbeat
+    CollaborationService.sendPresence(course.id, {
+      id: `rev-${reviewerName || 'evaluator'}-${Date.now()}`,
+      name: reviewerName || 'Accreditation Evaluator',
+      role: reviewerRole,
+      currentSection: 'Stakeholder Executive View',
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [course.id, reviewerName, reviewerRole]);
 
   const handleExportDocx = async () => {
     setIsDocxDownloading(true);
@@ -97,7 +134,7 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
     (c) => (cloAssessmentMap[c.id] || []).length > 0
   ).length;
 
-  const handleSaveReview = () => {
+  const handleSaveReview = async () => {
     const updatedReview: AcademicReview = {
       status: approvalStatus,
       reviewerName: reviewerName || 'Stakeholder Reviewer',
@@ -118,6 +155,35 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
       academicReview: updatedReview,
       updatedAt: new Date().toISOString(),
     });
+
+    // Record decision on the collaboration backend for audit logs & digital seals
+    try {
+      const decisionType =
+        approvalStatus === 'Approved'
+          ? (reviewerRole.includes('Dean') ? 'formal_seal' : 'approve_stage')
+          : approvalStatus === 'Revision Required'
+          ? 'request_revisions'
+          : 'approve_stage';
+
+      const res = await CollaborationService.recordDecision(course.id, {
+        decision: decisionType,
+        actorName: reviewerName || 'Stakeholder Reviewer',
+        actorRole: reviewerRole,
+        decisionNote: feedbackText || `Evaluator sign-off recorded as: ${approvalStatus}`,
+        officialStatement: `Accreditation audit sign-off recorded under ${course.accreditationFramework || 'Washington Accord'}.`,
+        courseCode: course.code,
+        courseTitle: course.title,
+      });
+
+      if (res.auditEntry) {
+        setAuditEntries((prev) => [res.auditEntry, ...prev]);
+      }
+      if (res.digitalSignOff) {
+        setDigitalSignOffs((prev) => [res.digitalSignOff!, ...prev]);
+      }
+    } catch (err) {
+      console.warn('Could not record backend decision:', err);
+    }
 
     setSaveSuccessNotice(true);
     setTimeout(() => setSaveSuccessNotice(false), 4000);
@@ -211,6 +277,17 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
             </button>
 
             <button
+              type="button"
+              id="stakeholder-audit-trail-btn"
+              onClick={() => setIsAuditModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-xs border border-emerald-400/40 backdrop-blur-xs transition cursor-pointer shadow-xs"
+              title="View full cryptographic audit trail and Dean/Board digital seals"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-200" />
+              <span>Audit Trail & Seals ({auditEntries.length})</span>
+            </button>
+
+            <button
               onClick={onOpenPDFExport}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-xs transition cursor-pointer"
             >
@@ -253,6 +330,27 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Active Collaborative Reviewers presence */}
+        {activeReviewers.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-3 text-xs text-indigo-200">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-white">Live Evaluators Online:</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeReviewers.map((rev) => (
+                  <span
+                    key={rev.id}
+                    className="px-2 py-0.5 rounded-full bg-white/10 text-slate-200 text-[11px] border border-white/10"
+                  >
+                    {rev.name} ({rev.role})
+                  </span>
+                ))}
+              </div>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">Real-time Multi-User Active</span>
+          </div>
+        )}
       </div>
 
       {/* View Filter Navigation Tabs */}
@@ -837,6 +935,15 @@ export const StakeholderView: React.FC<StakeholderViewProps> = ({
           onClose={() => setPrintFriendlyOpen(false)}
         />
       )}
+
+      {/* Curriculum Governance Audit Trail & Digital Seals Modal */}
+      <AuditTrailModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        course={course}
+        auditTrail={auditEntries}
+        digitalSignOffs={digitalSignOffs}
+      />
     </div>
   );
 };

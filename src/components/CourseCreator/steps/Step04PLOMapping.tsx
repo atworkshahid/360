@@ -10,9 +10,11 @@ import {
   Layers,
   Table as TableIcon,
   LayoutGrid,
+  BookOpen,
 } from 'lucide-react';
 import { Course, PLO, CLO, MappingLevel } from '../../../types';
 import { OutcomeDependencyGraph } from '../OutcomeDependencyGraph';
+import { evaluateStage } from '../../../utils/stageProgress';
 
 interface StepProps {
   course: Course;
@@ -95,6 +97,45 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
   const unmappedCLOs = clos.filter((c) => !c.mappedPLOs || c.mappedPLOs.length === 0);
   const unmappedPLOs = plos.filter((p) => !clos.some((c) => (c.mappedPLOs || []).some((m) => m.ploId === p.id)));
 
+  // Live Accreditation Evaluation for Stage 04
+  const stageEval = evaluateStage(course, 4, 'granular15');
+
+  const handleApplyPresetPLOs = (type: 'abet' | 'wa' | 'cs') => {
+    let preset: PLO[] = [];
+    if (type === 'abet') {
+      preset = [
+        { id: 'plo-abet-1', code: 'PLO 1', title: 'Complex Problem Solving', description: 'Identify, formulate, and solve complex engineering problems by applying engineering, science, and mathematics.' },
+        { id: 'plo-abet-2', code: 'PLO 2', title: 'Engineering Design', description: 'Apply engineering design to produce solutions that meet specified needs considering public health, safety, and welfare.' },
+        { id: 'plo-abet-3', code: 'PLO 3', title: 'Effective Communication', description: 'Communicate effectively with a range of audiences in both technical and non-technical settings.' },
+        { id: 'plo-abet-4', code: 'PLO 4', title: 'Ethical & Professional Responsibility', description: 'Recognize ethical and professional responsibilities in engineering situations and make informed judgments.' },
+        { id: 'plo-abet-5', code: 'PLO 5', title: 'Collaborative Teamwork', description: 'Function effectively on a team whose members together provide leadership, create a collaborative environment, and establish goals.' },
+        { id: 'plo-abet-6', code: 'PLO 6', title: 'Experimentation & Analysis', description: 'Develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.' },
+        { id: 'plo-abet-7', code: 'PLO 7', title: 'Continuous Knowledge Acquisition', description: 'Acquire and apply new knowledge as needed, using appropriate learning strategies.' },
+      ];
+    } else if (type === 'cs') {
+      preset = [
+        { id: 'plo-cs-1', code: 'PLO 1', title: 'Algorithmic Problem Solving', description: 'Analyze complex computing problems and apply principles of computing and other relevant disciplines to identify solutions.' },
+        { id: 'plo-cs-2', code: 'PLO 2', title: 'Software Architecture & Implementation', description: 'Design, implement, and evaluate a computing-based solution to meet a given set of computing requirements.' },
+        { id: 'plo-cs-3', code: 'PLO 3', title: 'Communication in Computing', description: 'Communicate effectively in a variety of professional contexts.' },
+        { id: 'plo-cs-4', code: 'PLO 4', title: 'Professional & Legal Ethics', description: 'Recognize professional responsibilities and make informed judgments in computing practice based on legal and ethical principles.' },
+        { id: 'plo-cs-5', code: 'PLO 5', title: 'Team Collaboration', description: 'Function effectively as a member or leader of a team engaged in activities appropriate to the program discipline.' },
+        { id: 'plo-cs-6', code: 'PLO 6', title: 'Computer Science Theory & Fundamentals', description: 'Apply computer science theory and software development fundamentals to produce computing-based solutions.' },
+      ];
+    } else {
+      preset = [
+        { id: 'plo-wa-1', code: 'WA 1', title: 'Engineering Knowledge', description: 'Apply knowledge of mathematics, natural science, engineering fundamentals and an engineering specialization.' },
+        { id: 'plo-wa-2', code: 'WA 2', title: 'Problem Analysis', description: 'Identify, formulate, research literature and analyze complex engineering problems reaching substantiated conclusions.' },
+        { id: 'plo-wa-3', code: 'WA 3', title: 'Design/Development of Solutions', description: 'Design solutions for complex engineering problems and design systems, components or processes.' },
+        { id: 'plo-wa-4', code: 'WA 4', title: 'Investigation', description: 'Conduct investigations of complex problems using research-based knowledge and methods.' },
+        { id: 'plo-wa-5', code: 'WA 5', title: 'Modern Tool Usage', description: 'Create, select and apply appropriate techniques, resources, and modern engineering and IT tools.' },
+        { id: 'plo-wa-6', code: 'WA 6', title: 'The Engineer and Society', description: 'Apply reasoning informed by contextual knowledge to assess societal, health, safety, legal and cultural issues.' },
+        { id: 'plo-wa-7', code: 'WA 7', title: 'Environment and Sustainability', description: 'Understand the impact of professional engineering solutions in societal and environmental contexts.' },
+        { id: 'plo-wa-8', code: 'WA 8', title: 'Ethics', description: 'Apply ethical principles and commit to professional ethics and responsibilities and norms of engineering practice.' },
+      ];
+    }
+    onChange({ ...course, plos: preset });
+  };
+
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
@@ -117,13 +158,77 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
                 `Suggest optimal CLO to PLO mappings with accreditation rationales for course "${course.title}".`
               )
             }
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>AI Mapping Advisor</span>
           </button>
         </div>
       </div>
+
+      {/* Live Accreditation Readiness Card */}
+      <div
+        id="step04-granular-accreditation-card"
+        className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors ${
+          stageEval.isCompleted
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+            : 'bg-amber-50/80 border-amber-200 text-amber-900'
+        }`}
+      >
+        <div className="flex items-start space-x-2.5">
+          {stageEval.isCompleted ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          )}
+          <div>
+            <div className="font-bold flex items-center gap-1.5">
+              <span>{stageEval.isCompleted ? 'CLO-PLO Alignment Validated' : 'Curricular Mapping Pending'}</span>
+              <span className="text-[10px] font-normal px-1.5 py-0.2 rounded-md bg-white/70 border border-current">
+                Stage 04 • Curricular Audit
+              </span>
+            </div>
+            <div className="text-[11px] opacity-90 mt-0.5">
+              {stageEval.isCompleted
+                ? stageEval.summary
+                : `Action required: ${stageEval.missingRequirements.join(', ')}`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PLO Framework Quick-Presets Bar */}
+      {plos.length === 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center space-x-2">
+            <BookOpen className="w-4 h-4 text-slate-600 shrink-0" />
+            <span className="font-semibold text-slate-800">No PLOs configured yet. Quick-load standard framework:</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleApplyPresetPLOs('abet')}
+              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition cursor-pointer"
+            >
+              ABET 1-7 (Engineering)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPresetPLOs('wa')}
+              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition cursor-pointer"
+            >
+              Washington Accord (WA 1-8)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPresetPLOs('cs')}
+              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition cursor-pointer"
+            >
+              Computing / CS (1-6)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Warning banner if gaps */}
       {(unmappedCLOs.length > 0 || unmappedPLOs.length > 0) && (

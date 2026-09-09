@@ -18,6 +18,7 @@ import {
 import { Course } from '../types';
 import { generateCoursePDF, PDFExportOptions } from '../utils/pdfExport';
 import { calculateCourseAudit } from '../utils/obeCalculator';
+import { triggerWithLeadGate } from '../services/leadService';
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -130,12 +131,22 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 
   const handleDownload = () => {
     if (!blobUrl) return;
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerWithLeadGate(
+      () => {
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      },
+      {
+        featureTitle: `${course.code} PDF Accreditation Dossier`,
+        featureDescription: `Verify your academic affiliation to download the formatted PDF specification for ${course.title}.`,
+        source: 'pdf_preview_modal',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
   const handleOpenInNewTab = () => {

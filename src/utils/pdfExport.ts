@@ -33,6 +33,20 @@ export function generateCoursePDF(course: Course, options: PDFExportOptions = {}
     includeCQIPlan: options.includeCQIPlan ?? true,
   };
 
+  // Ensure all course collections are safe against null or undefined
+  course = {
+    ...course,
+    clos: course.clos || [],
+    plos: course.plos || [],
+    modules: course.modules || [],
+    lessons: course.lessons || [],
+    activities: course.activities || [],
+    assessments: course.assessments || [],
+    rubrics: course.rubrics || [],
+    evidenceRules: course.evidenceRules || [],
+    weeklyPlan: course.weeklyPlan || [],
+  };
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',

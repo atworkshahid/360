@@ -42,6 +42,7 @@ import {
   generateSampleCommentsForCourse,
   getCommentsForSection,
 } from '../../../utils/commentUtils';
+import { CollaborationService } from '../../../services/collaborationService';
 
 interface ElementCommentDrawerProps {
   isOpen: boolean;
@@ -250,6 +251,22 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
     const updated = [newComment, ...allComments];
     handleUpdateComments(updated);
 
+    // Asynchronously synchronize comment to server for real-time collaborative reviewers
+    CollaborationService.addComment(course.id, {
+      targetType: newComment.targetType,
+      targetId: newComment.targetId,
+      targetTitle: newComment.targetTitle,
+      sectionKey: newComment.sectionKey,
+      stepNumber: newComment.stepNumber,
+      priority: newComment.priority,
+      authorName: newComment.authorName,
+      authorRole: newComment.authorRole,
+      authorAvatarColor: newComment.authorAvatarColor,
+      category: newComment.category,
+      content: newComment.content,
+      suggestedChange: newComment.suggestedChange,
+    }).catch((err) => console.warn('Real-time comment sync warning:', err));
+
     // Reset input
     setNewCommentContent('');
     setNewCommentSuggestedChange('');
@@ -352,23 +369,36 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
     handleUpdateComments(updated);
     setReplyInputs((prev) => ({ ...prev, [commentId]: '' }));
     setActiveReplyId(null);
+
+    // Asynchronously synchronize reply to server
+    CollaborationService.addCommentReply(course.id, commentId, {
+      authorName: newReply.authorName,
+      authorRole: newReply.authorRole,
+      authorAvatarColor: newReply.authorAvatarColor,
+      content: newReply.content,
+    }).catch((err) => console.warn('Reply sync warning:', err));
   };
 
   // Toggle status (open -> resolved, or resolved -> open)
   const handleSetStatus = (commentId: string, newStatus: CommentStatus) => {
+    const resolver = isCustomAuthor && customAuthorName ? customAuthorName : activePersona.name;
     const updated = allComments.map((c) => {
       if (c.id === commentId) {
         return {
           ...c,
           status: newStatus,
           resolvedAt: newStatus === 'resolved' ? new Date().toISOString() : undefined,
-          resolvedBy: newStatus === 'resolved' ? (isCustomAuthor && customAuthorName ? customAuthorName : activePersona.name) : undefined,
+          resolvedBy: newStatus === 'resolved' ? resolver : undefined,
           updatedAt: new Date().toISOString(),
         };
       }
       return c;
     });
     handleUpdateComments(updated);
+
+    // Asynchronously synchronize status change to server
+    CollaborationService.updateCommentStatus(course.id, commentId, newStatus, resolver)
+      .catch((err) => console.warn('Status sync warning:', err));
   };
 
   // Delete comment

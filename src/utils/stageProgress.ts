@@ -76,6 +76,33 @@ export interface AlignmentTimeProgress {
   isFullyAligned: boolean;
 }
 
+export const OBE10_STAGE_DEFINITIONS: {
+  number: number;
+  title: string;
+  category: string;
+  badge?: string;
+  estimatedMinutes: number;
+}[] = [
+  { number: 1, title: 'Framework Selection', category: 'Foundation', badge: 'OBE', estimatedMinutes: 3 },
+  { number: 2, title: 'Course Information', category: 'Foundation', estimatedMinutes: 4 },
+  { number: 3, title: 'Purpose & Description', category: 'Foundation', estimatedMinutes: 5 },
+  { number: 4, title: 'Learning Outcomes (CLOs)', category: 'Outcomes & Mapping', badge: 'Core', estimatedMinutes: 8 },
+  { number: 5, title: 'Outcome Mapping', category: 'Outcomes & Mapping', badge: 'Matrix', estimatedMinutes: 5 },
+  { number: 6, title: 'Weekly Course Plan', category: 'Instructional Design', estimatedMinutes: 10 },
+  { number: 7, title: 'Teaching Activities (TLAs)', category: 'Instructional Design', estimatedMinutes: 6 },
+  { number: 8, title: 'Assessment Plan', category: 'Performance Measurement', badge: '100%', estimatedMinutes: 8 },
+  { number: 9, title: 'Alignment & Audit', category: 'Accreditation Quality', badge: 'Audit', estimatedMinutes: 5 },
+  { number: 10, title: 'Review & Export', category: 'Accreditation Quality', badge: 'Syllabus', estimatedMinutes: 4 },
+];
+
+export const OBE10_CATEGORY_DEFINITIONS = [
+  { id: 'foundation', name: 'Foundation', steps: [1, 2, 3] },
+  { id: 'outcomes', name: 'Outcomes & Mapping', steps: [4, 5] },
+  { id: 'instructional', name: 'Instructional Design', steps: [6, 7] },
+  { id: 'measurement', name: 'Performance Measurement', steps: [8] },
+  { id: 'quality', name: 'Accreditation Quality', steps: [9, 10] },
+];
+
 export const STAGE_DEFINITIONS: {
   number: number;
   title: string;
@@ -112,7 +139,11 @@ export const CATEGORY_DEFINITIONS = [
 /**
  * Checks if a specific course design stage meets completion criteria
  */
-export function evaluateStage(course: Course, stepNumber: number): {
+export function evaluateStage(
+  course: Course,
+  stepNumber: number,
+  mode: 'obe10' | 'granular15' = 'obe10'
+): {
   isCompleted: boolean;
   summary: string;
   missingRequirements: string[];
@@ -120,6 +151,150 @@ export function evaluateStage(course: Course, stepNumber: number): {
   const manualCompleted = course.completedStages?.includes(stepNumber) ?? false;
   const missingRequirements: string[] = [];
 
+  if (mode === 'obe10') {
+    switch (stepNumber) {
+      case 1: {
+        if (!course.frameworkId || course.frameworkId.trim().length === 0) {
+          missingRequirements.push('Accreditation Framework');
+        }
+        const isCompleted = missingRequirements.length === 0 || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `Accreditation framework aligned (${course.frameworkId || 'OBE Standard'})`
+            : 'Select an accreditation and qualification framework',
+          missingRequirements,
+        };
+      }
+      case 2: {
+        if (!course.title?.trim()) missingRequirements.push('Course Title');
+        if (!course.code?.trim()) missingRequirements.push('Course Code');
+        if (!course.creditHours || course.creditHours <= 0) missingRequirements.push('Credit Hours');
+        if (!course.deliveryMode) missingRequirements.push('Delivery Mode');
+        if (!course.courseLevel && !course.degreeLevel) missingRequirements.push('Course / Degree Level');
+        const isCompleted = missingRequirements.length === 0 || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${course.code} - ${course.title} (${course.creditHours} Credits)`
+            : `Requires ${missingRequirements.join(', ')}`,
+          missingRequirements,
+        };
+      }
+      case 3: {
+        const hasPurpose = Boolean(course.blueprint?.purpose?.trim() || course.learningPromise?.trim() || course.description?.trim());
+        if (!hasPurpose) missingRequirements.push('Course Purpose or Description');
+        const isCompleted = hasPurpose || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? 'Pedagogical purpose, target audience, and course narrative defined'
+            : 'Formulate course purpose statement and description',
+          missingRequirements,
+        };
+      }
+      case 4: {
+        const cloCount = course.clos?.length ?? 0;
+        if (cloCount === 0) missingRequirements.push('At least one Course Learning Outcome (CLO)');
+        const isCompleted = (cloCount >= 1 && missingRequirements.length === 0) || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${cloCount} Course Learning Outcome(s) configured with Bloom taxonomy`
+            : 'Define measurable CLOs with observable action verbs',
+          missingRequirements,
+        };
+      }
+      case 5: {
+        const hasPLOs = (course.plos?.length ?? 0) > 0;
+        const mappedCLOs = course.clos?.filter((c) => c.mappedPLOs && c.mappedPLOs.length > 0).length ?? 0;
+        if (!hasPLOs) missingRequirements.push('Programme Learning Outcomes (PLOs)');
+        if (mappedCLOs === 0 && (course.clos?.length ?? 0) > 0) missingRequirements.push('Map CLOs to PLOs');
+        const isCompleted = (hasPLOs && mappedCLOs > 0) || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${mappedCLOs} of ${course.clos?.length ?? 0} CLOs mapped to Programme Learning Outcomes`
+            : 'Construct CLO-to-PLO constructive alignment matrix',
+          missingRequirements,
+        };
+      }
+      case 6: {
+        const weekCount = course.weeklyPlan?.length ?? 0;
+        const modCount = course.modules?.length ?? 0;
+        if (weekCount === 0 && modCount === 0) missingRequirements.push('Weekly instructional syllabus or modules');
+        const isCompleted = weekCount >= 4 || modCount >= 1 || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${weekCount > 0 ? `${weekCount} weeks` : `${modCount} modules`} scaffolded with contact hours and topics`
+            : 'Establish weekly pedagogical sequence and topics',
+          missingRequirements,
+        };
+      }
+      case 7: {
+        const actCount = course.activities?.length ?? 0;
+        const weekActs = (course.weeklyPlan || []).filter((w) => w.learningActivity?.trim()).length;
+        if (actCount === 0 && weekActs === 0) missingRequirements.push('Active teaching and learning activities');
+        const isCompleted = actCount >= 1 || weekActs >= 2 || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${actCount > 0 ? `${actCount} active learning activity/activities` : `${weekActs} weekly active learning sessions`} designed`
+            : 'Select and design active student-centered learning activities',
+          missingRequirements,
+        };
+      }
+      case 8: {
+        const assessCount = course.assessments?.length ?? 0;
+        const totalWeight = course.assessments?.reduce((acc, a) => acc + (a.weightage || 0), 0) ?? 0;
+        if (assessCount === 0) missingRequirements.push('Formative and summative assessments');
+        if (Math.abs(totalWeight - 100) > 5 && assessCount > 0) {
+          missingRequirements.push(`Assessment weights must total 100% (currently ${totalWeight}%)`);
+        }
+        const isCompleted = (assessCount >= 1 && Math.abs(totalWeight - 100) <= 5) || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `${assessCount} assessment task(s) configured totaling ${totalWeight}%`
+            : 'Design assessment blueprint with balanced 100% weight distribution',
+          missingRequirements,
+        };
+      }
+      case 9: {
+        const auditReport = calculateCourseAudit(course);
+        const isCompleted = auditReport.healthScore >= 75 || manualCompleted;
+        if (auditReport.healthScore < 75) {
+          missingRequirements.push(`Course Health Score (${auditReport.healthScore}%) below threshold (75%)`);
+        }
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `Accreditation audit verified (Health Score: ${auditReport.healthScore}%)`
+            : `Course Health Score is ${auditReport.healthScore}% - address alignment gaps`,
+          missingRequirements,
+        };
+      }
+      case 10: {
+        const isCompleted = course.status !== 'draft' || Boolean(course.academicReview) || manualCompleted;
+        return {
+          isCompleted,
+          summary: isCompleted
+            ? `Syllabus finalized (Status: ${course.status.toUpperCase()}) and ready for export`
+            : 'Review OBE curriculum report and export syllabus package',
+          missingRequirements: isCompleted ? [] : ['Verify final curriculum and generate course pack'],
+        };
+      }
+      default:
+        return {
+          isCompleted: manualCompleted,
+          summary: manualCompleted ? 'Stage completed' : 'Pending',
+          missingRequirements: [],
+        };
+    }
+  }
+
+  // Granular 15 Mode
   switch (stepNumber) {
     case 1: {
       // Course Setup
@@ -127,7 +302,7 @@ export function evaluateStage(course: Course, stepNumber: number): {
       if (!course.code || course.code.trim().length === 0) missingRequirements.push('Course Code');
       if (!course.creditHours || course.creditHours <= 0) missingRequirements.push('Credit Hours');
       if (!course.deliveryMode) missingRequirements.push('Delivery Mode');
-      if (!course.courseLevel) missingRequirements.push('Course Level');
+      if (!course.courseLevel && !course.degreeLevel) missingRequirements.push('Course / Degree Level');
 
       const isCompleted = missingRequirements.length === 0 || manualCompleted;
       return {
@@ -198,13 +373,14 @@ export function evaluateStage(course: Course, stepNumber: number): {
     case 5: {
       // Module Creator
       const modCount = course.modules?.length ?? 0;
-      if (modCount === 0) missingRequirements.push('At least one Curriculum Module');
+      const weekCount = course.weeklyPlan?.length ?? 0;
+      if (modCount === 0 && weekCount < 4) missingRequirements.push('At least one Curriculum Module or Weekly Plan');
 
-      const isCompleted = modCount >= 1 || manualCompleted;
+      const isCompleted = modCount >= 1 || weekCount >= 4 || manualCompleted;
       return {
         isCompleted,
         summary: isCompleted
-          ? `${modCount} module(s) established with duration and weekly pacing`
+          ? `${modCount > 0 ? `${modCount} module(s)` : `${weekCount} weekly units`} established with duration and pacing`
           : 'Organize course into instructional modules',
         missingRequirements,
       };
@@ -213,13 +389,14 @@ export function evaluateStage(course: Course, stepNumber: number): {
     case 6: {
       // MLO Creator
       const mloCount = course.mlos?.length ?? 0;
-      if (mloCount === 0) missingRequirements.push('At least one Module Learning Outcome (MLO)');
+      const hasWeeklyCLOs = (course.weeklyPlan || []).filter((w) => (w.linkedCLOIds || []).length > 0).length >= 2;
+      if (mloCount === 0 && !hasWeeklyCLOs) missingRequirements.push('At least one Module Learning Outcome (MLO)');
 
-      const isCompleted = mloCount >= 1 || manualCompleted;
+      const isCompleted = mloCount >= 1 || hasWeeklyCLOs || manualCompleted;
       return {
         isCompleted,
         summary: isCompleted
-          ? `${mloCount} granular MLO(s) scaffolded and linked to parent CLOs`
+          ? `${mloCount > 0 ? `${mloCount} granular MLO(s)` : 'Weekly plan units'} scaffolded and linked to parent CLOs`
           : 'Generate or write module learning outcomes',
         missingRequirements,
       };
@@ -228,13 +405,14 @@ export function evaluateStage(course: Course, stepNumber: number): {
     case 7: {
       // Lesson Creator
       const lessonCount = course.lessons?.length ?? 0;
-      if (lessonCount === 0) missingRequirements.push('At least one structured lesson');
+      const weekCount = course.weeklyPlan?.length ?? 0;
+      if (lessonCount === 0 && weekCount < 4) missingRequirements.push('At least one structured lesson or weekly plan');
 
-      const isCompleted = lessonCount >= 1 || manualCompleted;
+      const isCompleted = lessonCount >= 1 || weekCount >= 4 || manualCompleted;
       return {
         isCompleted,
         summary: isCompleted
-          ? `${lessonCount} lesson(s) designed with objectives and learning evidence`
+          ? `${lessonCount > 0 ? `${lessonCount} lesson(s)` : `${weekCount} weekly sessions`} designed with objectives and learning evidence`
           : 'Add structured lessons to deliver module content',
         missingRequirements,
       };
@@ -243,13 +421,14 @@ export function evaluateStage(course: Course, stepNumber: number): {
     case 8: {
       // Activity Designer
       const actCount = course.activities?.length ?? 0;
-      if (actCount === 0) missingRequirements.push('At least one active learning activity');
+      const weekActs = (course.weeklyPlan || []).filter((w) => w.learningActivity?.trim()).length;
+      if (actCount === 0 && weekActs < 2) missingRequirements.push('At least one active learning activity');
 
-      const isCompleted = actCount >= 1 || manualCompleted;
+      const isCompleted = actCount >= 1 || weekActs >= 2 || manualCompleted;
       return {
         isCompleted,
         summary: isCompleted
-          ? `${actCount} learning activity/tasks designed with student prompts`
+          ? `${actCount > 0 ? `${actCount} learning activity/tasks` : `${weekActs} weekly active learning sessions`} designed with student prompts`
           : 'Design engaging student activities with demonstrable outputs',
         missingRequirements,
       };
@@ -377,9 +556,15 @@ export function evaluateStage(course: Course, stepNumber: number): {
 /**
  * Aggregates complete progress calculation for the CourseWizard
  */
-export function calculateCourseProgress(course: Course): CourseProgressSummary {
-  const stageStatuses: StageStatus[] = STAGE_DEFINITIONS.map((def) => {
-    const evaluation = evaluateStage(course, def.number);
+export function calculateCourseProgress(
+  course: Course,
+  mode: 'obe10' | 'granular15' = 'obe10'
+): CourseProgressSummary {
+  const stageDefs = mode === 'obe10' ? OBE10_STAGE_DEFINITIONS : STAGE_DEFINITIONS;
+  const catDefs = mode === 'obe10' ? OBE10_CATEGORY_DEFINITIONS : CATEGORY_DEFINITIONS;
+
+  const stageStatuses: StageStatus[] = stageDefs.map((def) => {
+    const evaluation = evaluateStage(course, def.number, mode);
     return {
       stepNumber: def.number,
       title: def.title,
@@ -391,10 +576,10 @@ export function calculateCourseProgress(course: Course): CourseProgressSummary {
   });
 
   const completedCount = stageStatuses.filter((s) => s.isCompleted).length;
-  const totalStages = STAGE_DEFINITIONS.length;
+  const totalStages = stageDefs.length;
   const percentage = Math.round((completedCount / totalStages) * 100);
 
-  const categoryProgress: CategoryProgress[] = CATEGORY_DEFINITIONS.map((cat) => {
+  const categoryProgress: CategoryProgress[] = catDefs.map((cat) => {
     const catSteps = stageStatuses.filter((s) => cat.steps.includes(s.stepNumber));
     const catCompleted = catSteps.filter((s) => s.isCompleted).length;
     const catTotal = catSteps.length;
@@ -404,7 +589,7 @@ export function calculateCourseProgress(course: Course): CourseProgressSummary {
       steps: cat.steps,
       completedCount: catCompleted,
       totalCount: catTotal,
-      percentage: Math.round((catCompleted / catTotal) * 100),
+      percentage: catTotal > 0 ? Math.round((catCompleted / catTotal) * 100) : 0,
       isFullyCompleted: catCompleted === catTotal,
     };
   });
@@ -426,7 +611,74 @@ export function calculateCourseProgress(course: Course): CourseProgressSummary {
 /**
  * Calculates partial progress percentage for incomplete stages
  */
-function calculatePartialStageProgress(course: Course, stepNumber: number): number {
+function calculatePartialStageProgress(
+  course: Course,
+  stepNumber: number,
+  mode: 'obe10' | 'granular15' = 'obe10'
+): number {
+  if (mode === 'obe10') {
+    switch (stepNumber) {
+      case 1:
+        return course.frameworkId ? 100 : 0;
+      case 2: {
+        let score = 0;
+        if (course.title?.trim()) score += 20;
+        if (course.code?.trim()) score += 20;
+        if (course.creditHours && course.creditHours > 0) score += 20;
+        if (course.deliveryMode) score += 20;
+        if (course.courseLevel || course.degreeLevel) score += 20;
+        return score;
+      }
+      case 3:
+        return (course.blueprint?.purpose?.trim() || course.learningPromise?.trim() || course.description?.trim()) ? 90 : 0;
+      case 4: {
+        const count = course.clos?.length ?? 0;
+        if (count >= 3) return 90;
+        if (count >= 1) return 50;
+        return 0;
+      }
+      case 5: {
+        const cloCount = course.clos?.length ?? 0;
+        if (cloCount === 0) return 0;
+        const mapped = course.clos?.filter((c) => c.mappedPLOs && c.mappedPLOs.length > 0).length ?? 0;
+        return Math.round((mapped / cloCount) * 100);
+      }
+      case 6: {
+        const weekCount = course.weeklyPlan?.length ?? 0;
+        const modCount = course.modules?.length ?? 0;
+        if (weekCount >= 8 || modCount >= 3) return 90;
+        if (weekCount >= 2 || modCount >= 1) return 60;
+        return 0;
+      }
+      case 7: {
+        const actCount = course.activities?.length ?? 0;
+        const weekActs = (course.weeklyPlan || []).filter((w) => w.learningActivity?.trim()).length;
+        if (actCount >= 3 || weekActs >= 4) return 90;
+        if (actCount >= 1 || weekActs >= 1) return 50;
+        return 0;
+      }
+      case 8: {
+        const asmtCount = course.assessments?.length ?? 0;
+        if (asmtCount === 0) return 0;
+        const totalWeight = course.assessments.reduce((acc, a) => acc + (a.weightage || 0), 0);
+        if (Math.abs(totalWeight - 100) < 0.1) return 90;
+        return 60;
+      }
+      case 9: {
+        const audit = calculateCourseAudit(course);
+        return Math.min(100, audit.healthScore);
+      }
+      case 10: {
+        if (course.status === 'submitted' || course.status === 'approved') return 95;
+        if (course.academicReview) return 70;
+        return 0;
+      }
+      default:
+        return 0;
+    }
+  }
+
+  // Granular 15 Mode
   switch (stepNumber) {
     case 1: {
       let score = 0;
@@ -434,7 +686,7 @@ function calculatePartialStageProgress(course: Course, stepNumber: number): numb
       if (course.code?.trim()) score += 20;
       if (course.creditHours && course.creditHours > 0) score += 20;
       if (course.deliveryMode) score += 20;
-      if (course.courseLevel) score += 20;
+      if (course.courseLevel || course.degreeLevel) score += 20;
       return score;
     }
     case 2: {
@@ -527,7 +779,13 @@ function calculatePartialStageProgress(course: Course, stepNumber: number): numb
 /**
  * Calculates remaining time estimates and motivational metrics to achieve full constructive alignment
  */
-export function calculateAlignmentTimeEstimate(course: Course): AlignmentTimeProgress {
+export function calculateAlignmentTimeEstimate(
+  course: Course,
+  mode: 'obe10' | 'granular15' = 'obe10'
+): AlignmentTimeProgress {
+  const stageDefs = mode === 'obe10' ? OBE10_STAGE_DEFINITIONS : STAGE_DEFINITIONS;
+  const catDefs = mode === 'obe10' ? OBE10_CATEGORY_DEFINITIONS : CATEGORY_DEFINITIONS;
+
   const auditReport = calculateCourseAudit(course);
   const healthScore = auditReport.healthScore;
   const criticalAndHighGaps = auditReport.gaps.filter(
@@ -537,11 +795,11 @@ export function calculateAlignmentTimeEstimate(course: Course): AlignmentTimePro
   let totalBaselineMinutes = 0;
   let totalRemainingMinutes = 0;
 
-  const stageEstimates: StageTimeEstimate[] = STAGE_DEFINITIONS.map((def) => {
+  const stageEstimates: StageTimeEstimate[] = stageDefs.map((def) => {
     totalBaselineMinutes += def.estimatedMinutes;
-    const stageEval = evaluateStage(course, def.number);
+    const stageEval = evaluateStage(course, def.number, mode);
     const isCompleted = stageEval.isCompleted;
-    const partialPercentage = isCompleted ? 100 : calculatePartialStageProgress(course, def.number);
+    const partialPercentage = isCompleted ? 100 : calculatePartialStageProgress(course, def.number, mode);
 
     let remainingMinutes = 0;
     if (!isCompleted) {
@@ -564,7 +822,7 @@ export function calculateAlignmentTimeEstimate(course: Course): AlignmentTimePro
   });
 
   const completedStagesCount = stageEstimates.filter((s) => s.isCompleted).length;
-  const totalStagesCount = STAGE_DEFINITIONS.length;
+  const totalStagesCount = stageDefs.length;
   const progressPercentage = Math.round((completedStagesCount / totalStagesCount) * 100);
 
   // If there are lingering critical/high audit gaps even if stages were toggled complete,
@@ -580,7 +838,7 @@ export function calculateAlignmentTimeEstimate(course: Course): AlignmentTimePro
   }
 
   // Calculate remaining minutes by category
-  const categoryEstimates: CategoryTimeEstimate[] = CATEGORY_DEFINITIONS.map((cat) => {
+  const categoryEstimates: CategoryTimeEstimate[] = catDefs.map((cat) => {
     const catStages = stageEstimates.filter((s) => cat.steps.includes(s.stepNumber));
     const catRemaining = catStages.reduce((acc, s) => acc + s.remainingMinutes, 0);
     const catBaseline = catStages.reduce((acc, s) => acc + s.baselineMinutes, 0);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, ArrowLeft, Plus, X, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, Plus, X, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Course, CourseBlueprint } from '../../../types';
+import { evaluateStage } from '../../../utils/stageProgress';
 
 interface StepProps {
   course: Course;
@@ -14,6 +15,8 @@ export const Step02CourseBlueprint: React.FC<StepProps> = ({ course, onChange, o
   const [newCompetency, setNewCompetency] = useState('');
   const [newSkill, setNewSkill] = useState('');
 
+  const stageEval = evaluateStage(course, 2, 'granular15');
+
   const blueprint = course.blueprint || {
     purpose: '',
     learnerNeed: '',
@@ -23,13 +26,17 @@ export const Step02CourseBlueprint: React.FC<StepProps> = ({ course, onChange, o
   };
 
   const handleUpdate = (field: keyof CourseBlueprint, value: any) => {
-    onChange({
+    const updated = {
       ...course,
       blueprint: {
         ...blueprint,
         [field]: value,
       },
-    });
+    };
+    if (field === 'purpose' && (!course.description || course.description.trim() === '')) {
+      updated.description = String(value);
+    }
+    onChange(updated);
   };
 
   const addCompetency = () => {
@@ -81,6 +88,36 @@ export const Step02CourseBlueprint: React.FC<StepProps> = ({ course, onChange, o
             <Sparkles className="w-3.5 h-3.5" />
             <span>Suggest Blueprint</span>
           </button>
+        </div>
+      </div>
+
+      {/* Stage 2 Live Accreditation Readiness Card */}
+      <div
+        className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+          stageEval.isCompleted
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+            : 'bg-amber-50/80 border-amber-200 text-amber-900'
+        }`}
+      >
+        <div className="flex items-start space-x-2.5">
+          {stageEval.isCompleted ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          )}
+          <div>
+            <div className="font-bold flex items-center gap-1.5">
+              <span>{stageEval.isCompleted ? 'Blueprint Architecture Validated' : 'Blueprint Incomplete'}</span>
+              <span className="text-[10px] font-normal px-1.5 py-0.2 rounded-md bg-white/70 border border-current">
+                Stage 02 Audit
+              </span>
+            </div>
+            <div className="text-[11px] opacity-90 mt-0.5">
+              {stageEval.isCompleted
+                ? stageEval.summary
+                : `Missing: ${stageEval.missingRequirements.join(', ')}`}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -23,6 +23,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { Course } from '../../types';
+import { triggerWithLeadGate } from '../../services/leadService';
 import {
   SyllabusConfig,
   getDefaultSyllabusConfig,
@@ -52,29 +53,49 @@ export const SyllabusGeneratorModal: React.FC<SyllabusGeneratorModalProps> = ({
   if (!isOpen) return null;
 
   const handleDownloadPDF = () => {
-    setIsPdfExporting(true);
-    try {
-      downloadSyllabusPDF(course, config);
-      setCopiedSuccess('Syllabus PDF downloaded successfully!');
-      setTimeout(() => setCopiedSuccess(null), 3500);
-    } catch (err) {
-      console.error('Failed to generate Syllabus PDF:', err);
-    } finally {
-      setTimeout(() => setIsPdfExporting(false), 600);
-    }
+    triggerWithLeadGate(
+      () => {
+        setIsPdfExporting(true);
+        try {
+          downloadSyllabusPDF(course, config);
+          setCopiedSuccess('Syllabus PDF downloaded successfully!');
+          setTimeout(() => setCopiedSuccess(null), 3500);
+        } catch (err) {
+          console.error('Failed to generate Syllabus PDF:', err);
+        } finally {
+          setTimeout(() => setIsPdfExporting(false), 600);
+        }
+      },
+      {
+        featureTitle: `${course.code} Course Syllabus (PDF)`,
+        featureDescription: `Verify your academic role to download the formatted PDF syllabus for ${course.title}.`,
+        source: 'syllabus_generator_pdf',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
-  const handleDownloadDocx = async () => {
-    setIsDocxExporting(true);
-    try {
-      await downloadSyllabusDocx(course, config);
-      setCopiedSuccess('Syllabus Word document (.docx) downloaded successfully!');
-      setTimeout(() => setCopiedSuccess(null), 3500);
-    } catch (err) {
-      console.error('Failed to generate Syllabus Docx:', err);
-    } finally {
-      setIsDocxExporting(false);
-    }
+  const handleDownloadDocx = () => {
+    triggerWithLeadGate(
+      async () => {
+        setIsDocxExporting(true);
+        try {
+          await downloadSyllabusDocx(course, config);
+          setCopiedSuccess('Syllabus Word document (.docx) downloaded successfully!');
+          setTimeout(() => setCopiedSuccess(null), 3500);
+        } catch (err) {
+          console.error('Failed to generate Syllabus Docx:', err);
+        } finally {
+          setIsDocxExporting(false);
+        }
+      },
+      {
+        featureTitle: `${course.code} Course Syllabus Word (.docx)`,
+        featureDescription: `Verify your academic role to download the editable Word document syllabus for ${course.title}.`,
+        source: 'syllabus_generator_docx',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
   const handleCopyMarkdown = () => {

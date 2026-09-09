@@ -31,14 +31,21 @@ import {
   GitGraph,
   Clock,
   ChevronDown,
+  MoreHorizontal,
+  Copy,
+  Trash2,
+  Download,
+  LifeBuoy,
 } from 'lucide-react';
 import { Course, CLO } from '../../types';
 import { calculateCourseAudit } from '../../utils/obeCalculator';
 import { analyzeAssessmentPlan } from '../../utils/assessmentAnalysis';
 import { calculateCourseProgress, calculateAlignmentTimeEstimate } from '../../utils/stageProgress';
+import { syncWeeklyPlanToModules, syncModulesToWeeklyPlan } from '../../utils/curriculumSynchronizer';
 import { evaluateDesignHealth } from '../../utils/designHealth';
 import { getUnresolvedCommentsCount, getTotalCommentsCount } from '../../utils/commentUtils';
 import { getCourseVersions } from '../../services/versionHistoryService';
+import { CourseValidationService } from '../../services/courseValidationService';
 import { TemplateModal } from '../TemplateModal';
 import { AlignmentAnalysisModal } from '../AlignmentAnalysis/AlignmentAnalysisModal';
 import { CoursePDFExportModal } from '../CoursePDFExportModal';
@@ -55,13 +62,27 @@ import { RubricGeneratorModal } from './RubricGeneratorModal';
 import { ElementCommentDrawer } from './comments/ElementCommentDrawer';
 import { PrintFriendlyView } from './PrintFriendlyView';
 import { CourseSnapshotsModal } from './CourseSnapshotsModal';
+import { AuditTrailModal } from '../Collaboration/AuditTrailModal';
 import { BulkImportCLOsModal } from './BulkImportCLOsModal';
 import { LMSFormatExportModal } from '../LMSFormatExportModal';
 import { ConstructiveAlignmentModal } from '../ConstructiveAlignment/ConstructiveAlignmentModal';
 import { SyllabusGeneratorModal } from './SyllabusGeneratorModal';
 import { CourseWizardStepper } from './CourseWizardStepper';
+import { ContextualAssistantPanel } from './ContextualAssistantPanel';
 
-// Step Components
+// 10-Step OBE360 Primary Flow Components
+import { Step01FrameworkSelection } from './steps/Step01FrameworkSelection';
+import { Step02CourseInformation } from './steps/Step02CourseInformation';
+import { Step03CoursePurpose } from './steps/Step03CoursePurpose';
+import { Step04CLOManager } from './steps/Step04CLOManager';
+import { Step05OutcomeMapping } from './steps/Step05OutcomeMapping';
+import { Step06WeeklyPlan } from './steps/Step06WeeklyPlan';
+import { Step07TeachingActivities } from './steps/Step07TeachingActivities';
+import { Step08AssessmentPlan } from './steps/Step08AssessmentPlan';
+import { Step09AlignmentCheck } from './steps/Step09AlignmentCheck';
+import { Step10ReviewExport as Step10ObeReviewExport } from './steps/Step10ReviewExport';
+
+// Legacy 15-Step Modular Deep-Dive Components
 import { Step01CourseSetup } from './steps/Step01CourseSetup';
 import { Step02CourseBlueprint } from './steps/Step02CourseBlueprint';
 import { Step03CLOCreator } from './steps/Step03CLOCreator';
@@ -84,6 +105,8 @@ interface CourseWizardProps {
   onNavigateDashboard: () => void;
   onAskCopilot: (prompt: string) => void;
   onLoadCourse?: (course: Course) => void;
+  onDuplicateCourse?: (courseId: string) => void;
+  onDeleteCourse?: (courseId: string) => void;
   autoSaveStatus?: AutoSaveStatus;
   autoSaveLastSaved?: Date | null;
   autoSaveError?: string | null;
@@ -96,6 +119,19 @@ export interface WizardStepDef {
   category: string;
   badge?: string;
 }
+
+export const OBE10_WIZARD_STEPS: WizardStepDef[] = [
+  { number: 1, title: 'Framework Selection', category: 'Foundation', badge: 'OBE' },
+  { number: 2, title: 'Course Information', category: 'Foundation' },
+  { number: 3, title: 'Purpose & Description', category: 'Foundation' },
+  { number: 4, title: 'Learning Outcomes (CLOs)', category: 'Outcomes & Mapping', badge: 'Core' },
+  { number: 5, title: 'Outcome Mapping', category: 'Outcomes & Mapping', badge: 'Matrix' },
+  { number: 6, title: 'Weekly Course Plan', category: 'Instructional Design' },
+  { number: 7, title: 'Teaching Activities (TLAs)', category: 'Instructional Design' },
+  { number: 8, title: 'Assessment Plan', category: 'Performance Measurement', badge: '100%' },
+  { number: 9, title: 'Alignment & Audit', category: 'Accreditation Quality', badge: 'Audit' },
+  { number: 10, title: 'Review & Export', category: 'Accreditation Quality', badge: 'Syllabus' },
+];
 
 export const WIZARD_STEPS: WizardStepDef[] = [
   { number: 1, title: 'Course Setup', category: 'Foundation' },
@@ -121,6 +157,8 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   onNavigateDashboard,
   onAskCopilot,
   onLoadCourse,
+  onDuplicateCourse,
+  onDeleteCourse,
   autoSaveStatus,
   autoSaveLastSaved,
   autoSaveError,
@@ -147,7 +185,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [lmsSchemaModalOpen, setLmsSchemaModalOpen] = useState<boolean>(false);
   const [alignmentDashboardOpen, setAlignmentDashboardOpen] = useState<boolean>(false);
   const [syllabusModalOpen, setSyllabusModalOpen] = useState<boolean>(false);
-  const [openMenu, setOpenMenu] = useState<'audit' | 'tools' | 'export' | null>(null);
+  const [wizardMode, setWizardMode] = useState<'obe10' | 'granular15'>('obe10');
+  const [assistantOpen, setAssistantOpen] = useState<boolean>(false);
+  const [openMenu, setOpenMenu] = useState<'actions' | 'audit' | 'tools' | 'export' | 'stakeholderExport' | null>(null);
   const [snapshotsCount, setSnapshotsCount] = useState<number>(() => {
     return course?.id ? getCourseVersions(course.id).length : 0;
   });
@@ -197,11 +237,12 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
     'CLO' | 'Assessment' | 'Rubric' | 'Module' | 'General'
   >('General');
   const [commentTargetTitle, setCommentTargetTitle] = useState<string | undefined>(undefined);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
 
   const auditReport = calculateCourseAudit(course);
   const assessmentAnalysis = analyzeAssessmentPlan(course);
-  const stageProgress = calculateCourseProgress(course);
-  const alignmentTimeEstimate = useMemo(() => calculateAlignmentTimeEstimate(course), [course]);
+  const stageProgress = useMemo(() => calculateCourseProgress(course, wizardMode), [course, wizardMode]);
+  const alignmentTimeEstimate = useMemo(() => calculateAlignmentTimeEstimate(course, wizardMode), [course, wizardMode]);
   const designHealthAudit = useMemo(() => evaluateDesignHealth(course), [course]);
   const unresolvedCommentsCount = useMemo(
     () => getUnresolvedCommentsCount(course.comments),
@@ -210,6 +251,10 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const totalCommentsCount = useMemo(
     () => getTotalCommentsCount(course.comments),
     [course.comments]
+  );
+  const validationSummary = useMemo(
+    () => CourseValidationService.validateCourse(course),
+    [course]
   );
 
   const handleOpenComments = (
@@ -229,8 +274,11 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
     assessmentAnalysis.cognitiveDeficitCLOs.length +
     assessmentAnalysis.unassessedCLOs.length;
 
+  const activeSteps = wizardMode === 'obe10' ? OBE10_WIZARD_STEPS : WIZARD_STEPS;
+  const maxStepCount = activeSteps.length;
+
   const handleNext = () => {
-    if (currentStep < 15) {
+    if (currentStep < maxStepCount) {
       // Auto-record current step as completed in course state
       const currentCompleted = course.completedStages || [];
       if (!currentCompleted.includes(currentStep)) {
@@ -278,10 +326,25 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   };
 
   const handleJumpToStep = (stepNumber: number) => {
-    if (stepNumber >= 1 && stepNumber <= 15) {
+    if (stepNumber >= 1 && stepNumber <= maxStepCount) {
       setCurrentStep(stepNumber);
       setMobileSidebarOpen(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleToggleWizardMode = (newMode: 'obe10' | 'granular15') => {
+    setWizardMode(newMode);
+    if (newMode === 'obe10' && currentStep > 10) {
+      setCurrentStep(10);
+    }
+    // Harmonize curriculum structures between 10-step (weeklyPlan) and 15-step (modules)
+    if (newMode === 'granular15' && (course.weeklyPlan?.length ?? 0) > 0 && (course.modules?.length ?? 0) === 0) {
+      const synced = syncWeeklyPlanToModules(course);
+      onChange(synced);
+    } else if (newMode === 'obe10' && (course.modules?.length ?? 0) > 0 && (course.weeklyPlan?.length ?? 0) === 0) {
+      const synced = syncModulesToWeeklyPlan(course);
+      onChange(synced);
     }
   };
 
@@ -293,9 +356,10 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
       updatedCLOs = [...course.clos, ...importedCLOs];
     }
     onChange({ ...course, clos: updatedCLOs });
-    // If user is currently in initial setup phase (Step 1 or 2), navigate to Step 3 (CLO Creator)
-    if (currentStep < 3) {
-      setCurrentStep(3);
+    // If user is currently in initial setup phase, navigate to outcomes step
+    const targetStep = wizardMode === 'obe10' ? 4 : 3;
+    if (currentStep < targetStep) {
+      setCurrentStep(targetStep);
     }
   };
 
@@ -303,19 +367,130 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   useEffect(() => {
     const handleGlobalJump = (e: any) => {
       const step = e.detail?.stepNumber;
-      if (typeof step === 'number' && step >= 1 && step <= 15) {
+      if (typeof step === 'number' && step >= 1 && step <= maxStepCount) {
         handleJumpToStep(step);
       }
     };
     window.addEventListener('wizard_jump_step', handleGlobalJump);
     return () => window.removeEventListener('wizard_jump_step', handleGlobalJump);
-  }, []);
+  }, [maxStepCount]);
 
   // Group steps by category
-  const categories = Array.from(new Set(WIZARD_STEPS.map((s) => s.category)));
+  const categories = Array.from(new Set(activeSteps.map((s) => s.category)));
 
   // Render Step
   const renderCurrentStepComponent = () => {
+    if (wizardMode === 'obe10') {
+      switch (currentStep) {
+        case 1:
+          return (
+            <Step01FrameworkSelection
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onAskCopilot={onAskCopilot}
+            />
+          );
+        case 2:
+          return (
+            <Step02CourseInformation
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+            />
+          );
+        case 3:
+          return (
+            <Step03CoursePurpose
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+            />
+          );
+        case 4:
+          return (
+            <Step04CLOManager
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onOpenComments={handleOpenComments}
+            />
+          );
+        case 5:
+          return (
+            <Step05OutcomeMapping
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onOpenComments={handleOpenComments}
+            />
+          );
+        case 6:
+          return (
+            <Step06WeeklyPlan
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onOpenComments={handleOpenComments}
+            />
+          );
+        case 7:
+          return (
+            <Step07TeachingActivities
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onOpenComments={handleOpenComments}
+            />
+          );
+        case 8:
+          return (
+            <Step08AssessmentPlan
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onOpenComments={handleOpenComments}
+            />
+          );
+        case 9:
+          return (
+            <Step09AlignmentCheck
+              course={course}
+              onChange={onChange}
+              onNext={handleNext}
+              onPrev={handlePrev}
+              onAskCopilot={onAskCopilot}
+              onJumpToStep={handleJumpToStep}
+            />
+          );
+        case 10:
+          return (
+            <Step10ObeReviewExport
+              course={course}
+              onChange={onChange}
+              onPrev={handlePrev}
+              onOpenSyllabusModal={() => setSyllabusModalOpen(true)}
+              onAskCopilot={onAskCopilot}
+            />
+          );
+        default:
+          return null;
+      }
+    }
     switch (currentStep) {
       case 1:
         return (
@@ -366,6 +541,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             onNext={handleNext}
             onPrev={handlePrev}
             onAskCopilot={onAskCopilot}
+            onOpenComments={handleOpenComments}
           />
         );
       case 6:
@@ -376,6 +552,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             onNext={handleNext}
             onPrev={handlePrev}
             onAskCopilot={onAskCopilot}
+            onOpenComments={handleOpenComments}
           />
         );
       case 7:
@@ -386,6 +563,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             onNext={handleNext}
             onPrev={handlePrev}
             onAskCopilot={onAskCopilot}
+            onOpenComments={handleOpenComments}
           />
         );
       case 8:
@@ -534,47 +712,109 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               </span>
             </div>
 
-            <button
-              onClick={() => setPdfModalOpen(true)}
-              className="px-3 py-1.5 rounded-md border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
-              title="Export Course Audit Report as Formatted PDF"
-            >
-              <FileText className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="hidden sm:inline">Export PDF</span>
-            </button>
+            {/* Standardized Export & Share Dropdown for Stakeholder View */}
+            <div className="relative wizard-menu-container">
+              <button
+                type="button"
+                id="stakeholder-export-menu-btn"
+                onClick={() => setOpenMenu(openMenu === 'stakeholderExport' ? null : 'stakeholderExport')}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer ${
+                  openMenu === 'stakeholderExport'
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
+                    : 'border-slate-200 text-slate-700 bg-white hover:bg-slate-50'
+                }`}
+                title="Export & Share options"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Export & Share</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${openMenu === 'stakeholderExport' ? 'rotate-180' : ''}`} />
+              </button>
 
-            <button
-              onClick={() => setPreviewPdfModalOpen(true)}
-              className="px-3 py-1.5 rounded-md border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
-              title="Preview PDF Document layout with temporary blob URL"
-            >
-              <Eye className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="hidden sm:inline">Preview PDF</span>
-            </button>
+              {openMenu === 'stakeholderExport' && (
+                <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Documents & Reports
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      setSyllabusModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                  >
+                    <GraduationCap className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900">Course Syllabus Document</div>
+                      <div className="text-[11px] text-slate-500">PDF & Word docx formatted syllabus</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      setPdfModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900">Accreditation Audit Report (PDF)</div>
+                      <div className="text-[11px] text-slate-500">Full audit report & configuration export</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      setPreviewPdfModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900">Preview PDF In-Browser</div>
+                      <div className="text-[11px] text-slate-500">Temporary in-browser visual inspection</div>
+                    </div>
+                  </button>
 
-            <button
-              onClick={() => {
-                setDriveSyncModalMode('sync');
-                setDriveSyncModalOpen(true);
-              }}
-              className="px-3 py-1.5 rounded-md border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
-              title="Sync Course to Google Drive"
-            >
-              <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Drive Sync</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setDriveSyncModalMode('share');
-                setDriveSyncModalOpen(true);
-              }}
-              className="px-3 py-1.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
-              title="Export read-only course snapshot to Google Drive & generate shareable link (anyone with link)"
-            >
-              <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Share Snapshot</span>
-            </button>
+                  <div className="my-1 border-t border-slate-100"></div>
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Cloud & Collaboration
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      setDriveSyncModalMode('sync');
+                      setDriveSyncModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                  >
+                    <UploadCloud className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900">Google Drive Sync</div>
+                      <div className="text-[11px] text-slate-500">Sync course data to cloud storage</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      setDriveSyncModalMode('share');
+                      setDriveSyncModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-xs text-slate-700 hover:text-slate-900 flex items-start space-x-2.5 transition cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900">Share Public Snapshot</div>
+                      <div className="text-[11px] text-slate-500">Generate read-only shareable cloud link</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={() => setIsStakeholderView(false)}
@@ -602,10 +842,10 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 {currentStep < 10 ? `0${currentStep}` : currentStep}
               </span>
               <span className="font-bold text-slate-900 text-sm hidden sm:inline">
-                Step {currentStep}: {WIZARD_STEPS[currentStep - 1]?.title}
+                Step {currentStep}: {activeSteps[currentStep - 1]?.title}
               </span>
               <span className="text-xs text-slate-300 hidden sm:inline">•</span>
-              <span className="text-xs text-slate-500 font-medium hidden sm:inline">Stage {currentStep} of 15</span>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">Stage {currentStep} of {maxStepCount}</span>
 
               {/* Visual Auto-saved indicator with timestamp and popover */}
               {autoSaveStatus && (
@@ -671,7 +911,142 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 </span>
               </button>
 
-              {/* DROPDOWN 1: Audit & Align Menu */}
+              {/* DROPDOWN 1: Course Actions (Duplicate, Template, Snapshots, Cloud, Delete) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  id="wizard-menu-actions-btn"
+                  onClick={() => setOpenMenu(openMenu === 'actions' ? null : 'actions')}
+                  className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer shrink-0 ${
+                    openMenu === 'actions'
+                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-2xs'
+                      : 'border-slate-200 text-slate-700 bg-white hover:bg-slate-50'
+                  }`}
+                  title="Course Actions: Duplicate, Template, Snapshots, Cloud Sync, Delete"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline">Actions</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${openMenu === 'actions' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openMenu === 'actions' && (
+                  <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Course Management
+                    </div>
+                    {onDuplicateCourse && (
+                      <button
+                        type="button"
+                        id="wizard-action-duplicate-btn"
+                        onClick={() => {
+                          setOpenMenu(null);
+                          onDuplicateCourse(course.id);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                      >
+                        <Copy className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-900">Duplicate Course</div>
+                          <div className="text-[11px] text-slate-500">Clone course into a new draft</div>
+                        </div>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      id="wizard-action-template-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setTemplateModalMode('save');
+                        setTemplateModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Bookmark className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Save as Template</div>
+                        <div className="text-[11px] text-slate-500">Store blueprint as reusable OBE template</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      id="wizard-action-snapshots-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setSnapshotsModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <History className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-slate-900">Snapshots & Revisions</span>
+                          {snapshotsCount > 0 && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
+                              {snapshotsCount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500">View and restore previous course states</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      id="wizard-action-drive-sync-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setDriveSyncModalMode('sync');
+                        setDriveSyncModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <UploadCloud className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Google Drive Sync</div>
+                        <div className="text-[11px] text-slate-500">Sync course data to cloud storage</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      id="wizard-action-share-link-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setDriveSyncModalMode('share');
+                        setDriveSyncModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Share2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900">Share Public Link</div>
+                        <div className="text-[11px] text-slate-500">Generate read-only cloud share link</div>
+                      </div>
+                    </button>
+
+                    {onDeleteCourse && (
+                      <>
+                        <div className="my-1 border-t border-slate-100"></div>
+                        <button
+                          type="button"
+                          id="wizard-action-delete-btn"
+                          onClick={() => {
+                            setOpenMenu(null);
+                            onDeleteCourse(course.id);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-rose-50 text-xs text-rose-600 hover:text-rose-700 flex items-start space-x-2.5 transition cursor-pointer group"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-500 group-hover:text-rose-600 mt-0.5 shrink-0" />
+                          <div>
+                            <div className="font-semibold text-rose-700">Delete Course</div>
+                            <div className="text-[11px] text-rose-500">Remove course from workspace</div>
+                          </div>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* DROPDOWN 2: Audit & Align Menu */}
               <div className="relative">
                 <button
                   type="button"
@@ -834,45 +1209,6 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                       <div>
                         <div className="font-semibold text-slate-900">Bulk Import CLOs</div>
                         <div className="text-[11px] text-slate-500">Import outcomes from CSV or text paste</div>
-                      </div>
-                    </button>
-
-                    <div className="my-1 border-t border-slate-100"></div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenu(null);
-                        setSnapshotsModalOpen(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
-                    >
-                      <History className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-slate-900">Snapshots & Revisions</span>
-                          {snapshotsCount > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
-                              {snapshotsCount}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500">View and restore previous course states</div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenu(null);
-                        setTemplateModalMode('save');
-                        setTemplateModalOpen(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
-                    >
-                      <Bookmark className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-slate-900">Save as Template</div>
-                        <div className="text-[11px] text-slate-500">Store blueprint as a reusable OBE template</div>
                       </div>
                     </button>
                   </div>
@@ -1045,6 +1381,57 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 )}
               </div>
 
+              {/* MODE SWITCHER: 10-Step OBE360 vs 15-Step Granular */}
+              <div className="hidden lg:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                <button
+                  type="button"
+                  id="wizard-mode-obe10-btn"
+                  onClick={() => handleToggleWizardMode('obe10')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer ${
+                    wizardMode === 'obe10'
+                      ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="10-Step OBE360 Streamlined Accreditation Flow (Recommended)"
+                >
+                  10-Step OBE
+                </button>
+                <button
+                  type="button"
+                  id="wizard-mode-granular15-btn"
+                  onClick={() => handleToggleWizardMode('granular15')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition cursor-pointer ${
+                    wizardMode === 'granular15'
+                      ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="15-Step Deep-Dive with granular question & rubric builders"
+                >
+                  15-Step Deep
+                </button>
+              </div>
+
+              {/* CONTEXTUAL OBE ADVISOR TOGGLE */}
+              <button
+                type="button"
+                id="wizard-header-assistant-btn"
+                onClick={() => setAssistantOpen(!assistantOpen)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer shrink-0 ${
+                  assistantOpen
+                    ? 'border-indigo-400 bg-indigo-50 text-indigo-800 shadow-xs font-bold'
+                    : 'border-slate-200 text-slate-700 bg-white hover:bg-slate-50'
+                }`}
+                title="Toggle OBE Advisor & Contextual Alignment Guidance"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="hidden xl:inline">OBE Advisor</span>
+                {validationSummary.issueCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                    {validationSummary.issueCount}
+                  </span>
+                )}
+              </button>
+
               {/* STAKEHOLDER VIEW TOGGLE */}
               <button
                 type="button"
@@ -1087,6 +1474,18 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                   </span>
                 )}
               </button>
+
+              {/* AUDIT TRAIL & DIGITAL SEALS BUTTON */}
+              <button
+                type="button"
+                id="wizard-header-audit-btn"
+                onClick={() => setIsAuditModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer shrink-0"
+                title="Cryptographic Audit Trail, Dean Approvals & Digital Seals"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden xl:inline">Audit Trail</span>
+              </button>
             </div>
 
             {/* Step Navigation Actions */}
@@ -1103,7 +1502,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               </button>
               <button
                 onClick={handleNext}
-                disabled={currentStep === 15}
+                disabled={currentStep === maxStepCount}
                 className="px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 text-xs font-semibold flex items-center space-x-1 shadow-sm shadow-indigo-200 transition"
                 title="Next Step"
               >
@@ -1121,6 +1520,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
           onJumpToStep={handleJumpToStep}
           onToggleCurrentStageCompleted={handleToggleCurrentStageCompleted}
           onOpenAlignmentAudit={() => setAlignmentModalOpen(true)}
+          mode={wizardMode}
         />
       </div>
     )}
@@ -1153,7 +1553,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 Stages Progress
               </span>
               <span className="text-xs font-black text-indigo-700">
-                {stageProgress.completedCount}/15 Done
+                {stageProgress.completedCount}/{maxStepCount} Done
               </span>
             </div>
             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -1197,7 +1597,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
           {/* Steps List */}
           <div className="flex-1 overflow-y-auto py-2">
             <div className="px-3 space-y-1">
-              {WIZARD_STEPS.map((step) => {
+              {activeSteps.map((step) => {
                 const isActive = currentStep === step.number;
                 const stageStatus = stageProgress.stageStatuses.find((s) => s.stepNumber === step.number);
                 const isCompleted = stageStatus?.isCompleted ?? false;
@@ -1245,15 +1645,37 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             </div>
           </div>
 
-          {/* Bottom Save Action */}
-          <div className="p-4 bg-white border-t border-slate-200">
+          {/* Bottom Save Action & Developer Feedback */}
+          <div className="p-4 bg-white border-t border-slate-200 space-y-2">
             <button
               onClick={() => {
                 onChange({ ...course, updatedAt: new Date().toISOString() });
               }}
-              className="w-full py-2 px-4 bg-slate-100 text-slate-700 text-xs font-bold rounded-md hover:bg-slate-200 transition-colors"
+              className="w-full py-2 px-4 bg-slate-100 text-slate-700 text-xs font-bold rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
             >
               Save Draft
+            </button>
+            <button
+              id="wizard-report-issue-btn"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('open_feedback_modal', {
+                    detail: {
+                      category: 'bug',
+                      subject: `Feedback on Step ${currentStep} (${
+                        wizardMode === 'obe10'
+                          ? OBE10_WIZARD_STEPS[currentStep - 1]?.title || 'Step'
+                          : WIZARD_STEPS[currentStep - 1]?.title || 'Step'
+                      })`,
+                    },
+                  })
+                );
+              }}
+              className="w-full py-1.5 px-2 flex items-center justify-center space-x-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/60 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
+              title="Report an issue or question about this step with course telemetry attached"
+            >
+              <LifeBuoy className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>Report Step Issue</span>
             </button>
           </div>
         </aside>
@@ -1264,6 +1686,16 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             {renderCurrentStepComponent()}
           </div>
         </main>
+
+        {/* Contextual Alignment Assistant Panel */}
+        <ContextualAssistantPanel
+          currentStep={currentStep}
+          course={course}
+          isOpen={assistantOpen}
+          onClose={() => setAssistantOpen(false)}
+          onJumpToStep={handleJumpToStep}
+          onAskCopilot={onAskCopilot}
+        />
 
         {/* Persistent Design Health Checklist Sidebar */}
         <DesignHealthSidebar
@@ -1445,6 +1877,20 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         onChangeCourse={onChange}
         onAskCopilot={onAskCopilot}
         onJumpToStep={handleJumpToStep}
+      />
+
+      {/* Automated Course Syllabus Generator (PDF & Word docx) */}
+      <SyllabusGeneratorModal
+        isOpen={syllabusModalOpen}
+        onClose={() => setSyllabusModalOpen(false)}
+        course={course}
+      />
+
+      {/* Cryptographic Audit Trail & Governance Digital Seals */}
+      <AuditTrailModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        course={course}
       />
     </div>
   );

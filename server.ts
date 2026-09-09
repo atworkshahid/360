@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { collaborationRouter } from './server/collaborationRoutes';
 
 dotenv.config();
 
@@ -1197,6 +1198,166 @@ function generateChatbotFallback(role: string, query: string, context?: any): st
     `2. **Evidence Rules:** Each CLO must be validated through explicit evidence sources with a minimum threshold percentage (standard: 60%).\n` +
     `3. **Audit Readiness:** Keep your course dossier, alignment matrices, and assessment plans current. All modules and learning units must lead into the final Capstone Goal.`;
 }
+
+// --- Developer Feedback & Issue Reporting Pipeline ---
+interface DevFeedbackRecord {
+  id: string;
+  ticketNumber: string;
+  category: string;
+  severity: string;
+  userName: string;
+  userEmail: string;
+  subject: string;
+  description: string;
+  stepsToReproduce?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
+  courseSummary?: any;
+  diagnostics?: any;
+  receivedAt: string;
+}
+
+const feedbackStore: DevFeedbackRecord[] = [];
+
+app.post('/api/feedback', (req: Request, res: Response) => {
+  try {
+    const {
+      category = 'general',
+      severity = 'medium',
+      userName = 'Anonymous User',
+      userEmail = '',
+      subject = 'General Feedback',
+      description = '',
+      stepsToReproduce,
+      expectedBehavior,
+      actualBehavior,
+      includeCourseSnapshot,
+      includeSystemTelemetry,
+      diagnostics,
+    } = req.body || {};
+
+    if (!description || typeof description !== 'string' || description.trim().length === 0) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    const ticketNumber = `OBE-TKT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receivedAt = new Date().toISOString();
+
+    const record: DevFeedbackRecord = {
+      id: `dev-fb-${Date.now()}`,
+      ticketNumber,
+      category,
+      severity,
+      userName: String(userName || '').trim() || 'Anonymous Faculty',
+      userEmail: String(userEmail || '').trim() || 'no-email@mentisera.org',
+      subject: String(subject || '').trim() || 'User Feedback / Bug Report',
+      description: String(description).trim(),
+      stepsToReproduce,
+      expectedBehavior,
+      actualBehavior,
+      courseSummary: diagnostics?.courseSummary,
+      diagnostics: includeSystemTelemetry ? diagnostics : undefined,
+      receivedAt,
+    };
+
+    feedbackStore.unshift(record);
+    if (feedbackStore.length > 100) feedbackStore.pop();
+
+    console.log(`\n======================================================`);
+    console.log(`📢 [OBE360 DEV FEEDBACK TICKET: ${ticketNumber}]`);
+    console.log(`   Type: [${category.toUpperCase()}] | Severity: [${severity.toUpperCase()}]`);
+    console.log(`   From: ${record.userName} <${record.userEmail}>`);
+    console.log(`   Subject: ${record.subject}`);
+    if (record.courseSummary) {
+      console.log(`   Course: ${record.courseSummary.code} - ${record.courseSummary.title} (Audit: ${record.courseSummary.auditScore}%)`);
+    }
+    console.log(`   Description: ${record.description.slice(0, 150)}${record.description.length > 150 ? '...' : ''}`);
+    console.log(`======================================================\n`);
+
+    return res.json({
+      success: true,
+      ticketNumber,
+      receivedAt,
+      slaMessage:
+        severity === 'critical'
+          ? 'Critical priority: Direct alert dispatched to engineering on-call. Estimated initial review within 2 hours.'
+          : 'Standard priority: Reviewed by engineering & pedagogical team within 4 business hours.',
+      message: 'Feedback received and logged to MENTISERA development team.',
+      directEmail: 'dev-team@mentisera.org',
+    });
+  } catch (err: any) {
+    console.error('Error handling feedback submission:', err);
+    return res.status(500).json({ error: 'Internal server error processing feedback' });
+  }
+});
+
+app.get('/api/feedback', (_req: Request, res: Response) => {
+  return res.json({
+    status: 'ok',
+    totalTicketsReceived: feedbackStore.length,
+    recentTickets: feedbackStore.slice(0, 10).map((t) => ({
+      ticketNumber: t.ticketNumber,
+      category: t.category,
+      severity: t.severity,
+      subject: t.subject,
+      receivedAt: t.receivedAt,
+    })),
+  });
+});
+
+// Institutional Leads & Sales Inquiries Ingestion API
+const leadsStore: any[] = [];
+
+app.post('/api/leads', (req: Request, res: Response) => {
+  try {
+    const lead = req.body;
+    if (!lead || !lead.fullName || !lead.email || !lead.institution) {
+      return res.status(400).json({ error: 'Missing required lead fields (fullName, email, institution)' });
+    }
+
+    const leadRecord = {
+      id: lead.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      receivedAt: new Date().toISOString(),
+      fullName: String(lead.fullName),
+      email: String(lead.email),
+      phone: lead.phone ? String(lead.phone) : undefined,
+      institution: String(lead.institution),
+      department: lead.department ? String(lead.department) : undefined,
+      role: String(lead.role || 'Academic Leader'),
+      frameworkInterest: String(lead.frameworkInterest || 'Washington Accord / ABET'),
+      facultyCountRange: String(lead.facultyCountRange || '10-50 faculty'),
+      primaryNeeds: Array.isArray(lead.primaryNeeds) ? lead.primaryNeeds : [],
+      timeline: String(lead.timeline || 'Immediate'),
+      message: lead.message ? String(lead.message) : undefined,
+      status: 'new',
+      source: String(lead.source || 'web_lead_form'),
+    };
+
+    leadsStore.unshift(leadRecord);
+    console.log(`[Sales Pipeline] New Institutional Lead received from ${leadRecord.fullName} at ${leadRecord.institution} (${leadRecord.email})`);
+
+    return res.status(201).json({
+      status: 'success',
+      leadId: leadRecord.id,
+      message: 'Inquiry received by MENTISERA Academic Solutions team.',
+      estimatedResponseHours: 24,
+    });
+  } catch (err: any) {
+    console.error('Error ingesting lead:', err);
+    return res.status(500).json({ error: 'Internal server error processing lead inquiry' });
+  }
+});
+
+app.get('/api/leads', (_req: Request, res: Response) => {
+  return res.json({
+    status: 'ok',
+    totalLeads: leadsStore.length,
+    leads: leadsStore,
+  });
+});
+
+// Multi-Reviewer Academic Governance, Approval Queues & Audit Trail API
+app.use('/api/collaboration', collaborationRouter);
 
 // Setup Vite middleware for development and static serve for production
 async function startServer() {

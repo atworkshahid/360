@@ -25,6 +25,7 @@ import { CoursePDFExportModal } from '../../CoursePDFExportModal';
 import { LMSIntegrationModal } from '../../LMSIntegrationModal';
 import { PrintFriendlyView } from '../PrintFriendlyView';
 import { LMSFormatExportModal } from '../../LMSFormatExportModal';
+import { triggerWithLeadGate } from '../../../services/leadService';
 
 interface StepProps {
   course: Course;
@@ -45,15 +46,25 @@ export const Step15ReviewExport: React.FC<StepProps> = ({ course, onChange, onNe
   const [lmsFormatExportModalOpen, setLmsFormatExportModalOpen] = useState(false);
   const [lmsFormatPlatform, setLmsFormatPlatform] = useState<'moodle' | 'blackboard'>('moodle');
 
-  const handleQuickDownloadLMS = async () => {
-    try {
-      setIsLmsExporting(true);
-      await downloadCommonCartridge(course);
-    } catch (e) {
-      console.error('Failed to export Common Cartridge', e);
-    } finally {
-      setIsLmsExporting(false);
-    }
+  const handleQuickDownloadLMS = () => {
+    triggerWithLeadGate(
+      async () => {
+        try {
+          setIsLmsExporting(true);
+          await downloadCommonCartridge(course);
+        } catch (e) {
+          console.error('Failed to export Common Cartridge', e);
+        } finally {
+          setIsLmsExporting(false);
+        }
+      },
+      {
+        featureTitle: `${course.code} IMS Common Cartridge (.imscc)`,
+        featureDescription: `Verify your institutional affiliation to download the complete LMS package for ${course.title}.`,
+        source: 'step15_imscc_export',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
   const review: AcademicReview = course.academicReview || {
@@ -144,25 +155,45 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
   };
 
   const handleQuickDownloadPDF = () => {
-    setIsQuickDownloading(true);
-    try {
-      downloadCoursePDF(course);
-    } catch (err) {
-      console.error('Failed to export PDF:', err);
-    } finally {
-      setTimeout(() => setIsQuickDownloading(false), 800);
-    }
+    triggerWithLeadGate(
+      () => {
+        setIsQuickDownloading(true);
+        try {
+          downloadCoursePDF(course);
+        } catch (err) {
+          console.error('Failed to export PDF:', err);
+        } finally {
+          setTimeout(() => setIsQuickDownloading(false), 800);
+        }
+      },
+      {
+        featureTitle: `${course.code} Accreditation Dossier (PDF)`,
+        featureDescription: `Verify your faculty or institutional affiliation to download the formal accreditation report for ${course.title}.`,
+        source: 'step15_quick_pdf',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
-  const handleExportDocx = async () => {
-    setIsDocxDownloading(true);
-    try {
-      await downloadCourseDocx(course);
-    } catch (err) {
-      console.error('Failed to export Word document:', err);
-    } finally {
-      setIsDocxDownloading(false);
-    }
+  const handleExportDocx = () => {
+    triggerWithLeadGate(
+      async () => {
+        setIsDocxDownloading(true);
+        try {
+          await downloadCourseDocx(course);
+        } catch (err) {
+          console.error('Failed to export Word document:', err);
+        } finally {
+          setIsDocxDownloading(false);
+        }
+      },
+      {
+        featureTitle: `${course.code} Word Specification (.docx)`,
+        featureDescription: `Verify your faculty or institutional affiliation to download the editable Word syllabus specification for ${course.title}.`,
+        source: 'step15_export_docx',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
   return (

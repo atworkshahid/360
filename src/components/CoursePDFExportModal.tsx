@@ -26,6 +26,7 @@ import { downloadCoursePDF, PDFExportOptions } from '../utils/pdfExport';
 import { downloadCourseDocx } from '../utils/docxExport';
 import { GoogleDriveSyncModal } from './GoogleDriveSyncModal';
 import { PDFPreviewModal } from './PDFPreviewModal';
+import { triggerWithLeadGate } from '../services/leadService';
 
 interface CoursePDFExportModalProps {
   course: Course;
@@ -65,25 +66,45 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
   const assessmentAnalysis = analyzeAssessmentPlan(course);
 
   const handleDownloadPDF = () => {
-    setIsGenerating(true);
-    try {
-      downloadCoursePDF(course, options);
-    } catch (err) {
-      console.error('Failed to generate PDF:', err);
-    } finally {
-      setTimeout(() => setIsGenerating(false), 800);
-    }
+    triggerWithLeadGate(
+      () => {
+        setIsGenerating(true);
+        try {
+          downloadCoursePDF(course, options);
+        } catch (err) {
+          console.error('Failed to generate PDF:', err);
+        } finally {
+          setTimeout(() => setIsGenerating(false), 800);
+        }
+      },
+      {
+        featureTitle: `${course.code} PDF Accreditation Dossier`,
+        featureDescription: `Verify your academic affiliation to download the formatted PDF specification for ${course.title}.`,
+        source: 'pdf_export_modal',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
-  const handleDownloadDocx = async () => {
-    setIsGeneratingDocx(true);
-    try {
-      await downloadCourseDocx(course, options);
-    } catch (err) {
-      console.error('Failed to generate Word (.docx) document:', err);
-    } finally {
-      setTimeout(() => setIsGeneratingDocx(false), 500);
-    }
+  const handleDownloadDocx = () => {
+    triggerWithLeadGate(
+      async () => {
+        setIsGeneratingDocx(true);
+        try {
+          await downloadCourseDocx(course, options);
+        } catch (err) {
+          console.error('Failed to generate Word (.docx) document:', err);
+        } finally {
+          setTimeout(() => setIsGeneratingDocx(false), 500);
+        }
+      },
+      {
+        featureTitle: `${course.code} Word Specification (.docx)`,
+        featureDescription: `Verify your academic affiliation to download the editable Word document specification for ${course.title}.`,
+        source: 'docx_export_modal',
+        framework: course.accreditationFramework,
+      }
+    );
   };
 
   const handlePrint = () => {

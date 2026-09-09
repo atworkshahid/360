@@ -1,6 +1,7 @@
 import { Course, CLO, BloomLevel } from '../types';
 import { BLOOM_RANK, analyzeAssessmentPlan } from './assessmentAnalysis';
 import { BLOOM_TAXONOMY_DATA, VERBS_TO_AVOID } from '../components/CourseCreator/BloomsTaxonomyHelperModal';
+import { calculateCourseAudit } from './obeCalculator';
 
 export interface ChecklistItem {
   id: string;
@@ -533,50 +534,54 @@ export function evaluateDesignHealth(course: Course): DesignHealthAudit {
     });
   }
 
-  // Check 6: Modular Structure
-  const hasModules = course.modules.length >= 2;
-  if (hasModules) contentCheckPassed++;
+  // Check 6: Instructional Architecture (Weekly Syllabus or Modules)
+  const hasWeeklyPlan = (course.weeklyPlan || []).length >= 4;
+  const hasModules = (course.modules || []).length >= 2;
+  const instructionalArchPassed = hasWeeklyPlan || hasModules;
+  if (instructionalArchPassed) contentCheckPassed++;
   checklistItems.push({
     id: 'req-modules',
     category: 'content',
-    title: 'Modular Architecture (≥ 2 Modules)',
-    description: 'Course content is divided into sequenced, manageable instructional units.',
-    status: hasModules ? 'passed' : 'failed',
-    metricText: `${course.modules.length} Modules`,
+    title: 'Instructional Architecture (Weekly Syllabus or Modules)',
+    description: 'Course content is scheduled into sequenced, manageable instructional units or weekly plans.',
+    status: instructionalArchPassed ? 'passed' : 'failed',
+    metricText: hasWeeklyPlan ? `${course.weeklyPlan?.length} Weeks Scheduled` : `${course.modules.length} Modules`,
     targetStep: 5,
-    actionLabel: hasModules ? undefined : 'Create Modules in Step 5',
+    actionLabel: instructionalArchPassed ? undefined : 'Schedule Syllabus in Step 6',
   });
 
-  // Check 7: Modular Learning Outcomes (MLOs)
+  // Check 7: Scaffolding / Learning Outcomes (MLOs or Weekly CLO Links)
   const hasMLOs = course.mlos.length > 0;
   const unlinkedMLOs = course.mlos.filter((m) => !m.linkedCLOId);
-  const mlosFullyLinked = hasMLOs && unlinkedMLOs.length === 0;
+  const weeklyClosMapped = (course.weeklyPlan || []).some((w) => (w.linkedCLOIds || []).length > 0);
+  const mlosFullyLinked = (hasMLOs && unlinkedMLOs.length === 0) || (hasWeeklyPlan && weeklyClosMapped);
   if (mlosFullyLinked) contentCheckPassed++;
   checklistItems.push({
     id: 'req-mlos-linked',
     category: 'content',
-    title: 'Granular MLOs Linked to Parent CLOs',
-    description: 'Every module has granular outcomes that map directly back to a parent CLO.',
-    status: mlosFullyLinked ? 'passed' : hasMLOs ? 'warning' : 'failed',
-    metricText: `${course.mlos.length} MLOs (${unlinkedMLOs.length} unlinked)`,
+    title: 'Scaffolded Learning Outcomes & Weekly Linkage',
+    description: 'Instructional sessions and modules link outcomes directly back to parent CLOs.',
+    status: mlosFullyLinked ? 'passed' : (hasMLOs || hasWeeklyPlan) ? 'warning' : 'failed',
+    metricText: hasWeeklyPlan ? 'Weekly CLOs Linked' : `${course.mlos.length} MLOs (${unlinkedMLOs.length} unlinked)`,
     targetStep: 6,
-    actionLabel: mlosFullyLinked ? undefined : 'Scaffold MLOs in Step 6',
+    actionLabel: mlosFullyLinked ? undefined : 'Link Outcomes in Step 6',
   });
 
-  // Check 8: Instructional Lessons with Evidence
+  // Check 8: Instructional Activities & Demonstrable Evidence
   const hasLessons = course.lessons.length > 0;
   const lessonsWithEvidence = course.lessons.filter((l) => l.evidenceOfLearning && l.evidenceOfLearning.trim().length > 0).length;
-  const lessonsPassed = hasLessons && lessonsWithEvidence >= Math.ceil(course.lessons.length * 0.7);
+  const weeklyActivitiesCount = (course.weeklyPlan || []).filter((w) => w.learningActivity && w.learningActivity.trim().length > 0).length;
+  const lessonsPassed = (hasLessons && lessonsWithEvidence >= Math.ceil(course.lessons.length * 0.7)) || (hasWeeklyPlan && weeklyActivitiesCount >= 4);
   if (lessonsPassed) contentCheckPassed++;
   checklistItems.push({
     id: 'req-lessons-evidence',
     category: 'content',
-    title: 'Lessons with Demonstrable Evidence',
-    description: 'Lessons specify what tangible artifact or student output demonstrates learning.',
+    title: 'Lessons & Activities with Demonstrable Evidence',
+    description: 'Instructional sessions specify what tangible artifact or student output demonstrates learning.',
     status: lessonsPassed ? 'passed' : 'warning',
-    metricText: `${lessonsWithEvidence}/${course.lessons.length} with Evidence`,
+    metricText: hasWeeklyPlan ? `${weeklyActivitiesCount} Weekly Activities` : `${lessonsWithEvidence}/${course.lessons.length} with Evidence`,
     targetStep: 7,
-    actionLabel: lessonsPassed ? undefined : 'Add Evidence in Step 7',
+    actionLabel: lessonsPassed ? undefined : 'Add Activities in Step 6/7',
   });
 
   // Check 9: Rubrics for Qualitative Assessments
@@ -616,13 +621,10 @@ export function evaluateDesignHealth(course: Course): DesignHealthAudit {
   const contentRequirementsScore = Math.round((contentCheckPassed / totalContentChecks) * 100);
 
   // ==========================================
-  // 4. OVERALL HEALTH SCORE & GRADE
+  // 4. OVERALL HEALTH SCORE & GRADE (Unified Source of Truth)
   // ==========================================
-  const overallScore = Math.round(
-    measurabilityScore * 0.35 +
-    assessmentLinkageScore * 0.35 +
-    contentRequirementsScore * 0.30
-  );
+  const unifiedAudit = calculateCourseAudit(course);
+  const overallScore = unifiedAudit.healthScore;
 
   let healthGrade: DesignHealthAudit['healthGrade'] = 'Needs Attention';
   if (overallScore >= 90) healthGrade = 'Audit-Ready';
