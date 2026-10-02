@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+/* Right-to-Left (RTL) Text Direction & Layout Transitions */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .font-arabic,
+html[dir="rtl"] body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Arabic', 'Cairo', 'Traditional Arabic', Tahoma, sans-serif;
+}
+
+/* Smooth layout transition when switching text direction */
+html {
+  transition: direction 0.2s ease, text-align 0.2s ease;
+}
+
+/* Print-Optimized Formatting Rules */
+@media print {
+  /* Reassuring clean print layout */
+  body, html {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Automatically hide non-printable UI chrome */
+  header,
+  nav,
+  aside,
+  #wizard-sidebar,
+  .print-hidden,
+  .no-print,
+  button:not(.allow-print) {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

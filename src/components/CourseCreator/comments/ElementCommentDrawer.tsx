@@ -236,6 +236,7 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
       targetTitle: target.title,
       sectionKey: target.sectionKey || (target.id.startsWith('step-') ? target.id : undefined),
       stepNumber: target.step,
+      moduleId: target.type === 'Module' ? target.id : undefined,
       priority: newCommentPriority,
       authorName,
       authorRole,

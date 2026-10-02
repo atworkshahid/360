@@ -40,6 +40,7 @@ export interface InlineSectionFeedbackProps {
   sectionKey: string;
   sectionTitle: string;
   stepNumber?: number;
+  moduleId?: string;
   targetType?: CommentTargetType;
   onOpenFullReview?: (targetId: string, targetType: CommentTargetType, targetTitle: string) => void;
   compact?: boolean;
@@ -52,6 +53,7 @@ export const InlineSectionFeedback: React.FC<InlineSectionFeedbackProps> = ({
   sectionKey,
   sectionTitle,
   stepNumber,
+  moduleId,
   targetType = 'Section',
   onOpenFullReview,
   compact = false,
@@ -89,11 +91,12 @@ export const InlineSectionFeedback: React.FC<InlineSectionFeedbackProps> = ({
 
     const newComment: CourseElementComment = {
       id: `comment-${Date.now()}`,
-      targetType: (targetType || 'Section') as CommentTargetType,
-      targetId: sectionKey,
+      targetType: (targetType || (moduleId ? 'Module' : 'Section')) as CommentTargetType,
+      targetId: moduleId || sectionKey,
       targetTitle: sectionTitle,
       sectionKey,
       stepNumber,
+      moduleId,
       priority: newPriority,
       authorName,
       authorRole,

@@ -74,11 +74,11 @@ export interface DesignHealthAudit {
  * Check if a verb or statement contains a known vague/non-measurable term
  */
 export function detectVagueVerb(statement: string, bloomVerb: string): { found: boolean; vagueVerb?: string; substitutes?: string[] } {
-  const statementLower = statement.toLowerCase();
-  const verbLower = bloomVerb.toLowerCase();
+  const statementLower = (statement || '').toLowerCase();
+  const verbLower = (bloomVerb || '').toLowerCase();
 
   for (const item of VERBS_TO_AVOID) {
-    const rawVerb = item.vagueVerb.toLowerCase().split('/')[0].trim();
+    const rawVerb = (item.vagueVerb || '').toLowerCase().split('/')[0].trim();
     // Check if the verb or start of statement contains this vague word
     const regex = new RegExp(`\\b${rawVerb}\\b`, 'i');
     if (regex.test(verbLower) || regex.test(statementLower)) {

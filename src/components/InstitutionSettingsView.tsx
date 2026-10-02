@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Save,
@@ -9,14 +9,19 @@ import {
   Globe,
   Sliders,
   Award,
+  ArrowLeft,
+  Cloud,
 } from 'lucide-react';
 import { Institution, OutcomeMappingScale } from '../types';
 import {
   DEFAULT_INSTITUTION,
   getStoredInstitution,
   saveStoredInstitution,
+  fetchServerInstitution,
+  updateServerInstitution,
 } from '../data/institutionData';
 import { INITIAL_FRAMEWORKS } from '../data/frameworksData';
+import { InstitutionalLogoUploader } from './InstitutionalLogoUploader';
 
 interface InstitutionSettingsViewProps {
   onBack?: () => void;
@@ -25,24 +30,44 @@ interface InstitutionSettingsViewProps {
 export const InstitutionSettingsView: React.FC<InstitutionSettingsViewProps> = ({ onBack }) => {
   const [institution, setInstitution] = useState<Institution>(getStoredInstitution);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchServerInstitution().then((serverInst) => {
+      if (serverInst) {
+        setInstitution(serverInst);
+      }
+    });
+  }, []);
 
   const handleChange = (field: keyof Institution, value: any) => {
     setInstitution((prev) => ({ ...prev, [field]: value }));
     setSavedSuccess(false);
   };
 
-  const handleSave = () => {
-    saveStoredInstitution(institution);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updated = await updateServerInstitution(institution);
+      setInstitution(updated);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (confirm('Reset institution settings to default Apex Institute parameters?')) {
-      setInstitution(DEFAULT_INSTITUTION);
-      saveStoredInstitution(DEFAULT_INSTITUTION);
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2000);
+      setIsSaving(true);
+      try {
+        const updated = await updateServerInstitution(DEFAULT_INSTITUTION);
+        setInstitution(updated);
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 2000);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -65,10 +90,22 @@ export const InstitutionSettingsView: React.FC<InstitutionSettingsViewProps> = (
         </div>
 
         <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Courses</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleReset}
-            className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            disabled={isSaving}
+            className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Restore Defaults</span>
@@ -77,18 +114,19 @@ export const InstitutionSettingsView: React.FC<InstitutionSettingsViewProps> = (
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm shadow-indigo-200 flex items-center gap-1.5"
+            disabled={isSaving}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm shadow-indigo-200 flex items-center gap-1.5 disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
-            <span>Save Settings</span>
+            {isSaving ? <Cloud className="w-4 h-4 animate-pulse" /> : <Save className="w-4 h-4" />}
+            <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
           </button>
         </div>
       </div>
 
       {savedSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Institutional settings successfully persisted to local storage.</span>
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Institutional governance settings successfully persisted across server and local store.</span>
         </div>
       )}
 
@@ -117,6 +155,18 @@ export const InstitutionSettingsView: React.FC<InstitutionSettingsViewProps> = (
               <span className="text-[10px] text-slate-400 mt-1 block">
                 Printed on formal syllabus publications and accreditation dossier covers.
               </span>
+            </div>
+
+            <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                Institutional Crest / Seal / Logo
+              </label>
+              <InstitutionalLogoUploader
+                currentLogoUrl={institution.logoUrl}
+                institutionName={institution.name}
+                onLogoChange={(dataUrl) => handleChange('logoUrl', dataUrl)}
+                onClearLogo={() => handleChange('logoUrl', '')}
+              />
             </div>
 
             <div>

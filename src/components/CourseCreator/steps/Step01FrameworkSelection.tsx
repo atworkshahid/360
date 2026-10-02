@@ -10,6 +10,9 @@ import {
   ChevronRight,
   ExternalLink,
   Sparkles,
+  Download,
+  FileText,
+  Lock,
 } from 'lucide-react';
 import { Course, Framework } from '../../../types';
 import {
@@ -19,12 +22,15 @@ import {
   getFrameworkById,
   getFrameworkOutcomes,
 } from '../../../data/frameworksData';
+import { downloadFrameworkGuidebookPDF } from '../../../utils/frameworkGuidebookPdf';
+import { Guidebook } from '../../Guidebook';
 
 interface StepProps {
   course: Course;
   onChange: (updated: Course) => void;
   onNext: () => void;
   onAskCopilot?: (prompt: string) => void;
+  onOpenGuidebook?: (frameworkId?: string) => void;
 }
 
 export const Step01FrameworkSelection: React.FC<StepProps> = ({
@@ -32,16 +38,30 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
   onChange,
   onNext,
   onAskCopilot,
+  onOpenGuidebook,
 }) => {
   const currentFrameworkId = course.frameworkId || 'fw-abet-cac';
   const [selectedFwId, setSelectedFwId] = useState<string>(currentFrameworkId);
   const [filterType, setFilterType] = useState<string>('all');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [guidebookModalOpen, setGuidebookModalOpen] = useState(false);
+  const [activeGuidebookFrameworkId, setActiveGuidebookFrameworkId] = useState<string>(selectedFwId);
 
   const selectedFramework = getFrameworkById(selectedFwId);
   const frameworkOutcomes = getFrameworkOutcomes(selectedFwId);
   const frameworkVersion =
     INITIAL_FRAMEWORK_VERSIONS.find((v) => v.frameworkId === selectedFramework.id) ||
     INITIAL_FRAMEWORK_VERSIONS[0];
+
+  const handleOpenGuidebookModal = (fwId?: string) => {
+    const targetId = fwId || selectedFwId;
+    setActiveGuidebookFrameworkId(targetId);
+    if (onOpenGuidebook) {
+      onOpenGuidebook(targetId);
+    } else {
+      setGuidebookModalOpen(true);
+    }
+  };
 
   const handleSelectFramework = (framework: Framework) => {
     setSelectedFwId(framework.id);
@@ -62,8 +82,23 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
       ...course,
       frameworkId: framework.id,
       frameworkVersionId: version.id,
+      accreditationFramework: framework.name,
       plos: updatedPLOs,
     });
+  };
+
+  const handleDownloadGuidebook = () => {
+    setIsDownloading(true);
+    try {
+      downloadFrameworkGuidebookPDF({
+        frameworkId: selectedFramework.id,
+        frameworkName: selectedFramework.name,
+        courseTitle: course.title,
+        courseCode: course.code,
+      });
+    } finally {
+      setTimeout(() => setIsDownloading(false), 1200);
+    }
   };
 
   const filteredFrameworks = INITIAL_FRAMEWORKS.filter((fw) => {
@@ -191,10 +226,25 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
                     <span className="font-medium text-slate-600">
                       Discipline: <span className="text-slate-700">{fw.discipline}</span>
                     </span>
-                    <span className="text-indigo-600 font-semibold flex items-center gap-1">
-                      {isSelected ? 'Active Selection' : 'Click to Apply'}
-                      <ChevronRight className="w-3 h-3" />
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenGuidebookModal(fw.id);
+                        }}
+                        className="text-[11px] text-slate-500 hover:text-indigo-600 hover:underline flex items-center gap-1 font-medium transition-colors"
+                        title={`View ${fw.code} Guidebook & PDF`}
+                      >
+                        <BookOpen className="w-3 h-3 text-indigo-500" />
+                        <span>Guidebook</span>
+                      </button>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-indigo-600 font-semibold flex items-center gap-1">
+                        {isSelected ? 'Active' : 'Apply'}
+                        <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -302,23 +352,83 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* Guidebook Modal & Download Actions */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <button
+                type="button"
+                onClick={() => handleOpenGuidebookModal(selectedFramework.id)}
+                className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>View {selectedFramework.code} Guidebook &amp; PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadGuidebook}
+                disabled={isDownloading}
+                className="w-full py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-200 disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>
+                  {isDownloading ? 'Generating Guidebook...' : `Direct Download PDF`}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Commitment Policy Callout */}
+      <div className="p-4 bg-gradient-to-r from-indigo-50 via-slate-50 to-blue-50 border border-indigo-200 rounded-2xl flex items-start space-x-3 shadow-2xs">
+        <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0 mt-0.5 shadow-xs">
+          <Lock className="w-4 h-4" />
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+            <span>Framework Commitment Policy</span>
+            <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.2 rounded-md font-mono font-bold">
+              Consistently Guides Entire Journey
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            By committing to <strong className="text-slate-900">{selectedFramework.name}</strong>, all subsequent stages—including Course Learning Outcome (CLO) formulations, Bloom's cognitive taxonomy levels, 16-week modular plans, constructive alignment matrices, and scoring rubrics—will be guided and validated against this standard.
+          </p>
+        </div>
+      </div>
+
       {/* Step Footer Navigation */}
-      <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+      <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-slate-500">
-          Framework selected: <strong className="text-slate-800">{selectedFramework.name}</strong>
+          Committed Framework: <strong className="text-slate-800">{selectedFramework.name}</strong> ({selectedFramework.code})
         </div>
         <button
           onClick={onNext}
           className="inline-flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-indigo-200 transition cursor-pointer"
         >
-          <span>Continue to Course Information</span>
+          <span>Confirm &amp; Proceed to Course Information</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Embedded Guidebook Modal */}
+      <Guidebook
+        isOpen={guidebookModalOpen}
+        onClose={() => setGuidebookModalOpen(false)}
+        initialFrameworkId={activeGuidebookFrameworkId}
+        courseTitle={course.title}
+        courseCode={course.code}
+        institutionName={course.institutionName}
+        initialStageKey="step_framework"
+        onApplyFrameworkToCourse={(fwId) => {
+          const fw = INITIAL_FRAMEWORKS.find((f) => f.id === fwId);
+          if (fw) {
+            handleSelectFramework(fw);
+            setGuidebookModalOpen(false);
+          }
+        }}
+      />
     </div>
   );
 };

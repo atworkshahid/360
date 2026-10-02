@@ -564,7 +564,9 @@ export function batchTagCourseCLOs(clos: CLO[], courseLevel: CourseLevel = 'Unde
     const tag = tagCLOBlooms(clo.statement, courseLevel, clo.bloomLevel);
     const isTagMismatch =
       clo.bloomLevel !== tag.suggestedLevel ||
-      (clo.bloomVerb && tag.detectedVerb.toLowerCase() !== clo.bloomVerb.toLowerCase());
+      (Boolean(clo.bloomVerb) &&
+        Boolean(tag.detectedVerb) &&
+        (tag.detectedVerb || '').toLowerCase() !== (clo.bloomVerb || '').toLowerCase());
 
     return {
       clo,

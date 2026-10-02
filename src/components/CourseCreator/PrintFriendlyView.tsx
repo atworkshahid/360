@@ -5,6 +5,7 @@ import {
   Type,
   Check,
   FileText,
+  FileDown,
   BookOpen,
   Target,
   Layers,
@@ -14,8 +15,12 @@ import {
   Filter,
   Eye,
   Download,
+  Loader2,
 } from 'lucide-react';
 import { Course, CLO, PLO, Module, Assessment, Rubric } from '../../types';
+import { downloadCoursePDF } from '../../utils/pdfExport';
+import { downloadCourseDocx } from '../../utils/docxExport';
+import { LogoMark } from '../Logo';
 
 interface PrintFriendlyViewProps {
   course: Course;
@@ -53,6 +58,51 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [isDocxExporting, setIsDocxExporting] = useState(false);
+
+  const handleDownloadPDF = () => {
+    setIsPdfExporting(true);
+    try {
+      downloadCoursePDF(course, {
+        includeCourseInfo: sections.overview,
+        includeCLOs: sections.clos,
+        includePLOMapping: sections.ploMapping,
+        includeModules: sections.modules,
+        includeAssessments: sections.assessments,
+        includeRubrics: sections.rubrics,
+        includeEvidenceRules: sections.evidenceRules,
+        includeAuditReport: sections.signoff,
+        includeCQIPlan: sections.cqiPlan,
+      });
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+    } finally {
+      setTimeout(() => setIsPdfExporting(false), 700);
+    }
+  };
+
+  const handleDownloadDocx = async () => {
+    setIsDocxExporting(true);
+    try {
+      await downloadCourseDocx(course, {
+        includeCourseInfo: sections.overview,
+        includeCLOs: sections.clos,
+        includePLOMapping: sections.ploMapping,
+        includeModules: sections.modules,
+        includeAssessments: sections.assessments,
+        includeRubrics: sections.rubrics,
+        includeEvidenceRules: sections.evidenceRules,
+        includeAuditReport: sections.signoff,
+        includeCQIPlan: sections.cqiPlan,
+      });
+    } catch (err) {
+      console.error('Failed to download Word document:', err);
+    } finally {
+      setTimeout(() => setIsDocxExporting(false), 500);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -312,15 +362,47 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
               )}
             </div>
 
+            {/* Primary Download PDF Button */}
+            <button
+              id="print-friendly-download-pdf-btn"
+              onClick={handleDownloadPDF}
+              disabled={isPdfExporting}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Download print-optimized course blueprint as a PDF document"
+            >
+              {isPdfExporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FileDown className="w-3.5 h-3.5" />
+              )}
+              <span>{isPdfExporting ? 'Exporting...' : 'Download PDF'}</span>
+            </button>
+
+            {/* Primary Download Word DOCX Button */}
+            <button
+              id="print-friendly-download-docx-btn"
+              onClick={handleDownloadDocx}
+              disabled={isDocxExporting}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Download print-optimized course blueprint as a Microsoft Word document (.docx)"
+            >
+              {isDocxExporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FileText className="w-3.5 h-3.5" />
+              )}
+              <span>{isDocxExporting ? 'Exporting...' : 'Word (.docx)'}</span>
+            </button>
+
             {/* Primary Print Button */}
             <button
               id="print-friendly-trigger-btn"
               onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-              title="Print document or save as PDF via system dialog"
+              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Print document or save as PDF via system dialog with exact CSS layout"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print Document</span>
+              <span>Print</span>
             </button>
           </div>
         </div>
@@ -334,7 +416,7 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
               READING MODE
             </span>
             <span>
-              All navigation bars, editing panels, and UI chrome have been stripped away for distraction-free reading and crisp physical printing.
+              Print-optimized reading view: download your course blueprint directly as PDF or Word (.docx), or print physically with custom typography and page breaks.
             </span>
           </div>
           <span className="text-[11px] text-slate-400 font-medium hidden md:inline">
@@ -346,6 +428,7 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
       {/* Main Print Document Body */}
       <main className="max-w-4xl mx-auto my-6 px-4 sm:px-8 pb-16 print:p-0 print:m-0 print:max-w-none">
         <div
+          dir={course.textDirection || (course.language === 'Arabic' || course.language === 'Urdu' ? 'rtl' : 'ltr')}
           className={`paper-document bg-white border border-slate-200 rounded-2xl shadow-md p-8 sm:p-14 print:border-none print:shadow-none print:p-0 ${
             fontFamily === 'serif' ? 'font-serif' : 'font-sans'
           } ${fontSizeClasses}`}
@@ -353,16 +436,21 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
           {/* Institutional Document Header */}
           <div className="border-b-2 border-slate-900 pb-6 mb-8 print-avoid-break">
             <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[11px] font-bold tracking-widest text-slate-500 uppercase font-sans mb-1">
-                  MENTISERA INSTITUTE OF LEARNING AND DEVELOPMENT
-                </p>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                  {course.title || 'Untitled Course Specification'}
-                </h1>
-                <p className="text-sm font-semibold text-slate-700 mt-1 font-sans">
-                  Outcome-Based Education (OBE) Course Syllabus & Accreditation Dossier
-                </p>
+              <div className="flex items-start space-x-4">
+                <div className="shrink-0 mt-1">
+                  <LogoMark size={44} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold tracking-widest text-slate-500 uppercase font-sans mb-1">
+                    MENTISERA INSTITUTE OF LEARNING AND DEVELOPMENT
+                  </p>
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                    {course.title || 'Untitled Course Specification'}
+                  </h1>
+                  <p className="text-sm font-semibold text-slate-700 mt-1 font-sans">
+                    Outcome-Based Education (OBE) Course Syllabus & Accreditation Dossier
+                  </p>
+                </div>
               </div>
 
               <div className="text-right shrink-0 pl-4 font-sans">
@@ -802,10 +890,10 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {(rubric.criteria || []).map((crit) => {
-                            const exemplary = crit.levels?.find((l) => l.name.toLowerCase().includes('exemplary') || l.scoreRange === '4');
-                            const proficient = crit.levels?.find((l) => l.name.toLowerCase().includes('proficient') || l.scoreRange === '3');
-                            const developing = crit.levels?.find((l) => l.name.toLowerCase().includes('developing') || l.scoreRange === '2');
-                            const novice = crit.levels?.find((l) => l.name.toLowerCase().includes('novice') || l.name.toLowerCase().includes('unsatisfactory') || l.scoreRange === '1');
+                            const exemplary = crit.levels?.find((l) => (l.name || '').toLowerCase().includes('exemplary') || l.scoreRange === '4');
+                            const proficient = crit.levels?.find((l) => (l.name || '').toLowerCase().includes('proficient') || l.scoreRange === '3');
+                            const developing = crit.levels?.find((l) => (l.name || '').toLowerCase().includes('developing') || l.scoreRange === '2');
+                            const novice = crit.levels?.find((l) => (l.name || '').toLowerCase().includes('novice') || (l.name || '').toLowerCase().includes('unsatisfactory') || l.scoreRange === '1');
 
                             return (
                               <tr key={crit.id} className="align-top">
@@ -963,7 +1051,10 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
 
               {/* Footer Stamp */}
               <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
-                <span>MENTISERA OBE360™ Unified Accreditation Management System</span>
+                <div className="flex items-center space-x-2 font-semibold text-slate-600">
+                  <LogoMark size={16} />
+                  <span>MENTISERA OBE360™ Unified Accreditation Management System</span>
+                </div>
                 <span>Generated: {new Date().toLocaleDateString()} • {new Date().toLocaleTimeString()}</span>
               </div>
             </section>

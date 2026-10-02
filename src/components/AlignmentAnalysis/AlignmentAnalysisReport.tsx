@@ -87,10 +87,11 @@ export const AlignmentAnalysisReport: React.FC<AlignmentAnalysisReportProps> = (
   // Filter outcomes
   const filteredCoverages = report.cloCoverages.filter((cov) => {
     // Search query
+    const q = (searchQuery || '').toLowerCase();
     const matchesSearch =
-      cov.cloCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cov.cloStatement.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cov.cloBloomLevel.toLowerCase().includes(searchQuery.toLowerCase());
+      (cov.cloCode || '').toLowerCase().includes(q) ||
+      (cov.cloStatement || '').toLowerCase().includes(q) ||
+      (cov.cloBloomLevel || '').toLowerCase().includes(q);
     if (!matchesSearch) return false;
 
     if (filterMode === 'flagged') {

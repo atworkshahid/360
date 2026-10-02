@@ -161,6 +161,34 @@ export function getSavedLeads(): InstitutionalLead[] {
 }
 
 /**
+ * Asynchronously fetch leads from the backend and merge with local storage
+ */
+export async function fetchServerLeads(): Promise<InstitutionalLead[]> {
+  try {
+    const res = await fetch('/api/leads');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.leads) && data.leads.length > 0) {
+        const local = getSavedLeads();
+        const mergedMap = new Map<string, InstitutionalLead>();
+        // Add server leads first
+        data.leads.forEach((l: InstitutionalLead) => mergedMap.set(l.id, l));
+        // Add or keep any local leads
+        local.forEach((l) => {
+          if (!mergedMap.has(l.id)) mergedMap.set(l.id, l);
+        });
+        const merged = Array.from(mergedMap.values());
+        saveLeadsToStorage(merged);
+        return merged;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch leads from server, using local list:', err);
+  }
+  return getSavedLeads();
+}
+
+/**
  * Persists leads array to localStorage
  */
 function saveLeadsToStorage(leads: InstitutionalLead[]): void {
@@ -222,6 +250,27 @@ export function updateLeadStatus(leadId: string, status: LeadStatus, notes?: str
   const current = getSavedLeads();
   const updated = current.map((l) => (l.id === leadId ? { ...l, status, notes: notes ?? l.notes } : l));
   saveLeadsToStorage(updated);
+
+  // Async sync to server
+  fetch(`/api/leads/${leadId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, notes }),
+  }).catch((err) => console.warn('Could not sync lead update to backend:', err));
+}
+
+/**
+ * Deletes a lead record from local storage and backend
+ */
+export function deleteLead(leadId: string): void {
+  const current = getSavedLeads();
+  const updated = current.filter((l) => l.id !== leadId);
+  saveLeadsToStorage(updated);
+
+  // Async sync to server
+  fetch(`/api/leads/${leadId}`, {
+    method: 'DELETE',
+  }).catch((err) => console.warn('Could not sync lead deletion to backend:', err));
 }
 
 /**

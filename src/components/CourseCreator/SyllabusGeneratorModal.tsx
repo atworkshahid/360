@@ -252,7 +252,10 @@ export const SyllabusGeneratorModal: React.FC<SyllabusGeneratorModalProps> = ({
         <div className="flex-1 overflow-y-auto bg-slate-100/60 p-4 sm:p-6">
           {/* TAB 1: DOCUMENT PREVIEW */}
           {activeTab === 'preview' && (
-            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-10 text-slate-800 text-xs sm:text-sm font-sans">
+            <div
+              dir={course.textDirection || (course.language === 'Arabic' || course.language === 'Urdu' ? 'rtl' : 'ltr')}
+              className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-10 text-slate-800 text-xs sm:text-sm font-sans"
+            >
               {/* Document Header */}
               <div className="border-b-2 border-slate-800 pb-5 mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">

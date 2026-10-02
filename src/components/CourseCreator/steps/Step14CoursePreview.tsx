@@ -21,6 +21,7 @@ import {
 import { Course } from '../../../types';
 import { CoursePDFExportModal } from '../../CoursePDFExportModal';
 import { PrintFriendlyView } from '../PrintFriendlyView';
+import { LogoMark } from '../../Logo';
 
 interface StepProps {
   course: Course;
@@ -274,16 +275,21 @@ export const Step14CoursePreview: React.FC<StepProps> = ({
           {/* Top Controls & Outline Meta Banner */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-                  MENTISERA OBE360™ Course Blueprint Specification
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 mt-0.5 font-serif">
-                  {course.title} ({course.code})
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                  {course.description}
-                </p>
+              <div className="flex items-start space-x-3">
+                <div className="shrink-0 mt-0.5">
+                  <LogoMark size={32} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                    MENTISERA OBE360™ Course Blueprint Specification
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900 mt-0.5 font-serif">
+                    {course.title} ({course.code})
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+                    {course.description}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center space-x-2 shrink-0">

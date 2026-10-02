@@ -18,9 +18,16 @@ import {
   Check,
   Tag,
   Wand2,
+  Zap,
 } from 'lucide-react';
 import { Course, WeeklyCoursePlanItem, BloomLevel } from '../../../types';
 import { evaluateStage } from '../../../utils/stageProgress';
+import { MicroLearningUnitsEditor } from '../MicroLearningUnitsEditor';
+import {
+  calculateMicroUnitsStats,
+  synthesize4MicroUnits,
+  serializeMicroUnitsToSubtopics,
+} from '../../../utils/microLearningHelper';
 
 interface StepProps {
   course: Course;
@@ -71,6 +78,54 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
   const totalStudyHours = weeklyPlan.reduce((acc, w) => acc + (w.independentStudyHours || 0), 0);
   const totalCumulativeHours = totalContactHours + totalStudyHours;
 
+  // Live Micro-learning Units Statistics (4 sub-topics per week)
+  const mluStats = React.useMemo(() => calculateMicroUnitsStats(weeklyPlan), [weeklyPlan]);
+
+  // Bulk populate 4 Micro-learning Units for all weeks
+  const handlePopulateMicroUnitsAllWeeks = () => {
+    if (weeklyPlan.length === 0) return;
+    const updated = weeklyPlan.map((w) => {
+      const units = synthesize4MicroUnits(
+        w.weekNumber,
+        w.topic || `Instructional Topic ${w.weekNumber}`,
+        w.bloomLevel || 'Understand'
+      );
+      return {
+        ...w,
+        microLearningUnits: units,
+        subtopics: serializeMicroUnitsToSubtopics(units),
+      };
+    });
+    onChange({ ...course, weeklyPlan: updated });
+  };
+
+  // Rapidly generate 4 micro-learning unit placeholders for any week lacking them
+  const handleQuickAddIncompleteWeeks = () => {
+    if (weeklyPlan.length === 0) return;
+    const updated = weeklyPlan.map((w) => {
+      const units = (w.microLearningUnits || []).filter((u) => u.title && u.title.trim().length > 2);
+      if (units.length === 4) return w;
+      const synthetic = synthesize4MicroUnits(
+        w.weekNumber,
+        w.topic || `Instructional Topic ${w.weekNumber}`,
+        w.bloomLevel || 'Understand'
+      );
+      return {
+        ...w,
+        microLearningUnits: synthetic,
+        subtopics: serializeMicroUnitsToSubtopics(synthetic),
+      };
+    });
+    onChange({ ...course, weeklyPlan: updated });
+  };
+
+  const handleAskCopilotMicroUnits = () => {
+    if (!onAskCopilot) return;
+    onAskCopilot(
+      `For the course "${course.title}" (${course.code || 'Course'}), generate 4 structured micro-learning unit placeholders for each week of the syllabus. For each unit, specify: 1) Sub-topic Title, 2) Delivery Format (Interactive Lecture, Hands-on Lab, Self-Paced Practice, Case Study, Discussion & Quiz, or Problem-Solving Studio), 3) Duration in minutes, and 4) Bloom cognitive level.`
+    );
+  };
+
   // Initialize weekly plan if empty or reset
   const handleAutoPopulateWeeks = (presetType: 'standard' | 'lab' | 'intensive' = 'standard') => {
     const newPlan: WeeklyCoursePlanItem[] = [];
@@ -98,10 +153,18 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
         activity = 'Hands-On Laboratory Experimentation & Benchmark Verification';
       }
 
+      // Generate 4 Micro-learning Units (Sub-topics) for this week
+      const microUnits = synthesize4MicroUnits(
+        w,
+        topic,
+        assignedCLO?.bloomLevel || 'Understand'
+      );
+
       newPlan.push({
         weekNumber: w,
         topic,
-        subtopics: 'Foundational concepts, algorithmic formulations, and practical domain problem solving',
+        subtopics: serializeMicroUnitsToSubtopics(microUnits),
+        microLearningUnits: microUnits,
         linkedCLOIds: assignedCLO ? [assignedCLO.id] : [],
         bloomLevel: assignedCLO?.bloomLevel || 'Understand',
         learningActivity: activity,
@@ -130,10 +193,18 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
   const handleAddSingleWeek = () => {
     const nextWeekNum = weeklyPlan.length + 1;
     const assignedCLO = clos[(nextWeekNum - 1) % (clos.length || 1)] || clos[0];
+    const initialTopic = `Instructional Session ${nextWeekNum}`;
+    const microUnits = synthesize4MicroUnits(
+      nextWeekNum,
+      initialTopic,
+      assignedCLO?.bloomLevel || 'Apply'
+    );
+
     const newWeek: WeeklyCoursePlanItem = {
       weekNumber: nextWeekNum,
-      topic: `Instructional Session ${nextWeekNum}`,
-      subtopics: 'Advanced methodologies and critical domain analysis',
+      topic: initialTopic,
+      subtopics: serializeMicroUnitsToSubtopics(microUnits),
+      microLearningUnits: microUnits,
       linkedCLOIds: assignedCLO ? [assignedCLO.id] : [],
       bloomLevel: assignedCLO?.bloomLevel || 'Apply',
       learningActivity: 'Interactive Lecture & Problem-Solving Studio',
@@ -239,18 +310,30 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
           )}
 
           {onAskCopilot && (
-            <button
-              type="button"
-              onClick={() =>
-                onAskCopilot(
-                  `Generate a coherent, paced 16-week instructional syllabus for "${course.title}". Ensure proper mid-term milestone, balanced contact vs self-study hours, and full CLO alignment.`
-                )
-              }
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>AI Syllabus Advisor</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  onAskCopilot(
+                    `Generate a coherent, paced 16-week instructional syllabus for "${course.title}". Ensure proper mid-term milestone, balanced contact vs self-study hours, and full CLO alignment.`
+                  )
+                }
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Syllabus Advisor</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAskCopilotMicroUnits}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 text-xs font-semibold transition cursor-pointer"
+                title="Ask AI Copilot to draft 4 micro-learning units for all weeks"
+              >
+                <Zap className="w-3.5 h-3.5 text-purple-600" />
+                <span>AI Micro-Units Copilot</span>
+              </button>
+            </>
           )}
 
           <button
@@ -341,17 +424,49 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
             <RotateCcw className="w-3 h-3" />
             <span>Balance Hours</span>
           </button>
+          <button
+            type="button"
+            onClick={handleQuickAddIncompleteWeeks}
+            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+            title="Quickly generate 4 micro-learning unit placeholders for any week lacking them"
+          >
+            <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
+            <span>⚡ Quick-Add Units (Incomplete Weeks)</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePopulateMicroUnitsAllWeeks}
+            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+            title="Automatically populate 4 pedagogical sub-topics (Micro-learning Units) for all instructional weeks"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Auto-Fill 4 Sub-topics (All Weeks)</span>
+          </button>
         </div>
       </div>
 
       {/* Instructional Metric Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             Semester Duration
           </span>
           <span className="font-bold text-slate-900 text-sm">
             {weeklyPlan.length} Scheduled Weeks
+          </span>
+        </div>
+        <div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            4 Sub-topics (MLUs) / Wk
+          </span>
+          <span
+            className={`font-bold text-sm ${
+              mluStats.percentComplete === 100
+                ? 'text-emerald-600'
+                : 'text-indigo-600'
+            }`}
+          >
+            {mluStats.totalConfiguredUnits} / {mluStats.totalExpectedUnits} Units ({mluStats.percentComplete}%)
           </span>
         </div>
         <div>
@@ -372,7 +487,7 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
         </div>
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            Outcome Schedule Coverage
+            Outcome Coverage
           </span>
           <span
             className={`font-bold text-sm ${
@@ -465,7 +580,11 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
             const isExam =
               week.weekNumber === 8 ||
               week.weekNumber === weeklyPlan.length ||
-              week.topic.toLowerCase().includes('exam');
+              (week.topic || '').toLowerCase().includes('exam');
+
+            const linkedCLOCodes = clos
+              .filter((c) => (week.linkedCLOIds || []).includes(c.id))
+              .map((c) => c.code);
 
             return (
               <div
@@ -488,7 +607,7 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
                     </span>
                     <input
                       type="text"
-                      value={week.topic}
+                      value={week.topic || ''}
                       onChange={(e) =>
                         handleUpdateWeek(week.weekNumber, { topic: e.target.value })
                       }
@@ -543,39 +662,33 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
                   </div>
                 </div>
 
-                {/* Row 2: Subtopics & Teaching/Learning Activity */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Subtopics & Key Concepts
-                    </label>
-                    <input
-                      type="text"
-                      value={week.subtopics || ''}
-                      onChange={(e) =>
-                        handleUpdateWeek(week.weekNumber, { subtopics: e.target.value })
-                      }
-                      placeholder="e.g. Heuristic admissibility, pruning rules, state space..."
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                    />
-                  </div>
+                {/* 4 Sub-topics / Micro-learning Units (MLUs) */}
+                <MicroLearningUnitsEditor
+                  week={week}
+                  onChange={(updatedWeek) => handleUpdateWeek(week.weekNumber, updatedWeek)}
+                  defaultExpanded={true}
+                  onAskCopilot={onAskCopilot}
+                  courseTitle={course.title}
+                  courseLevel={course.level}
+                  linkedCLOCodes={linkedCLOCodes}
+                />
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Teaching & Learning Activity (TLA)
-                    </label>
-                    <input
-                      type="text"
-                      value={week.learningActivity || ''}
-                      onChange={(e) =>
-                        handleUpdateWeek(week.weekNumber, {
-                          learningActivity: e.target.value,
-                        })
-                      }
-                      placeholder="e.g. Laboratory Coding Workout or Interactive Lecture"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
-                    />
-                  </div>
+                {/* Row 2: Teaching/Learning Activity */}
+                <div className="text-xs">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Teaching & Learning Activity (TLA)
+                  </label>
+                  <input
+                    type="text"
+                    value={week.learningActivity || ''}
+                    onChange={(e) =>
+                      handleUpdateWeek(week.weekNumber, {
+                        learningActivity: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. Interactive Lecture, Problem-Solving Studio, Laboratory Experimentation"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white"
+                  />
                 </div>
 
                 {/* Row 3: Linked CLOs check-chips & Readings */}

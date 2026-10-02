@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   ShieldCheck,
@@ -8,25 +8,51 @@ import {
   Mail,
   Building2,
   Key,
+  ArrowLeft,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react';
 import { AppUser, UserRole } from '../types';
 import {
   INITIAL_USERS,
   getActiveUserRole,
   setActiveUserRole,
+  fetchServerUsers,
+  updateServerUserRole,
 } from '../data/institutionData';
 
 interface UsersViewProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
+  onBack?: () => void;
 }
 
-export const UsersView: React.FC<UsersViewProps> = ({ currentRole, onRoleChange }) => {
-  const [users] = useState<AppUser[]>(INITIAL_USERS);
+export const UsersView: React.FC<UsersViewProps> = ({ currentRole, onRoleChange, onBack }) => {
+  const [users, setUsers] = useState<AppUser[]>(INITIAL_USERS);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [roleUpdateMsg, setRoleUpdateMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchServerUsers()
+      .then((data) => {
+        if (data && data.length > 0) setUsers(data);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const handleSelectRole = (role: UserRole) => {
     setActiveUserRole(role);
     onRoleChange(role);
+  };
+
+  const handleChangeUserRole = async (userId: string, newRole: UserRole) => {
+    const updated = await updateServerUserRole(userId, newRole);
+    if (updated) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+      setRoleUpdateMsg(`Updated ${updated.name}'s role to ${newRole}`);
+      setTimeout(() => setRoleUpdateMsg(null), 3000);
+    }
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -58,14 +84,34 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentRole, onRoleChange 
           </p>
         </div>
 
-        {/* Current Active Persona Pill */}
-        <div className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs">
-          <span className="text-slate-500 font-medium">Active Persona:</span>
-          <span className={`font-bold px-2.5 py-0.5 rounded-md border capitalize ${getRoleBadge(currentRole)}`}>
-            {currentRole === 'faculty' ? 'Course Designer (Faculty)' : currentRole}
-          </span>
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Courses</span>
+            </button>
+          )}
+
+          {/* Current Active Persona Pill */}
+          <div className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs">
+            <span className="text-slate-500 font-medium">Active Persona:</span>
+            <span className={`font-bold px-2.5 py-0.5 rounded-md border capitalize ${getRoleBadge(currentRole)}`}>
+              {currentRole === 'faculty' ? 'Course Designer (Faculty)' : currentRole}
+            </span>
+          </div>
         </div>
       </div>
+
+      {roleUpdateMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{roleUpdateMsg}</span>
+        </div>
+      )}
 
       {/* Role Switcher Cards */}
       <div className="space-y-3">
@@ -133,6 +179,83 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentRole, onRoleChange 
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Institutional Personnel Directory */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Institutional Academic Personnel Roster
+            </h3>
+            <p className="text-xs text-slate-500">
+              Live faculty and governance personnel registered on the institution server.
+            </p>
+          </div>
+          <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-semibold">
+            {users.length} Registered Users
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                <th className="p-3">Name & Title</th>
+                <th className="p-3">Department</th>
+                <th className="p-3">Email Address</th>
+                <th className="p-3">Assigned Role</th>
+                <th className="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const isCurrent = (currentRole === 'admin' && u.role === 'admin') ||
+                  (currentRole === 'faculty' && u.role === 'faculty') ||
+                  (currentRole === 'reviewer' && u.role === 'reviewer');
+
+                return (
+                  <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                    <td className="p-3">
+                      <div className="font-bold text-slate-900">{u.name}</div>
+                      <div className="text-[11px] text-slate-500">{u.title}</div>
+                    </td>
+                    <td className="p-3 text-slate-700 font-medium">
+                      {u.department}
+                    </td>
+                    <td className="p-3 font-mono text-[11px] text-slate-500">
+                      {u.email}
+                    </td>
+                    <td className="p-3">
+                      <select
+                        value={u.role}
+                        onChange={(e) => handleChangeUserRole(u.id, e.target.value as UserRole)}
+                        className={`text-xs font-semibold px-2 py-1 rounded-md border bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${getRoleBadge(u.role)}`}
+                      >
+                        <option value="faculty">Faculty (Course Designer)</option>
+                        <option value="reviewer">Reviewer (BoS Chair)</option>
+                        <option value="admin">Administrator (QA Director)</option>
+                      </select>
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectRole(u.role)}
+                        className={`px-2.5 py-1 rounded-md font-semibold text-[11px] transition cursor-pointer ${
+                          isCurrent
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {isCurrent ? 'Current' : 'Select'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

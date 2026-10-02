@@ -1,15 +1,15 @@
 import { Course, CourseTemplate } from '../types';
-import { FLAGSHIP_COURSE, CS_TEMPLATE_COURSE } from '../data/initialCourses';
+import { FLAGSHIP_COURSE, CS_TEMPLATE_COURSE, ARABIC_COURSE_TEMPLATE, FRENCH_COURSE_TEMPLATE } from '../data/initialCourses';
 
 const TEMPLATES_STORAGE_KEY = 'mentisera_obe360_templates_v2';
 
 export const SYSTEM_TEMPLATES: CourseTemplate[] = [
   {
     id: 'system-tmpl-law',
-    name: 'Constitutional Law & Governance (OBE Blueprint)',
+    name: 'Constitutional Law & Governance (English OBE Blueprint)',
     description: 'Complete 16-week outcome-based curriculum with 4 Bloom-aligned CLOs, 12 MLOs, simulated bench moot, and multi-tier authentic rubrics.',
     category: 'Law & Governance',
-    tags: ['Law', 'Undergraduate', 'Bloom L3-L6', 'Moot Court', 'Accredited'],
+    tags: ['English', 'Law', 'Undergraduate', 'Bloom L3-L6', 'Moot Court', 'Accredited'],
     createdAt: '2026-01-15T00:00:00.000Z',
     isSystem: true,
     courseData: FLAGSHIP_COURSE,
@@ -19,10 +19,30 @@ export const SYSTEM_TEMPLATES: CourseTemplate[] = [
     name: 'Artificial Intelligence & Neural Systems (OBE Blueprint)',
     description: 'Rigorous engineering curriculum featuring 4 high-order CLOs, lab practicals, PyTorch neural network projects, and direct code review rubrics.',
     category: 'Computer Science & Engineering',
-    tags: ['Computer Science', 'AI', 'Deep Learning', 'ABET / Washington Accord', 'Capstone'],
+    tags: ['English', 'Computer Science', 'AI', 'Deep Learning', 'ABET', 'Washington Accord'],
     createdAt: '2026-02-01T00:00:00.000Z',
     isSystem: true,
     courseData: CS_TEMPLATE_COURSE,
+  },
+  {
+    id: 'system-tmpl-arabic-law',
+    name: 'القانون الدستوري والحوكمة الرشيدة (العربية - RTL)',
+    description: 'منهاج أكاديمي متكامل قائم على مخرجات التعلم (OBE) باللغة العربية، بدعم كامل لاتجاه النص من اليمين إلى اليسار (RTL).',
+    category: 'القانون والعلوم السياسية',
+    tags: ['العربية', 'Arabic', 'RTL', 'شريعة وقانون', 'اعتماد أكاديمي', 'OBE'],
+    createdAt: '2026-02-15T00:00:00.000Z',
+    isSystem: true,
+    courseData: ARABIC_COURSE_TEMPLATE,
+  },
+  {
+    id: 'system-tmpl-french-law',
+    name: 'Droit Constitutionnel et Systèmes Comparés (Français)',
+    description: 'Curriculum universitaire complet selon l\'approche par compétences (OBE), alignement constructif et évaluation authentique en français.',
+    category: 'Droit & Sciences Politiques',
+    tags: ['Français', 'French', 'Droit', 'LMD', 'Compétences', 'Accréditation'],
+    createdAt: '2026-02-20T00:00:00.000Z',
+    isSystem: true,
+    courseData: FRENCH_COURSE_TEMPLATE,
   },
 ];
 

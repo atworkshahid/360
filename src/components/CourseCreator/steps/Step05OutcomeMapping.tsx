@@ -19,6 +19,12 @@ import {
 import { Course, PLO, PLOMappingLevel, OutcomeMappingScale } from '../../../types';
 import { getFrameworkById, getOutcomeTerminology } from '../../../data/frameworksData';
 import { evaluateStage } from '../../../utils/stageProgress';
+import {
+  CourseService,
+  FrameworkDeviationWarning,
+  FrameworkContentValidationReport,
+} from '../../../services/courseService';
+import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
 
 interface StepProps {
   course: Course;
@@ -31,6 +37,9 @@ interface StepProps {
     targetType: 'CLO' | 'Assessment' | 'Rubric' | 'Module' | 'General',
     targetTitle: string
   ) => void;
+  onOpenFrameworkGuidance?: (stageKey?: string) => void;
+  frameworkValidationReport?: FrameworkContentValidationReport;
+  onApplyFrameworkFix?: (warning: FrameworkDeviationWarning) => void;
 }
 
 export const Step05OutcomeMapping: React.FC<StepProps> = ({
@@ -40,6 +49,9 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
   onPrev,
   onAskCopilot,
   onOpenComments,
+  onOpenFrameworkGuidance,
+  frameworkValidationReport,
+  onApplyFrameworkFix,
 }) => {
   const clos = course.clos || [];
   const plos = course.plos || [];
@@ -48,6 +60,10 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
   const [newPloTitle, setNewPloTitle] = useState('');
   const [newPloDesc, setNewPloDesc] = useState('');
   const [showAddPlo, setShowAddPlo] = useState(false);
+
+  const validationReport = React.useMemo(() => {
+    return frameworkValidationReport || CourseService.validateCourseContentAgainstFramework(course);
+  }, [course, frameworkValidationReport]);
 
   const framework = getFrameworkById(course.frameworkId);
   const ploTerm = getOutcomeTerminology(course.frameworkId, 'program_outcome');
@@ -249,6 +265,25 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            id="step05-framework-guidelines-btn"
+            onClick={() => {
+              if (onOpenFrameworkGuidance) {
+                onOpenFrameworkGuidance('step_plo_mapping');
+              } else {
+                window.dispatchEvent(
+                  new CustomEvent('open_framework_guidance', { detail: { stageKey: 'step_plo_mapping' } })
+                );
+              }
+            }}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer"
+            title={`View ${framework.code} Articulation Rules, Correlation Scales & Evidence Requirements`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+            <span>{framework.code} Mapping Rules</span>
+          </button>
+
           {onOpenComments && (
             <button
               type="button"
@@ -562,6 +597,14 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
                     <p className="text-[11px] text-slate-600 line-clamp-2 mt-1">
                       {clo.statement || 'No statement defined yet'}
                     </p>
+
+                    {/* Framework Field Warning for Outcome Mapping Deviations */}
+                    <FrameworkFieldWarning
+                      field={`ploMapping[${clo.id}]`}
+                      report={validationReport}
+                      onApplyFix={onApplyFrameworkFix}
+                      compact
+                    />
                   </td>
 
                   {plos.map((plo) => {

@@ -24,6 +24,7 @@ import {
 import { submitInstitutionalLead, setLeadGateUnlocked } from '../services/leadService';
 import { AuthUserState, getStoredAuthUser } from '../services/authService';
 import { LeadSubmissionPayload } from '../types/lead';
+import { LogoMark } from './Logo';
 
 interface LeadGenerationModalProps {
   isOpen: boolean;
@@ -230,47 +231,53 @@ export const LeadGenerationModal: React.FC<LeadGenerationModalProps> = ({
           </button>
 
           {isGateMode ? (
-            <div>
-              <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-                <Lock className="w-4 h-4 text-emerald-400" />
-                <span>Institutional Accreditation Export Gate</span>
-              </div>
-
-              <h3 className="text-xl sm:text-2xl font-bold font-serif text-white tracking-tight flex items-center gap-2">
-                <span>Unlock {gateFeatureTitle || 'Course Specification & Dossier'}</span>
-              </h3>
-
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
-                {gateFeatureDescription || 'Verify your academic affiliation below to immediately unlock your downloadable course specification, rubrics, and accreditation dossiers.'}
-              </p>
-
-              {/* Target Asset Callout Pill */}
-              <div className="mt-3.5 flex items-center justify-between flex-wrap gap-2 bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl px-3.5 py-2">
-                <div className="flex items-center space-x-2.5">
-                  <Download className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <div className="text-xs text-white">
-                    <span className="text-slate-300">Unlocking Asset: </span>
-                    <strong className="font-semibold text-white">{gateFeatureTitle || 'Full Course Dossier'}</strong>
-                  </div>
+            <div className="flex items-start space-x-3.5">
+              <LogoMark size={38} variant="light" className="mt-1" />
+              <div>
+                <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
+                  <Lock className="w-4 h-4 text-emerald-400" />
+                  <span>Institutional Accreditation Export Gate</span>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Free 1-Time Academic Verification
-                </span>
+
+                <h3 className="text-xl sm:text-2xl font-bold font-serif text-white tracking-tight flex items-center gap-2">
+                  <span>Unlock {gateFeatureTitle || 'Course Specification & Dossier'}</span>
+                </h3>
+
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
+                  {gateFeatureDescription || 'Verify your academic affiliation below to immediately unlock your downloadable course specification, rubrics, and accreditation dossiers.'}
+                </p>
+
+                {/* Target Asset Callout Pill */}
+                <div className="mt-3.5 flex items-center justify-between flex-wrap gap-2 bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl px-3.5 py-2">
+                  <div className="flex items-center space-x-2.5">
+                    <Download className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="text-xs text-white">
+                      <span className="text-slate-300">Unlocking Asset: </span>
+                      <strong className="font-semibold text-white">{gateFeatureTitle || 'Full Course Dossier'}</strong>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Free 1-Time Academic Verification
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
-            <div>
-              <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Institutional Consultation &amp; Campus License</span>
-              </div>
+            <div className="flex items-start space-x-3.5">
+              <LogoMark size={38} variant="light" className="mt-1" />
+              <div>
+                <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Institutional Consultation &amp; Campus License</span>
+                </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold font-serif text-white tracking-tight">
-                Schedule an Institutional Demo &amp; Pilot
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
-                Connect directly with MENTISERA's Academic Solutions Team to equip your faculty, standardize outcome alignment, and guarantee accreditation audit readiness.
-              </p>
+                <h3 className="text-xl sm:text-2xl font-bold font-serif text-white tracking-tight">
+                  Schedule an Institutional Demo &amp; Pilot
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
+                  Connect directly with MENTISERA's Academic Solutions Team to equip your faculty, standardize outcome alignment, and guarantee accreditation audit readiness.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -638,8 +645,9 @@ export const LeadGenerationModal: React.FC<LeadGenerationModalProps> = ({
         {/* Footer info banner */}
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
-            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span>MENTISERA Technologies • Islamabad, Pakistan</span>
+            <LogoMark size={16} />
+            <span className="font-semibold text-slate-700">MENTISERA Technologies</span>
+            <span className="text-slate-400">• Islamabad, Pakistan</span>
           </div>
           <div className="flex items-center space-x-3">
             <a href="mailto:hello@mentisera.pk" className="text-indigo-600 hover:underline">

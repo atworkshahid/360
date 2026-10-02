@@ -124,13 +124,13 @@ export function syncWeeklyPlanToModules(course: Course): Course {
         moduleId: targetModule ? targetModule.id : `mod-1`,
         linkedMLOId: `mlo-w${week.weekNumber}`,
         title: `Week ${week.weekNumber}: ${week.topic}`,
-        learningObjective: `${verb} key concepts regarding ${week.topic.toLowerCase()} through guided exploration and structured exercises.`,
+        learningObjective: `${verb} key concepts regarding ${(week.topic || `Week ${week.weekNumber}`).toLowerCase()} through guided exploration and structured exercises.`,
         durationMins: (week.contactHours || 3) * 60,
         teachingMode: course.deliveryMode || 'Blended',
         content: {
-          text: week.subtopics || week.topic,
+          text: week.subtopics || week.topic || `Instructional units for Week ${week.weekNumber}`,
           reading: week.requiredReading || `Required readings and lecture notes for Week ${week.weekNumber}`,
-          workedExample: `Practical walkthrough on ${week.topic}`,
+          workedExample: `Practical walkthrough on ${week.topic || `Week ${week.weekNumber}`}`,
         },
         requiredActivity:
           week.learningActivity ||
@@ -164,13 +164,13 @@ export function syncWeeklyPlanToModules(course: Course): Course {
         code: `MLO ${modIndex}.${week.weekNumber}`,
         moduleId: targetModule ? targetModule.id : 'mod-1',
         linkedCLOId,
-        statement: `${verb} ${week.topic.toLowerCase()} within applied scenarios and verify functional correctness.`,
+        statement: `${verb} ${(week.topic || `Week ${week.weekNumber}`).toLowerCase()} within applied scenarios and verify functional correctness.`,
         bloomVerb: verb,
         bloomLevel: bloom,
         requiredActivity:
           week.learningActivity || 'Weekly active learning problem set or case analysis.',
         assessment: 'Weekly formative checkpoint quiz or laboratory submission.',
-        evidence: `Direct student output artifact demonstrating mastery of ${week.topic}.`,
+        evidence: `Direct student output artifact demonstrating mastery of ${week.topic || `Week ${week.weekNumber}`}.`,
         studyTimeHours: week.independentStudyHours || 4,
       };
     });

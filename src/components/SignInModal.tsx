@@ -22,6 +22,7 @@ import {
   signInWithCredentials,
   signOutUser,
 } from '../services/authService';
+import { LogoMark, MentiseraLogo } from './Logo';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -116,16 +117,20 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1.5">
-            <GraduationCap className="w-4 h-4 text-emerald-400" />
-            <span>Academic Faculty &amp; Reviewer Authentication</span>
+          <div className="flex items-center space-x-3 mb-2">
+            <LogoMark size={38} variant="light" />
+            <div>
+              <div className="flex items-center space-x-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+                <GraduationCap className="w-4 h-4 text-emerald-400" />
+                <span>Academic Faculty &amp; Reviewer Authentication</span>
+              </div>
+              <h3 className="text-xl font-bold font-serif text-white tracking-tight">
+                Institutional Sign In
+              </h3>
+            </div>
           </div>
-
-          <h3 className="text-xl font-bold font-serif text-white tracking-tight">
-            Institutional Sign In
-          </h3>
           <p className="text-xs text-slate-300 mt-1">
-            Access outcome-based course dossiers, curriculum blueprints, and accreditation audit reports.
+            Access outcome-based course dossiers, curriculum blueprints, and accreditation audit reports with your MENTISERA credentials.
           </p>
         </div>
 
@@ -408,7 +413,10 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
         {/* Modal Footer */}
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500 flex items-center justify-between">
-          <span>MENTISERA OBE360™ Enterprise IAM</span>
+          <div className="flex items-center space-x-2 font-medium text-slate-700">
+            <LogoMark size={18} />
+            <span>MENTISERA OBE360™ Enterprise IAM</span>
+          </div>
           <span className="text-slate-400">FERPA &amp; Higher-Ed Compliant</span>
         </div>
       </div>

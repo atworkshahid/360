@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Download,
+  FileDown,
   FileText,
   FileCode,
   Share2,
@@ -18,7 +19,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { Course, AcademicReview, CQIActionPlan } from '../../../types';
-import { downloadCoursePDF } from '../../../utils/pdfExport';
+import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
 import { downloadCourseDocx } from '../../../utils/docxExport';
 import { downloadCommonCartridge } from '../../../utils/lmsExport';
 import { CoursePDFExportModal } from '../../CoursePDFExportModal';
@@ -155,24 +156,16 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
   };
 
   const handleQuickDownloadPDF = () => {
-    triggerWithLeadGate(
-      () => {
-        setIsQuickDownloading(true);
-        try {
-          downloadCoursePDF(course);
-        } catch (err) {
-          console.error('Failed to export PDF:', err);
-        } finally {
-          setTimeout(() => setIsQuickDownloading(false), 800);
-        }
-      },
-      {
-        featureTitle: `${course.code} Accreditation Dossier (PDF)`,
-        featureDescription: `Verify your faculty or institutional affiliation to download the formal accreditation report for ${course.title}.`,
-        source: 'step15_quick_pdf',
-        framework: course.accreditationFramework,
-      }
-    );
+    setIsQuickDownloading(true);
+    try {
+      exportCourseBlueprintWithGate(course, {}, () => {
+        setIsQuickDownloading(false);
+      });
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+    } finally {
+      setTimeout(() => setIsQuickDownloading(false), 800);
+    }
   };
 
   const handleExportDocx = () => {
@@ -526,19 +519,21 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
 
           <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
             <button
+              id="step15-card-export-pdf-btn"
               onClick={handleQuickDownloadPDF}
               disabled={isQuickDownloading}
               className="py-3 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/40 transition cursor-pointer"
+              title="Export printable PDF of current course audit and structure"
             >
               {isQuickDownloading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Compiling PDF...</span>
+                  <span>Exporting PDF...</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-4 h-4" />
-                  <span>Download Formal PDF Report</span>
+                  <FileDown className="w-4 h-4" />
+                  <span>Export to PDF</span>
                 </>
               )}
             </button>

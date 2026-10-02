@@ -14,11 +14,14 @@ import {
   Sparkles,
   Info,
   Layers,
+  Building2,
 } from 'lucide-react';
 import { Course } from '../types';
 import { generateCoursePDF, PDFExportOptions } from '../utils/pdfExport';
 import { calculateCourseAudit } from '../utils/obeCalculator';
 import { triggerWithLeadGate } from '../services/leadService';
+import { LogoMark } from './Logo';
+import { InstitutionalLogoUploader } from './InstitutionalLogoUploader';
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -37,18 +40,29 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 }) => {
   // Configurable export options
   const [options, setOptions] = useState<PDFExportOptions>({
+    includeCoverPage: initialOptions?.includeCoverPage ?? true,
+    includeTableOfContents: initialOptions?.includeTableOfContents ?? true,
+    includeExecutiveSummary: initialOptions?.includeExecutiveSummary ?? true,
     includeCourseInfo: initialOptions?.includeCourseInfo ?? true,
     includeCLOs: initialOptions?.includeCLOs ?? true,
     includePLOMapping: initialOptions?.includePLOMapping ?? true,
     includeModules: initialOptions?.includeModules ?? true,
+    includeWeeklyPlan: initialOptions?.includeWeeklyPlan ?? true,
     includeAssessments: initialOptions?.includeAssessments ?? true,
     includeRubrics: initialOptions?.includeRubrics ?? true,
     includeEvidenceRules: initialOptions?.includeEvidenceRules ?? true,
     includeAuditReport: initialOptions?.includeAuditReport ?? true,
     includeCQIPlan: initialOptions?.includeCQIPlan ?? true,
+    includeSignOffSheet: initialOptions?.includeSignOffSheet ?? true,
+    colorTheme: initialOptions?.colorTheme ?? 'navy',
+    confidentialityLevel: initialOptions?.confidentialityLevel ?? 'Official Institutional Dossier',
+    watermarkText: initialOptions?.watermarkText ?? '',
+    institutionLogo: initialOptions?.institutionLogo ?? course.institutionLogo ?? '',
+    institutionName: initialOptions?.institutionName ?? course.institutionName ?? 'Apex Institute of Science & Technology',
   });
 
   const [showOptions, setShowOptions] = useState<boolean>(false);
+  const [showLogoDrawer, setShowLogoDrawer] = useState<boolean>(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number>(0);
   const [fileSizeBytes, setFileSizeBytes] = useState<number>(0);
@@ -171,9 +185,7 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
         {/* Header Bar */}
         <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center shrink-0">
-              <Eye className="w-5 h-5 text-indigo-400" />
-            </div>
+            <LogoMark size={34} variant="light" />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
@@ -284,12 +296,12 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
 
         {/* Section Inclusion Options Drawer (Collapsible) */}
         {showOptions && (
-          <div className="bg-slate-50 border-b border-slate-200 p-4 shrink-0 animate-in slide-in-from-top-2 duration-150">
-            <div className="flex items-center justify-between mb-2.5">
+          <div className="bg-slate-50 border-b border-slate-200 p-4 shrink-0 animate-in slide-in-from-top-2 duration-150 space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
                 <Layers className="w-4 h-4 text-indigo-600" />
                 <span className="text-xs font-bold text-slate-900">
-                  Select Dossier Sections to Include in PDF
+                  Dossier Customization & Included Sections
                 </span>
               </div>
               <span className="text-[11px] text-slate-500">
@@ -297,7 +309,125 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs">
+            {/* Theme & Watermark Bar */}
+            <div className="flex flex-wrap items-center gap-3 p-2.5 bg-white rounded-xl border border-slate-200">
+              <div className="flex items-center space-x-2">
+                <span className="text-[11px] font-bold text-slate-600">Color Palette:</span>
+                <div className="flex items-center space-x-1">
+                  {[
+                    { id: 'navy', label: 'Navy Slate', color: 'bg-slate-900 ring-slate-400' },
+                    { id: 'emerald', label: 'Emerald', color: 'bg-emerald-800 ring-emerald-400' },
+                    { id: 'burgundy', label: 'Burgundy', color: 'bg-rose-900 ring-rose-400' },
+                    { id: 'slate', label: 'Classic Slate', color: 'bg-slate-700 ring-slate-400' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setOptions((prev) => ({ ...prev, colorTheme: t.id as any }))}
+                      className={`px-2 py-1 rounded-md text-[11px] font-semibold border flex items-center space-x-1.5 transition cursor-pointer ${
+                        options.colorTheme === t.id
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <span className={`w-2.5 h-2.5 rounded-full ${t.color}`} />
+                      <span>{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+              <div className="flex items-center space-x-2 flex-1 min-w-[180px]">
+                <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">Watermark:</span>
+                <input
+                  type="text"
+                  placeholder="e.g. DRAFT / CONFIDENTIAL"
+                  value={options.watermarkText || ''}
+                  onChange={(e) => setOptions((prev) => ({ ...prev, watermarkText: e.target.value }))}
+                  className="px-2 py-1 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full max-w-[200px]"
+                />
+              </div>
+
+              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+              <button
+                type="button"
+                onClick={() => setShowLogoDrawer(!showLogoDrawer)}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold border flex items-center space-x-1.5 transition cursor-pointer ${
+                  showLogoDrawer
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-bold'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{options.institutionLogo ? 'Institutional Logo' : '+ Upload Logo'}</span>
+                {options.institutionLogo && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                )}
+              </button>
+            </div>
+
+            {/* Logo Drawer Panel */}
+            {showLogoDrawer && (
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm animate-in fade-in space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <Building2 className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-bold text-slate-900">
+                      Configure Institutional Logo for Dossier
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoDrawer(false)}
+                    className="text-xs text-slate-400 hover:text-slate-700 font-semibold"
+                  >
+                    Done
+                  </button>
+                </div>
+                <InstitutionalLogoUploader
+                  currentLogoUrl={options.institutionLogo}
+                  institutionName={options.institutionName}
+                  onLogoChange={(dataUrl) => setOptions((prev) => ({ ...prev, institutionLogo: dataUrl }))}
+                  onClearLogo={() => setOptions((prev) => ({ ...prev, institutionLogo: '' }))}
+                  showPresets={true}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs">
+              <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
+                <input
+                  type="checkbox"
+                  checked={options.includeCoverPage}
+                  onChange={() => toggleOption('includeCoverPage')}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <span className="font-medium text-slate-800 truncate">Executive Cover</span>
+              </label>
+
+              <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
+                <input
+                  type="checkbox"
+                  checked={options.includeTableOfContents}
+                  onChange={() => toggleOption('includeTableOfContents')}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <span className="font-medium text-slate-800 truncate">Table of Contents</span>
+              </label>
+
+              <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
+                <input
+                  type="checkbox"
+                  checked={options.includeExecutiveSummary}
+                  onChange={() => toggleOption('includeExecutiveSummary')}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <span className="font-medium text-slate-800 truncate">KPI Summary</span>
+              </label>
+
               <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
                 <input
                   type="checkbox"
@@ -336,6 +466,16 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
                   className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
                 />
                 <span className="font-medium text-slate-800 truncate">Modules ({course.modules?.length || 0})</span>
+              </label>
+
+              <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
+                <input
+                  type="checkbox"
+                  checked={options.includeWeeklyPlan}
+                  onChange={() => toggleOption('includeWeeklyPlan')}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <span className="font-medium text-slate-800 truncate">Weekly Plan</span>
               </label>
 
               <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
@@ -386,6 +526,16 @@ export const PDFPreviewModal: React.FC<PDFPreviewModalProps> = ({
                   className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
                 />
                 <span className="font-medium text-slate-800 truncate">CQI Action Plan</span>
+              </label>
+
+              <label className="flex items-center space-x-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-100/60 transition">
+                <input
+                  type="checkbox"
+                  checked={options.includeSignOffSheet}
+                  onChange={() => toggleOption('includeSignOffSheet')}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <span className="font-medium text-slate-800 truncate">Sign-Off Certificate</span>
               </label>
             </div>
           </div>

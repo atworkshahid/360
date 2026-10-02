@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -12,9 +12,23 @@ import {
   AlertTriangle,
   HelpCircle,
   RefreshCw,
+  Languages,
+  Building2,
+  FolderOpen,
+  FileText,
+  Upload,
 } from 'lucide-react';
-import { Course, CourseType, DeliveryMode, CourseLevel } from '../../../types';
+import { Course, CourseType, DeliveryMode, CourseLevel, SUPPORTED_LANGUAGES, CourseLanguage } from '../../../types';
 import { evaluateStage } from '../../../utils/stageProgress';
+import { InstitutionalLogoUploader } from '../../InstitutionalLogoUploader';
+import { CourseResourceLibrary } from '../../ResourceLibrary/CourseResourceLibrary';
+import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
+import {
+  CourseService,
+  FrameworkDeviationWarning,
+  FrameworkContentValidationReport,
+} from '../../../services/courseService';
+import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
 
 interface StepProps {
   course: Course;
@@ -22,6 +36,8 @@ interface StepProps {
   onNext: () => void;
   onPrev: () => void;
   onAskCopilot?: (prompt: string) => void;
+  frameworkValidationReport?: FrameworkContentValidationReport;
+  onApplyFrameworkFix?: (warning: FrameworkDeviationWarning) => void;
 }
 
 const COURSE_TYPES: CourseType[] = [
@@ -48,8 +64,15 @@ export const Step02CourseInformation: React.FC<StepProps> = ({
   onNext,
   onPrev,
   onAskCopilot,
+  frameworkValidationReport,
+  onApplyFrameworkFix,
 }) => {
+  const [resourceLibraryOpen, setResourceLibraryOpen] = useState(false);
   const stageEval = evaluateStage(course, 2, 'obe10');
+
+  const validationReport = React.useMemo(() => {
+    return frameworkValidationReport || CourseService.validateCourseContentAgainstFramework(course);
+  }, [course, frameworkValidationReport]);
 
   const handleChange = (field: keyof Course, value: any) => {
     const updated = { ...course, [field]: value };
@@ -288,6 +311,136 @@ export const Step02CourseInformation: React.FC<StepProps> = ({
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-100">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Instructional Language
+                </label>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open_translation_modal'))}
+                  className="inline-flex items-center space-x-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                  title="Translate entire course or outcomes into Arabic, French, etc."
+                >
+                  <Languages className="w-3.5 h-3.5" />
+                  <span>Translate with AI</span>
+                </button>
+              </div>
+              <select
+                value={course.language || 'English'}
+                onChange={(e) => {
+                  const chosenName = e.target.value as CourseLanguage;
+                  const langOpt = SUPPORTED_LANGUAGES.find((l) => l.name === chosenName);
+                  const dir = langOpt?.dir || 'ltr';
+                  onChange({
+                    ...course,
+                    language: chosenName,
+                    textDirection: dir,
+                  });
+                }}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium"
+              >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.name}>
+                    {lang.flag} {lang.nativeName} ({lang.name}) — {lang.dir.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Selecting Arabic automatically applies Right-to-Left (RTL) formatting to the course specification.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Text Layout Direction
+              </label>
+              <div className="flex items-center space-x-3 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...course, textDirection: 'ltr' })}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center justify-center space-x-1.5 ${
+                    (course.textDirection || 'ltr') === 'ltr'
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>LTR (Left-to-Right)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...course, textDirection: 'rtl' })}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer flex items-center justify-center space-x-1.5 ${
+                    course.textDirection === 'rtl'
+                      ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>RTL (Right-to-Left)</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Active text flow: {course.textDirection === 'rtl' ? 'Arabic Right-to-Left' : 'Standard Left-to-Right'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2B: Institutional Branding & Accreditation Dossier Logo */}
+        <div className="pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Institutional Branding &amp; PDF Dossier Logo</span>
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Printed on the cover page, running header, and formal accreditation compliance certificate of the PDF dossier.
+              </p>
+            </div>
+            {course.institutionLogo && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>Logo Uploaded</span>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Institution Name
+              </label>
+              <input
+                type="text"
+                value={course.institutionName || ''}
+                onChange={(e) => handleChange('institutionName', e.target.value)}
+                placeholder="e.g. Apex Institute of Science & Technology"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Accreditation Framework Standard
+              </label>
+              <input
+                type="text"
+                value={course.accreditationFramework || 'Washington Accord (IEA WA-ENG)'}
+                onChange={(e) => handleChange('accreditationFramework', e.target.value)}
+                placeholder="e.g. Washington Accord or ABET Computing"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+            </div>
+          </div>
+
+          <InstitutionalLogoUploader
+            currentLogoUrl={course.institutionLogo}
+            institutionName={course.institutionName || 'Apex Institute of Science & Technology'}
+            onLogoChange={(dataUrl) => handleChange('institutionLogo', dataUrl)}
+            onClearLogo={() => handleChange('institutionLogo', undefined)}
+          />
         </div>
 
         {/* Section 3: Credit Hours & Contact Hours */}
@@ -427,6 +580,17 @@ export const Step02CourseInformation: React.FC<StepProps> = ({
                 <span className="absolute right-3.5 top-2 text-xs text-slate-400 font-bold">%</span>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">Minimum student score to count as outcome attained.</p>
+
+              {/* Framework Field Warning for Atypical Passing Benchmark */}
+              <FrameworkFieldWarning
+                field="passingBenchmark"
+                report={validationReport}
+                onApplyFix={onApplyFrameworkFix || ((warning) => {
+                  if (warning.suggestedAction?.targetValue) {
+                    handleChange('passingBenchmark', warning.suggestedAction.targetValue);
+                  }
+                })}
+              />
             </div>
 
             <div className="sm:col-span-2">
@@ -477,6 +641,56 @@ export const Step02CourseInformation: React.FC<StepProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Section 6: Course Resource Library & Syllabi */}
+        <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center space-x-2">
+                <FolderOpen className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-xs font-bold text-slate-900">Course Resource Library &amp; Syllabi</h4>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">
+                  {(course.resources || []).length} Document{(course.resources || []).length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 mt-1">
+                Upload institutional syllabi, grading rubrics, lecture notes, or accreditation guidelines, and associate them with modules.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              id="step02-open-resource-library-btn"
+              onClick={() => setResourceLibraryOpen(true)}
+              className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer shrink-0"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Attach / View Documents</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Course Resource Library Modal */}
+      <CourseResourceLibrary
+        course={course}
+        isOpen={resourceLibraryOpen}
+        onClose={() => setResourceLibraryOpen(false)}
+        onUpdateCourse={onChange}
+        initialCategory="Syllabus"
+        mode="modal"
+      />
+
+      {/* Collaborative Section Comments & Feedback Thread */}
+      <div className="pt-2">
+        <InlineSectionFeedback
+          course={course}
+          onChangeCourse={onChange}
+          sectionKey="step-1-overview"
+          sectionTitle="Step 1: Course Setup & Basic Information"
+          stepNumber={1}
+          targetType="Section"
+        />
       </div>
 
       {/* Footer Navigation */}

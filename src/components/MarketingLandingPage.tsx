@@ -38,6 +38,7 @@ import {
   Play,
 } from 'lucide-react';
 import { submitInstitutionalLead } from '../services/leadService';
+import { MentiseraLogo } from './Logo';
 
 interface MarketingLandingPageProps {
   onLaunchApp: () => void;
@@ -127,18 +128,13 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-700 to-indigo-900 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-indigo-600/20">
-              360
-            </div>
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="font-extrabold tracking-tight text-slate-900 text-base">MENTISERA OBE360™</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono font-bold border border-indigo-200">
-                  HIGHER ED
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 font-medium">Outcome-Based Education &amp; Accreditation Engine</p>
-            </div>
+            <MentiseraLogo
+              size="md"
+              showText={true}
+              showTagline={true}
+              taglineText="Outcome-Based Education & Accreditation Engine"
+              badgeText="HIGHER ED"
+            />
           </div>
 
           <nav className="hidden lg:flex items-center space-x-7 text-xs font-semibold text-slate-600">
@@ -1963,12 +1959,12 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-slate-800">
             {/* Column 1: Brand & Credentials */}
             <div className="space-y-4 md:col-span-1">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-extrabold text-sm">
-                  360
-                </div>
-                <span className="font-extrabold text-white text-base">MENTISERA OBE360™</span>
-              </div>
+              <MentiseraLogo
+                size="md"
+                variant="light"
+                showText={true}
+                showTagline={false}
+              />
               <p className="text-xs text-slate-400 leading-relaxed">
                 The premier Outcome-Based Education (OBE) curriculum design and accreditation intelligence engine.
               </p>

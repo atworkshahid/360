@@ -25,6 +25,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { Course } from '../types';
+import { LogoMark } from './Logo';
 import {
   FeedbackCategory,
   FeedbackSeverity,
@@ -242,13 +243,11 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-400/30">
-              <LifeBuoy className="w-5 h-5" />
-            </div>
+            <LogoMark size={36} variant="light" />
             <div>
               <div className="flex items-center space-x-2">
                 <h2 id="feedback-modal-title" className="text-base font-bold text-white tracking-tight">
-                  Developer Support & Issue Reporting
+                  Developer Support &amp; Issue Reporting
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
                   Direct Line

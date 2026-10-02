@@ -5,6 +5,8 @@ export const FLAGSHIP_COURSE: Course = {
   title: 'Constitutional Law & Federal Governance in Pakistan',
   code: 'LAW-401',
   slug: 'constitutional-law-federal-governance-pakistan',
+  language: 'English',
+  textDirection: 'ltr',
   category: 'Law & Jurisprudence',
   programme: 'Bachelor of Laws (LL.B Honors)',
   creditHours: 3,
@@ -739,6 +741,8 @@ export const CS_TEMPLATE_COURSE: Course = {
   title: 'Data Structures & Algorithmic Problem Solving',
   code: 'CS-201',
   slug: 'data-structures-algorithmic-problem-solving',
+  language: 'English',
+  textDirection: 'ltr',
   category: 'Computer Science',
   programme: 'Bachelor of Science in Computer Science',
   creditHours: 4,
@@ -984,27 +988,561 @@ export const CS_TEMPLATE_COURSE: Course = {
   createdAt: '2026-08-20T12:00:00.000Z',
 };
 
-export function createBlankCourse(): Course {
+export const ARABIC_COURSE_TEMPLATE: Course = {
+  id: 'course-ar-constitutional-law',
+  title: 'القانون الدستوري والحوكمة الرشيدة',
+  code: 'LAW-402-AR',
+  slug: 'constitutional-law-governance-ar',
+  language: 'Arabic',
+  textDirection: 'rtl',
+  category: 'القانون والعلوم السياسية',
+  programme: 'بكالوريوس في القانون (مع مرتبة الشرف)',
+  creditHours: 3,
+  durationWeeks: 16,
+  modulesCount: 4,
+  deliveryMode: 'Blended',
+  courseLevel: 'Undergraduate',
+  targetLearners: 'طلبة كليات القانون، والباحثون في الحوكمة، وممارسو القضاء الدستوري.',
+  prerequisites: 'المدخل لدراسة القانون (LAW-101) والنظم السياسية المقارنة',
+  description: 'دراسة متعمقة قائمة على المخرجات (OBE) لتطور الأنظمة الدستورية، وهندسة المؤسسات العامة، والفصل بين السلطات، وحماية الحقوق والحريات الأساسية.',
+  overview: 'يُركّز هذا المقرر على فحص ديناميكيات القضاء الدستوري، وتحليل الأزمات المؤسسية، وصياغة الدفوع والمذكرات القانونية للمحاكم الدستورية العليا.',
+  learningPromise: 'عند إتمام هذا المقرر بنجاح، سيكون المتعلم قادراً على تفكيك النزاعات الدستورية وصياغة صحائف الدعوى التخصصية وفق أحكام السوابق القضائية المعتمدة.',
+  expectedStudyTimeHours: 135,
+  capstoneGoal: 'تحليل البناء الدستوري وتقييم فاعلية آليات الفصل بين السلطات وصياغة دعوى دستورية متكاملة الأركان.',
+  blueprint: {
+    purpose: 'إعداد فقهاء قانونيين قادرين على صون سمو الدستور، وفصل الاختصاصات، وترسيخ سيادة القانون المؤسسي.',
+    learnerNeed: 'جسر الفجوة بين حفظ النصوص القانونية والمهارات التطبيقية في الترافع وصياغة الطعون الدستورية.',
+    targetCompetencies: [
+      'التفسير الدستوري وبناء الحجج التشريعية',
+      'فض النزاعات وتوزيع الاختصاصات السيادية',
+      'الكتابة القانونية للمرافعات وصياغة الطعون',
+      'تحليل التوازن المؤسسي والفصل بين السلطات',
+    ],
+    requiredSkills: [
+      'تحليل أحكام المحاكم الدستورية العليا',
+      'المقارنة بين الأنظمة الفيدرالية والموحدة',
+      'صياغة صحائف الدعاوى والمذكرات الدستورية',
+      'المرافعة الشفهية في المحاكم الصورية',
+    ],
+    assessmentStrategy: 'تقييم مباشر قائم على الأداء يتضمن تحليلات حالة واقعية، ومحاكمة صورية دستورية، واختباراً تحليلياً شاملاً.',
+  },
+  plos: [
+    { id: 'plo-ar-1', code: 'PLO 1', title: 'المعرفة النظرية والتأسيس المفاهيمي', description: 'إتقان النظريات القانونية والتشريعات والأطر الدستورية المقارنة.' },
+    { id: 'plo-ar-2', code: 'PLO 2', title: 'التحليل وحل المشكلات المعقدة', description: 'تشخيص النزاعات القانونية المعقدة وابتكار حلول مبنية على السوابق القضائية.' },
+    { id: 'plo-ar-3', code: 'PLO 3', title: 'المرافعة المهنية والتواصل الأخلاقي', description: 'تقديم المرافعات الشفهية والمكتوبة بكفاءة والتزام بأخلاقيات المهنة.' },
+  ],
+  clos: [
+    {
+      id: 'clo-ar-1',
+      code: 'CLO 1',
+      statement: 'تحليل وتفسير مبادئ سمو الدستور والرقابة على دستورية القوانين بدقة واقتدار.',
+      bloomVerb: 'تحليل',
+      bloomLevel: 'Analyze',
+      learningDomain: 'Cognitive',
+      competency: 'الرقابة الدستورية وتفسير القوانين',
+      skills: 'تحليل السوابق القضائية، واستخراج القواعد الدستورية',
+      assessmentMethod: 'تحليل قضية دستورية وموجز حكم قضائي',
+      achievementThreshold: 65,
+      weightage: 30,
+      status: 'Validated',
+      qualityScore: 92,
+      qualityChecks: [
+        { label: 'فعل قابل للقياس', passed: true, detail: 'استخدام فعل إجرائي محدد (تحليل)' },
+        { label: 'مجال معرفي واضح', passed: true, detail: 'مستوى تحليلي متقدم' },
+      ],
+      mappedPLOs: [{ ploId: 'plo-ar-1', level: 'Mastered', rationale: 'يرسخ الفهم المفاهيمي العميق للنظرية الدستورية.' }],
+    },
+    {
+      id: 'clo-ar-2',
+      code: 'CLO 2',
+      statement: 'صياغة صحيفة دعوى أو دفع دستوري مدعوم بالسوابق القضائية والمبادئ العامة للقانون.',
+      bloomVerb: 'صياغة',
+      bloomLevel: 'Create',
+      learningDomain: 'Cognitive',
+      competency: 'صياغة الطعون والمرافعات القضائية',
+      skills: 'الكتابة القانونية المتخصصة، وتفنيد الحجج المضادة',
+      assessmentMethod: 'المحاكمة الصورية وصياغة الدفع الدستوري',
+      achievementThreshold: 70,
+      weightage: 40,
+      status: 'Validated',
+      qualityScore: 94,
+      qualityChecks: [
+        { label: 'تركيز على الأداء المهني', passed: true, detail: 'صياغة قانونية عملية متكاملة' },
+      ],
+      mappedPLOs: [
+        { ploId: 'plo-ar-2', level: 'Mastered', rationale: 'تطبيق مباشر لحل النزاعات الدستورية.' },
+        { ploId: 'plo-ar-3', level: 'Reinforced', rationale: 'تطوير المهارات الترافعية والأخلاقية.' },
+      ],
+    },
+    {
+      id: 'clo-ar-3',
+      code: 'CLO 3',
+      statement: 'تقييم كفاءة وملاءمة آليات الفصل بين السلطات في مواجهة الأزمات الدستورية الاستثنائية.',
+      bloomVerb: 'تقييم',
+      bloomLevel: 'Evaluate',
+      learningDomain: 'Cognitive',
+      competency: 'تحليل التوازن المؤسسي والحوكمة',
+      skills: 'تقييم كفاءة المؤسسات الدستورية، وإدارة الأزمات',
+      assessmentMethod: 'الامتحان النهائي التحليلي الشامل',
+      achievementThreshold: 65,
+      weightage: 30,
+      status: 'Validated',
+      qualityScore: 90,
+      qualityChecks: [
+        { label: 'مستوى بلوم ملائم', passed: true, detail: 'المستوى السادس (تقييم)' },
+      ],
+      mappedPLOs: [{ ploId: 'plo-ar-1', level: 'Reinforced', rationale: 'ربط النظرية بالتطبيق المؤسسي.' }],
+    },
+  ],
+  modules: [
+    {
+      id: 'mod-ar-1',
+      number: 1,
+      title: 'الوحدة الأولى: النظرية العامة للدستور وسمو القواعد',
+      description: 'نشأة الدساتير، أنواعها، تدرج القواعد القانونية، والرقابة على دستورية القوانين.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-ar-1'],
+      resources: [],
+    },
+    {
+      id: 'mod-ar-2',
+      number: 2,
+      title: 'الوحدة الثانية: الحقوق والحريات العامة وضمانات التقاضي',
+      description: 'الحقوق المدنية والسياسية، المحاكمة العادلة، وحالات الطوارئ والقيود الدستورية.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-ar-2'],
+      resources: [],
+    },
+    {
+      id: 'mod-ar-3',
+      number: 3,
+      title: 'الوحدة الثالثة: توزيع السلطات والفيدرالية والحوكمة',
+      description: 'العلاقة بين السلطات العامة، والأنظمة الفيدرالية وتوزيع الموارد والاختصاصات.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-ar-3'],
+      resources: [],
+    },
+    {
+      id: 'mod-ar-4',
+      number: 4,
+      title: 'الوحدة الرابعة: المرافعة الدستورية والمحكمة الصورية',
+      description: 'تطبيقات عملية، صياغة المذكرات، ومحاكاة جلسات المرافعة أمام المحكمة الدستورية.',
+      durationWeeks: 4,
+      expectedStudyHours: 30,
+      relatedCLOIds: ['clo-ar-2', 'clo-ar-3'],
+      resources: [],
+    },
+  ],
+  mlos: [],
+  lessons: [],
+  activities: [],
+  assessments: [
+    {
+      id: 'asmt-ar-1',
+      name: 'تحليل قضية دستورية وموجز حكم قضائي',
+      type: 'Case Study',
+      linkedCLOIds: ['clo-ar-1'],
+      linkedMLOIds: [],
+      bloomLevel: 'Analyze',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 30,
+      achievementThreshold: 65,
+      isSummative: false,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+    {
+      id: 'asmt-ar-2',
+      name: 'المحاكمة الصورية وصياغة الدفع الدستوري',
+      type: 'Practical',
+      linkedCLOIds: ['clo-ar-2'],
+      linkedMLOIds: [],
+      bloomLevel: 'Create',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 40,
+      achievementThreshold: 70,
+      isSummative: true,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+    {
+      id: 'asmt-ar-3',
+      name: 'الامتحان النهائي التحليلي الشامل',
+      type: 'Final Assessment',
+      linkedCLOIds: ['clo-ar-1', 'clo-ar-3'],
+      linkedMLOIds: [],
+      bloomLevel: 'Evaluate',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 30,
+      achievementThreshold: 65,
+      isSummative: true,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+  ],
+  rubrics: [],
+  evidenceRules: [],
+  comments: [],
+  status: 'approved',
+  isTemplate: true,
+  updatedAt: new Date().toISOString(),
+  createdAt: '2026-08-25T10:00:00.000Z',
+};
+
+export const FRENCH_COURSE_TEMPLATE: Course = {
+  id: 'course-fr-droit-constitutionnel',
+  title: 'Droit Constitutionnel et Gouvernance Comparée',
+  code: 'DROIT-301-FR',
+  slug: 'droit-constitutionnel-gouvernance-fr',
+  language: 'French',
+  textDirection: 'ltr',
+  category: 'Droit & Sciences Politiques',
+  programme: 'Licence en Droit (LMD)',
+  creditHours: 3,
+  durationWeeks: 16,
+  modulesCount: 4,
+  deliveryMode: 'Blended',
+  courseLevel: 'Undergraduate',
+  targetLearners: 'Étudiants en droit, sciences politiques, et praticiens du contentieux public.',
+  prerequisites: 'Introduction au Droit et Théorie de l\'État (DROIT-101)',
+  description: 'Étude approfondie axée sur l\'approche par compétences (OBE) des régimes constitutionnels, du contentieux institutionnel et de la protection juridictionnelle des libertés fondamentales.',
+  overview: 'Ce cours analyse les grands équilibres institutionnels, le contrôle de constitutionnalité et la rédaction de mémoires juridiques contentieux conformes aux standards académiques internationaux.',
+  learningPromise: 'À l\'issue de ce cours, l\'apprenant sera capable d\'analyser les crises constitutionnelles, de rédiger des mémoires contentieux et de résoudre des litiges de compétence territoriale.',
+  expectedStudyTimeHours: 135,
+  capstoneGoal: 'Analyser l\'évolution constitutionnelle et rédiger un mémoire de recours devant le juge constitutionnel avec rigueur doctrinale.',
+  blueprint: {
+    purpose: 'Former des juristes rigoureux capables de défendre la suprématie de la Constitution et l\'État de droit.',
+    learnerNeed: 'Combler le fossé entre la connaissance théorique des textes et la pratique contentieuse devant les juridictions suprêmes.',
+    targetCompetencies: [
+      'Interprétation constitutionnelle et herméneutique',
+      'Règlement des conflits de compétences institutionnels',
+      'Rédaction de conclusions juridiques d\'appel',
+      'Analyse critique de la séparation des pouvoirs',
+    ],
+    requiredSkills: [
+      'Synthèse de jurisprudence constitutionnelle',
+      'Analyse comparée des régimes politiques',
+      'Plaidoirie en audience de procès simulé',
+    ],
+    assessmentStrategy: 'Évaluations authentiques alignées comprenant fiches d\'arrêt, mémoire contentieux et examen terminal de synthèse.',
+  },
+  plos: [
+    { id: 'plo-fr-1', code: 'PLO 1', title: 'Maîtrise Théorique et Doctrinale', description: 'Démontrer une compréhension approfondie des principes constitutionnels et codifications.' },
+    { id: 'plo-fr-2', code: 'PLO 2', title: 'Analyse Critique et Résolution Contentieuse', description: 'Diagnostiquer les litiges complexes et formuler des solutions juridiques fondées.' },
+    { id: 'plo-fr-3', code: 'PLO 3', title: 'Communication Professionnelle et Déontologie', description: 'Plaider et rédiger avec clarté, rigueur et respect des normes déontologiques.' },
+  ],
+  clos: [
+    {
+      id: 'clo-fr-1',
+      code: 'CLO 1',
+      statement: 'Analyser les mécanismes de contrôle de conformité des normes et l\'équilibre des pouvoirs.',
+      bloomVerb: 'Analyser',
+      bloomLevel: 'Analyze',
+      learningDomain: 'Cognitive',
+      competency: 'Contrôle de Constitutionnalité',
+      skills: 'Hiérarchie des normes, filtrage juridictionnel, analyse doctrinale',
+      assessmentMethod: 'Commentaire d\'Arrêt Constitutionnel',
+      achievementThreshold: 65,
+      weightage: 35,
+      status: 'Validated',
+      qualityScore: 92,
+      qualityChecks: [
+        { label: 'Verbe mesurable', passed: true, detail: 'Utilise le verbe d\'action "Analyser"' },
+      ],
+      mappedPLOs: [{ ploId: 'plo-fr-1', level: 'Mastered', rationale: 'Approfondit les bases théoriques et le contrôle normatif.' }],
+    },
+    {
+      id: 'clo-fr-2',
+      code: 'CLO 2',
+      statement: 'Rédiger un mémoire juridique structuré s\'appuyant sur les précédents jurisprudentiels pertinents.',
+      bloomVerb: 'Rédiger',
+      bloomLevel: 'Create',
+      learningDomain: 'Cognitive',
+      competency: 'Rédaction Contentieuse',
+      skills: 'Conclusions d\'appel, moyens juridiques, articulation des griefs',
+      assessmentMethod: 'Plaidoirie et Mémoire Contentieux',
+      achievementThreshold: 70,
+      weightage: 40,
+      status: 'Validated',
+      qualityScore: 95,
+      qualityChecks: [
+        { label: 'Alignement pratique', passed: true, detail: 'Livrable professionnel authentique' },
+      ],
+      mappedPLOs: [
+        { ploId: 'plo-fr-2', level: 'Mastered', rationale: 'Résolution méthodique de cas contentieux.' },
+        { ploId: 'plo-fr-3', level: 'Reinforced', rationale: 'Rigueur de la communication écrite et orale.' },
+      ],
+    },
+    {
+      id: 'clo-fr-3',
+      code: 'CLO 3',
+      statement: 'Évaluer la conformité des actes législatifs aux principes de décentralisation et d\'autonomie institutionnelle.',
+      bloomVerb: 'Évaluer',
+      bloomLevel: 'Evaluate',
+      learningDomain: 'Cognitive',
+      competency: 'Équilibre Institutionnel',
+      skills: 'Dévolution des pouvoirs, compétences territoriales, contrôle de légalité',
+      assessmentMethod: 'Examen Terminal de Synthèse Doctrinale',
+      achievementThreshold: 65,
+      weightage: 25,
+      status: 'Validated',
+      qualityScore: 90,
+      qualityChecks: [
+        { label: 'Niveau taxonomique élevé', passed: true, detail: 'Évaluation critique de l\'équilibre des pouvoirs' },
+      ],
+      mappedPLOs: [{ ploId: 'plo-fr-1', level: 'Reinforced', rationale: 'Lien entre théorie et organisation institutionnelle.' }],
+    },
+  ],
+  modules: [
+    {
+      id: 'mod-fr-1',
+      number: 1,
+      title: 'Module 1 : Théorie Constitutionnelle et Contrôle de Normativité',
+      description: 'L\'État de droit, hiérarchie des normes et histoire comparée des juridictions constitutionnelles.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-fr-1'],
+      resources: [],
+    },
+    {
+      id: 'mod-fr-2',
+      number: 2,
+      title: 'Module 2 : Droits Fondamentaux et Recours Juridictionnels',
+      description: 'Contentieux des libertés, question prioritaire et garanties processuelles.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-fr-2'],
+      resources: [],
+    },
+    {
+      id: 'mod-fr-3',
+      number: 3,
+      title: 'Module 3 : Séparation des Pouvoirs et Régimes Parlementaires',
+      description: 'Dynamique des pouvoirs législatif, exécutif et judiciaire.',
+      durationWeeks: 4,
+      expectedStudyHours: 35,
+      relatedCLOIds: ['clo-fr-3'],
+      resources: [],
+    },
+    {
+      id: 'mod-fr-4',
+      number: 4,
+      title: 'Module 4 : Audience Simulée et Pratique du Prétoire',
+      description: 'Rédaction de mémoire en défense et simulation d\'audience constitutionnelle.',
+      durationWeeks: 4,
+      expectedStudyHours: 30,
+      relatedCLOIds: ['clo-fr-2'],
+      resources: [],
+    },
+  ],
+  mlos: [],
+  lessons: [],
+  activities: [],
+  assessments: [
+    {
+      id: 'asmt-fr-1',
+      name: 'Commentaire d\'Arrêt Constitutionnel',
+      type: 'Case Study',
+      linkedCLOIds: ['clo-fr-1'],
+      linkedMLOIds: [],
+      bloomLevel: 'Analyze',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 30,
+      achievementThreshold: 65,
+      isSummative: false,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+    {
+      id: 'asmt-fr-2',
+      name: 'Plaidoirie et Mémoire Contentieux',
+      type: 'Practical',
+      linkedCLOIds: ['clo-fr-2'],
+      linkedMLOIds: [],
+      bloomLevel: 'Create',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 40,
+      achievementThreshold: 70,
+      isSummative: true,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+    {
+      id: 'asmt-fr-3',
+      name: 'Examen Terminal de Synthèse Doctrinale',
+      type: 'Final Assessment',
+      linkedCLOIds: ['clo-fr-1', 'clo-fr-3'],
+      linkedMLOIds: [],
+      bloomLevel: 'Evaluate',
+      evidenceType: 'Direct',
+      marks: 100,
+      weightage: 30,
+      achievementThreshold: 65,
+      isSummative: true,
+      directOrIndirect: 'Direct',
+      questions: [],
+    },
+  ],
+  rubrics: [],
+  evidenceRules: [],
+  comments: [],
+  status: 'approved',
+  isTemplate: true,
+  updatedAt: new Date().toISOString(),
+  createdAt: '2026-08-25T10:00:00.000Z',
+};
+
+export function createBlankCourse(
+  language: string = 'English',
+  customTitle?: string,
+  customCode?: string
+): Course {
   const id = 'course-' + Date.now();
+  const isArabic = language.toLowerCase() === 'arabic' || language === 'العربية';
+  const isFrench = language.toLowerCase() === 'french' || language === 'français';
+  const isGerman = language.toLowerCase() === 'german' || language === 'deutsch';
+  const isSpanish = language.toLowerCase() === 'spanish' || language === 'español';
+
+  const textDirection = isArabic ? 'rtl' : 'ltr';
+
+  let title = customTitle || 'Untitled Course';
+  let code = customCode || 'NEW-101';
+  let slug = 'new-course';
+  let category = 'Higher Education';
+  let programme = 'Undergraduate Degree';
+  let targetLearners = '';
+  let prerequisites = '';
+  let description = '';
+  let overview = '';
+  let learningPromise = '';
+  let capstoneGoal = '';
+
+  let plos = [
+    { id: 'plo-1', code: 'PLO 1', title: 'Foundational Knowledge', description: 'Demonstrate deep knowledge in the subject area.' },
+    { id: 'plo-2', code: 'PLO 2', title: 'Analytical & Problem Solving', description: 'Identify and resolve domain-specific problems.' },
+    { id: 'plo-3', code: 'PLO 3', title: 'Professional Communication', description: 'Communicate findings effectively in written and oral formats.' },
+  ];
+
+  let modules = [
+    { id: 'mod-1', number: 1, title: 'Module 1: Foundations & Principles', description: 'Core introductory concepts and frameworks.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: ['clo-1'], resources: [] },
+    { id: 'mod-2', number: 2, title: 'Module 2: Applied Workflows & Problem Solving', description: 'Practical scenario workouts and operational procedures.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: ['clo-2'], resources: [] },
+  ];
+
+  if (isArabic) {
+    title = customTitle || 'مقرر دراسي جديد (OBE)';
+    code = customCode || 'OBE-101-AR';
+    slug = 'new-arabic-course';
+    category = 'التعليم العالي والجامعي';
+    programme = 'درجة البكالوريوس المعتمدة';
+    targetLearners = 'طلبة المرحلة الجامعية والمتخصصون الباحثون عن الكفايات المتقدمة.';
+    prerequisites = 'المتطلبات المعرفية التأسيسية للمجال التخصصي.';
+    description = 'مقرر دراسي متكامل مصمم وفق منهجية التعليم القائم على المخرجات (OBE) والتحليل والتطبيق الميداني.';
+    overview = 'يقدم هذا المقرر تحليلاً متقدماً للمفاهيم الأساسية وتطبيقاتها المنهجية، مع ربط مخرجات التعلم باستراتيجيات التقييم الأصيل.';
+    learningPromise = 'عند إتمام هذا المقرر بنجاح، سيكون المتعلم قادراً على تشخيص المشكلات المعقدة وتطبيق الحلول المنهجية وصياغة مشاريع احترافية.';
+    capstoneGoal = 'تطبيق المعارف النظرية والمهارات العملية في إنجاز مشروع تطبيقي متكامل وفق معايير الاعتماد والجودة.';
+    plos = [
+      { id: 'plo-ar-1', code: 'PLO 1', title: 'المعرفة النظرية والتأسيس المفاهيمي', description: 'إتقان النظريات والمبادئ الأساسية في التخصص الأكاديمي.' },
+      { id: 'plo-ar-2', code: 'PLO 2', title: 'التحليل وحل المشكلات المعقدة', description: 'تشخيص التحديات وابتكار حلول عملية مبنية على الأدلة والتحليل المنهجي.' },
+      { id: 'plo-ar-3', code: 'PLO 3', title: 'التواصل المهني والأخلاقيات', description: 'صياغة وتقديم الحجج والأبحاث بوضوح وفق معايير النزاهة المهنية.' },
+    ];
+    modules = [
+      { id: 'mod-ar-1', number: 1, title: 'الوحدة الأولى: الأسس والمفاهيم الجوهرية', description: 'دراسة مدخلية معمقة للمفاهيم والأطر النظرية الأساسية.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+      { id: 'mod-ar-2', number: 2, title: 'الوحدة الثانية: التطبيقات العملية ودراسة الحالات', description: 'تمارين تطبيقية وتفكيك سيناريوهات واقعية تفاعلية.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+    ];
+  } else if (isFrench) {
+    title = customTitle || 'Nouveau Cours Universitaire (OBE)';
+    code = customCode || 'OBE-101-FR';
+    slug = 'nouveau-cours-fr';
+    category = 'Enseignement Supérieur';
+    programme = 'Licence / Master Universitaire';
+    targetLearners = 'Étudiants universitaires et professionnels en quête de perfectionnement.';
+    prerequisites = 'Prérequis académiques fondamentaux de la filière.';
+    description = 'Cours structuré selon l\'approche par compétences (OBE), l\'alignement constructif et l\'évaluation authentique.';
+    overview = 'Ce cours développe l\'esprit critique, l\'analyse méthodique et la mise en application directe des concepts fondamentaux.';
+    learningPromise = 'À l\'issue de ce cours, l\'apprenant sera capable de résoudre des situations complexes et de produire des livrables professionnels.';
+    capstoneGoal = 'Concevoir et présenter un projet d\'évaluation intégrée répondant aux exigences d\'accréditation académique.';
+    plos = [
+      { id: 'plo-fr-1', code: 'PLO 1', title: 'Maîtrise Théorique et Doctrinale', description: 'Démontrer une compréhension approfondie des concepts et modèles fondamentaux.' },
+      { id: 'plo-fr-2', code: 'PLO 2', title: 'Analyse Critique et Résolution de Problèmes', description: 'Analyser des situations complexes et formuler des solutions rigoureuses.' },
+      { id: 'plo-fr-3', code: 'PLO 3', title: 'Communication Professionnelle et Déontologie', description: 'Communiquer avec clarté, argumentation et respect de l\'éthique.' },
+    ];
+    modules = [
+      { id: 'mod-fr-1', number: 1, title: 'Module 1 : Fondements et Cadres Conceptuels', description: 'Concepts clés, définitions et approches théoriques structurantes.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+      { id: 'mod-fr-2', number: 2, title: 'Module 2 : Méthodes Appliquées et Études de Cas', description: 'Mise en situation pratique, ateliers et résolution d\'études de cas.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+    ];
+  } else if (isGerman) {
+    title = customTitle || 'Neuer Kompetenzorientierter Kurs (OBE)';
+    code = customCode || 'OBE-101-DE';
+    slug = 'neuer-kurs-de';
+    category = 'Hochschulbildung';
+    programme = 'Bachelor / Master Studiengang';
+    targetLearners = 'Studierende und Fachkräfte im akademischen Umfeld.';
+    description = 'Ergebnisorientierter Kurs nach internationalen Akkreditierungsstandards (OBE).';
+    overview = 'Dieser Kurs vermittelt fundierte methodische und praktische Kompetenzen zur Lösung komplexer Aufgaben.';
+    learningPromise = 'Nach Abschluss können Studierende fundierte Problemlösungen erarbeiten und fachgerecht präsentieren.';
+    capstoneGoal = 'Entwicklung und Dokumentation eines praxisnahen Gesamtprojekts.';
+    plos = [
+      { id: 'plo-de-1', code: 'PLO 1', title: 'Fachkompetenz und Theoretische Grundlagen', description: 'Fundiertes Verständnis der theoretischen Grundlagen und Fachmethoden.' },
+      { id: 'plo-de-2', code: 'PLO 2', title: 'Analytische Problemlösungskompetenz', description: 'Komplexe Problemstellungen strukturieren und methodisch lösen.' },
+      { id: 'plo-de-3', code: 'PLO 3', title: 'Wissenschaftliche Kommunikation und Ethik', description: 'Fachliche Argumente präzise und ethisch reflektiert kommunizieren.' },
+    ];
+    modules = [
+      { id: 'mod-de-1', number: 1, title: 'Modul 1: Grundlagen und Strukturtheorien', description: 'Einführung in zentrale Begriffe und theoretische Fundamente.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+      { id: 'mod-de-2', number: 2, title: 'Modul 2: Angewandte Methoden und Fallpraxis', description: 'Praktische Vertiefung und analytische Fallbearbeitung.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
+    ];
+  } else if (isSpanish) {
+    title = customTitle || 'Nuevo Curso Orientado a Resultados (OBE)';
+    code = customCode || 'OBE-101-ES';
+    slug = 'nuevo-curso-es';
+    category = 'Educación Superior';
+    programme = 'Grado / Licenciatura Universitaria';
+    targetLearners = 'Estudiantes universitarios y profesionales en formación continua.';
+    description = 'Curso estructurado bajo el enfoque de educación basada en resultados (OBE).';
+    overview = 'Este curso desarrolla competencias clave, análisis crítico y resolución de problemas auténticos.';
+    learningPromise = 'Al finalizar, el estudiante será capaz de diseñar soluciones innovadoras y fundamentadas.';
+    capstoneGoal = 'Desarrollar un proyecto integrador alineado con estándares de calidad y acreditación.';
+  }
+
+  // Language display name
+  const resolvedLanguage = isArabic
+    ? 'Arabic'
+    : isFrench
+    ? 'French'
+    : isGerman
+    ? 'German'
+    : isSpanish
+    ? 'Spanish'
+    : 'English';
+
   return {
     id,
-    title: 'Untitled Course',
-    code: 'NEW-101',
-    slug: 'new-course',
-    category: 'Higher Education',
-    programme: 'Undergraduate Degree',
+    title,
+    code,
+    slug,
+    language: resolvedLanguage,
+    textDirection,
+    category,
+    programme,
     creditHours: 3,
     durationWeeks: 16,
     modulesCount: 4,
     deliveryMode: 'Blended',
     courseLevel: 'Undergraduate',
-    targetLearners: '',
-    prerequisites: '',
-    description: '',
-    overview: '',
-    learningPromise: '',
+    targetLearners,
+    prerequisites,
+    description,
+    overview,
+    learningPromise,
     expectedStudyTimeHours: 120,
-    capstoneGoal: '',
+    capstoneGoal,
     blueprint: {
       purpose: '',
       learnerNeed: '',
@@ -1012,16 +1550,9 @@ export function createBlankCourse(): Course {
       requiredSkills: [],
       assessmentStrategy: '',
     },
-    plos: [
-      { id: 'plo-1', code: 'PLO 1', title: 'Foundational Knowledge', description: 'Demonstrate deep knowledge in the subject area.' },
-      { id: 'plo-2', code: 'PLO 2', title: 'Analytical & Problem Solving', description: 'Identify and resolve domain-specific problems.' },
-      { id: 'plo-3', code: 'PLO 3', title: 'Professional Communication', description: 'Communicate findings effectively in written and oral formats.' },
-    ],
+    plos,
     clos: [],
-    modules: [
-      { id: 'mod-1', number: 1, title: 'Module 1: Foundations', description: 'Core introductory concepts and frameworks.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
-      { id: 'mod-2', number: 2, title: 'Module 2: Intermediate Applications', description: 'Practical scenario workouts and operational procedures.', durationWeeks: 4, expectedStudyHours: 30, relatedCLOIds: [], resources: [] },
-    ],
+    modules,
     mlos: [],
     lessons: [],
     activities: [],

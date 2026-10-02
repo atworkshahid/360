@@ -273,8 +273,37 @@ export const getCommentsForSection = (
     (c) =>
       c.sectionKey === sectionKey ||
       c.targetId === sectionKey ||
+      (c.moduleId && c.moduleId === sectionKey) ||
       (stepNumber !== undefined && c.stepNumber === stepNumber)
   );
+};
+
+/**
+ * Returns comments specifically mapped to a course module ID
+ */
+export const getCommentsForModule = (
+  comments: CourseElementComment[] | undefined,
+  moduleId: string
+): CourseElementComment[] => {
+  if (!comments || !Array.isArray(comments)) return [];
+  return comments.filter(
+    (c) =>
+      c.moduleId === moduleId ||
+      c.targetId === moduleId ||
+      c.sectionKey === moduleId
+  );
+};
+
+/**
+ * Count unresolved comments for a specific module
+ */
+export const getUnresolvedCountForModule = (
+  comments: CourseElementComment[] | undefined,
+  moduleId: string
+): number => {
+  return getCommentsForModule(comments, moduleId).filter(
+    (c) => c.status !== 'resolved'
+  ).length;
 };
 
 /**

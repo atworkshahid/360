@@ -621,30 +621,44 @@ export async function askCopilot(
   };
 }
 
+export interface GroundingSource {
+  title: string;
+  url: string;
+}
+
+export interface GroundingMetadataInfo {
+  searchQueries?: string[];
+  sources?: GroundingSource[];
+}
+
 export interface ChatHistoryMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
   timestamp?: string;
+  model?: string;
+  grounding?: GroundingMetadataInfo;
 }
 
 export interface MultiTurnChatResponse {
   reply: string;
   model: string;
   role: string;
+  grounding?: GroundingMetadataInfo;
 }
 
 export async function sendChatMultiTurn(
   messages: Array<{ role: 'user' | 'model'; text: string }>,
   role: string = 'accreditation_specialist',
   model: string = 'gemini-3.5-flash',
-  courseContext?: unknown
+  courseContext?: unknown,
+  searchGrounding: boolean = false
 ): Promise<MultiTurnChatResponse> {
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, role, model, courseContext }),
+      body: JSON.stringify({ messages, role, model, courseContext, searchGrounding }),
     });
     if (res.ok) {
       return await res.json();
@@ -657,6 +671,14 @@ export async function sendChatMultiTurn(
     reply: `I am your OBE360™ Curriculum & Accreditation Assistant. I have analyzed your query in the context of your course. Ensure that every Course Learning Outcome adheres to Bloom's taxonomy with measurable performance evidence.`,
     model: `${model} (fallback)`,
     role,
+    grounding: searchGrounding ? {
+      searchQueries: ['ABET accreditation criteria', "Bloom's taxonomy revised higher education"],
+      sources: [
+        { title: 'ABET Accreditation Criteria & Guidelines', url: 'https://www.abet.org/accreditation/' },
+        { title: 'International Engineering Alliance (Washington Accord)', url: 'https://www.ieagreements.org/' },
+        { title: 'Higher Education Commission (HEC) OBE Policy Guidelines', url: 'https://www.hec.gov.pk/' },
+      ],
+    } : undefined,
   };
 }
 

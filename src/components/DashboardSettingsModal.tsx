@@ -15,6 +15,7 @@ import {
   History,
   RotateCcw,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import {
   isGoogleDriveSyncEnabled,
@@ -28,8 +29,9 @@ import {
 import { User } from 'firebase/auth';
 import { Course } from '../types';
 import { CourseVersionHistoryView } from './CourseVersionHistoryView';
+import { InstitutionalLogoUploader } from './InstitutionalLogoUploader';
 
-export type SettingsTab = 'history' | 'cloud' | 'storage';
+export type SettingsTab = 'history' | 'cloud' | 'storage' | 'branding';
 
 interface DashboardSettingsModalProps {
   isOpen: boolean;
@@ -201,6 +203,20 @@ export const DashboardSettingsModal: React.FC<DashboardSettingsModalProps> = ({
           >
             <Database className="w-4 h-4 text-slate-600" />
             <span>Storage & Archive</span>
+          </button>
+
+          <button
+            type="button"
+            id="dashboard-settings-tab-branding"
+            onClick={() => setActiveTab('branding')}
+            className={`pb-2.5 px-3 font-bold text-xs flex items-center space-x-2 border-b-2 transition cursor-pointer ${
+              activeTab === 'branding'
+                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-indigo-600" />
+            <span>Institutional Logo &amp; Branding</span>
           </button>
         </div>
 
@@ -414,6 +430,105 @@ export const DashboardSettingsModal: React.FC<DashboardSettingsModalProps> = ({
                   <span>Export All Courses as JSON Archive</span>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* TAB 4: Institutional Branding & Logo */}
+          {activeTab === 'branding' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              <div className="bg-indigo-50/60 rounded-xl border border-indigo-100 p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5">
+                <Sparkles className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-bold">Accreditation PDF Dossier Branding</div>
+                  <div className="text-[11px] text-indigo-700 mt-0.5">
+                    Configure institutional crests, university seals, and logos for inclusion on the executive cover page, running header, and formal accreditation compliance certificate of generated PDF dossiers.
+                  </div>
+                </div>
+              </div>
+
+              {courses.length > 0 && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Select Target Course:
+                  </label>
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code}: {c.title} {c.institutionLogo ? '✓ (Logo uploaded)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {(() => {
+                const targetCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
+                if (!targetCourse) {
+                  return (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      No courses found in workspace.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <InstitutionalLogoUploader
+                      currentLogoUrl={targetCourse.institutionLogo}
+                      institutionName={targetCourse.institutionName || 'Apex Institute of Science & Technology'}
+                      onLogoChange={(dataUrl) => {
+                        const updated: Course = { ...targetCourse, institutionLogo: dataUrl };
+                        if (onRestoreCourse) onRestoreCourse(updated);
+                        setSaveSuccessNotice(true);
+                        setTimeout(() => setSaveSuccessNotice(false), 2000);
+                      }}
+                      onClearLogo={() => {
+                        const updated: Course = { ...targetCourse, institutionLogo: undefined };
+                        if (onRestoreCourse) onRestoreCourse(updated);
+                        setSaveSuccessNotice(true);
+                        setTimeout(() => setSaveSuccessNotice(false), 2000);
+                      }}
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Institution Name
+                        </label>
+                        <input
+                          type="text"
+                          value={targetCourse.institutionName || ''}
+                          onChange={(e) => {
+                            const updated: Course = { ...targetCourse, institutionName: e.target.value };
+                            if (onRestoreCourse) onRestoreCourse(updated);
+                          }}
+                          placeholder="e.g. Apex Institute of Science & Technology"
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Academic Department
+                        </label>
+                        <input
+                          type="text"
+                          value={targetCourse.department || ''}
+                          onChange={(e) => {
+                            const updated: Course = { ...targetCourse, department: e.target.value };
+                            if (onRestoreCourse) onRestoreCourse(updated);
+                          }}
+                          placeholder="e.g. Department of Computer Science"
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

@@ -106,10 +106,11 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({
   });
 
   const filteredItems = enrichedCourses.filter(({ course, stage }) => {
+    const q = (searchQuery || '').toLowerCase();
     const matchesSearch =
-      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (course.department && course.department.toLowerCase().includes(searchQuery.toLowerCase()));
+      (course.title || '').toLowerCase().includes(q) ||
+      (course.code || '').toLowerCase().includes(q) ||
+      (Boolean(course.department) && (course.department || '').toLowerCase().includes(q));
 
     if (!matchesSearch) return false;
     if (filterStage === 'all') return true;

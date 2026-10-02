@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Shared Course Blueprints
+    match /shared_courses/{shareId} {
+      // Anyone with the unique shareId can read if the share is active
+      allow get: if resource.data.isActive == true;
+      // Authenticated users can list shared courses (e.g. for author dashboard)
+      allow list: if request.auth != null;
+      // Allow creating a share record with matching shareId and active state
+      allow create: if request.resource.data.shareId == shareId &&
+                       request.resource.data.isActive == true;
+      // Allow author to update permissions or allow accessCount increment on view
+      allow update: if (request.auth != null && request.resource.data.shareId == shareId) ||
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accessCount', 'lastAccessedAt']));
+      // Allow author to delete/revoke share record
+      allow delete: if request.auth != null;
+    }
+
+    // Course Blueprints Sync (Offline Storage & Auto-Sync)
+    match /courses/{courseId} {
+      allow read, write: if true;
+    }
+  }
+}

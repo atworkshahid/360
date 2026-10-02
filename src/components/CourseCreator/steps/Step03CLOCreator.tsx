@@ -20,6 +20,8 @@ import {
   FileSpreadsheet,
   Compass,
   ChevronDown,
+  SlidersHorizontal,
+  Copy,
 } from 'lucide-react';
 import { Course, CLO, BloomLevel, LearningDomain, CLOStatus } from '../../../types';
 import { analyzeCLOStatement, CLOAnalysisResult } from '../../../services/api';
@@ -34,6 +36,7 @@ import { CLORefinerModal } from '../CLORefinerModal';
 import { OutcomeDependencyGraph } from '../OutcomeDependencyGraph';
 import { ElementCommentButton } from '../comments/ElementCommentButton';
 import { BulkImportCLOsModal } from '../BulkImportCLOsModal';
+import { CLOBulkEditorModal } from '../CLOBulkEditorModal';
 import { BloomsCLOTagger } from '../BloomsCLOTagger';
 import { BatchCLOTaggerModal } from '../BatchCLOTaggerModal';
 import { BloomsTaxonomyWheel } from '../BloomsTaxonomyWheel';
@@ -71,6 +74,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
   const [targetRefineCLO, setTargetRefineCLO] = useState<CLO | null>(null);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
   const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
+  const [bulkEditorModalOpen, setBulkEditorModalOpen] = useState(false);
   const [importNotification, setImportNotification] = useState<string | null>(null);
 
   const selectedCLO = course.clos.find((c) => c.id === selectedCLOId) || course.clos[0];
@@ -80,9 +84,9 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
   // Detect vague non-measurable verbs in active statement
   const detectedVagueVerb = useMemo(() => {
     if (!selectedCLO?.statement) return null;
-    const lower = selectedCLO.statement.toLowerCase();
+    const lower = (selectedCLO.statement || '').toLowerCase();
     return VERBS_TO_AVOID.find((item) => {
-      const firstWord = item.vagueVerb.split(' ')[0].toLowerCase();
+      const firstWord = (item.vagueVerb?.split(' ')[0] || '').toLowerCase();
       const regex = new RegExp(`\\b${firstWord}\\b`, 'i');
       return regex.test(lower);
     });
@@ -280,6 +284,20 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
 
             <button
               type="button"
+              id="clo-bulk-editor-btn"
+              onClick={() => setBulkEditorModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-indigo-300 bg-white hover:bg-indigo-50 text-indigo-950 text-xs font-bold shadow-2xs transition cursor-pointer"
+              title="Bulk editor to reorder, duplicate, delete, or recalibrate multiple Course Learning Outcomes at once"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+              <span>Bulk Editor</span>
+              <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded-full font-mono font-bold">
+                {course.clos.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               id="clo-bulk-import-btn"
               onClick={() => setBulkImportModalOpen(true)}
               className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shadow-2xs transition cursor-pointer"
@@ -421,12 +439,30 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
         </div>
       )}
 
+      {/* CLO Navigation & Bulk Management Bar */}
+      <div className="flex items-center justify-between pb-1">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-800">Course Learning Outcomes</span>
+          <span className="text-[11px] text-slate-500 font-mono">({course.clos.length} active)</span>
+        </div>
+        <button
+          type="button"
+          id="clo-pill-bulk-editor-btn"
+          onClick={() => setBulkEditorModalOpen(true)}
+          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1.5 transition cursor-pointer px-2.5 py-1 rounded-lg hover:bg-indigo-50 border border-transparent hover:border-indigo-200"
+          title="Open bulk editor to reorder, duplicate, or delete multiple CLOs at once"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <span>Bulk Reorder / Duplicate / Delete</span>
+        </button>
+      </div>
+
       {/* CLO Selector Pills */}
       <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
         {course.clos.map((clo) => {
           const isSelected = (selectedCLO?.id || '') === clo.id;
           const isVague = VERBS_TO_AVOID.some((item) => {
-            const firstWord = item.vagueVerb.split(' ')[0].toLowerCase();
+            const firstWord = (item.vagueVerb?.split(' ')[0] || '').toLowerCase();
             const regex = new RegExp(`\\b${firstWord}\\b`, 'i');
             return regex.test(clo.statement || '');
           });
@@ -1003,6 +1039,20 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
         course={course}
         onSelectVerb={handleSelectBloomVerb}
         onApplyStem={handleApplyStem}
+      />
+
+      {/* CLO Bulk Editor Modal */}
+      <CLOBulkEditorModal
+        isOpen={bulkEditorModalOpen}
+        onClose={() => setBulkEditorModalOpen(false)}
+        clos={course.clos}
+        onSave={(updatedCLOs) => {
+          onChange({ ...course, clos: updatedCLOs });
+          if (updatedCLOs.length > 0 && !updatedCLOs.some((c) => c.id === selectedCLOId)) {
+            setSelectedCLOId(updatedCLOs[0].id);
+          }
+        }}
+        courseTitle={course.title}
       />
     </div>
   );

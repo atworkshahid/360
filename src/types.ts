@@ -40,6 +40,25 @@ export type AssessmentType =
 
 export type RubricLevelName = 'Not Achieved' | 'Developing' | 'Achieved' | 'Proficient' | 'Exemplary';
 
+export type CourseLanguage = 'English' | 'Arabic' | 'French' | 'German' | 'Spanish' | 'Urdu';
+
+export interface LanguageOption {
+  code: string;
+  name: CourseLanguage;
+  nativeName: string;
+  dir: 'ltr' | 'rtl';
+  flag: string;
+}
+
+export const SUPPORTED_LANGUAGES: LanguageOption[] = [
+  { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr', flag: '🇬🇧' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية', dir: 'rtl', flag: '🇸🇦' },
+  { code: 'ur', name: 'Urdu', nativeName: 'اردو', dir: 'rtl', flag: '🇵🇰' },
+  { code: 'fr', name: 'French', nativeName: 'Français', dir: 'ltr', flag: '🇫🇷' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch', dir: 'ltr', flag: '🇩🇪' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', dir: 'ltr', flag: '🇪🇸' },
+];
+
 export type CLOStatus = 'Draft' | 'Validated' | 'Flagged';
 export type MappingLevel = PLOMappingLevel;
 
@@ -88,6 +107,8 @@ export interface CLO {
   qualityChecks: CLOQualityCheck[];
   aiSuggestion?: string;
   mappedPLOs: CLOMappedPLO[];
+  prerequisiteCLOIds?: string[];
+  dependentAssessmentIds?: string[];
 }
 
 export interface MLO {
@@ -184,6 +205,7 @@ export interface Assessment {
   name: string;
   type: AssessmentType;
   linkedCLOIds: string[];
+  cloIds?: string[];
   linkedMLOIds: string[];
   bloomLevel: BloomLevel;
   evidenceType: 'Direct' | 'Indirect';
@@ -194,6 +216,9 @@ export interface Assessment {
   directOrIndirect: 'Direct' | 'Indirect';
   questions: MCQQuestion[];
   rubricId?: string;
+  prerequisiteAssessmentIds?: string[];
+  prerequisiteCLOIds?: string[];
+  scheduledWeek?: number;
 }
 
 export interface EvidenceSource {
@@ -282,6 +307,7 @@ export interface CourseElementComment {
   targetTitle: string; // e.g. "CLO 1: Analyze..." or "Course Philosophy Statement"
   sectionKey?: string; // e.g. "step-1-overview", "step-2-philosophy", "step-3-clos"
   stepNumber?: number; // Step number 1-15
+  moduleId?: string; // Associated course module ID when leaving feedback on a specific module
   priority?: 'low' | 'medium' | 'high' | 'critical';
   authorName: string;
   authorRole: StakeholderRole;
@@ -345,6 +371,9 @@ export interface Institution {
   id: string;
   name: string;
   logoUrl?: string;
+  defaultDossierColorTheme?: string;
+  defaultDossierPrimaryColor?: string;
+  defaultDossierAccentColor?: string;
   facultySchool: string;
   department: string;
   country: string;
@@ -415,10 +444,31 @@ export type CourseType =
   | 'Capstone'
   | 'Other';
 
+export interface MicroLearningUnit {
+  id: string;
+  unitNumber: number; // 1, 2, 3, or 4 (each week has 4 sub-topics / micro-learning units)
+  title: string;
+  description?: string;
+  durationMinutes?: number; // e.g. 45 - 60 minutes
+  bloomLevel?: BloomLevel;
+  deliveryFormat?:
+    | 'Interactive Lecture'
+    | 'Hands-on Lab'
+    | 'Self-Paced Practice'
+    | 'Case Study'
+    | 'Discussion & Quiz'
+    | 'Problem-Solving Studio';
+  isCompleted?: boolean;
+}
+
 export interface WeeklyCoursePlanItem {
   weekNumber: number;
   topic: string;
   subtopics?: string;
+  /**
+   * Exactly 4 sub-topics (Micro-learning Units) per instructional week
+   */
+  microLearningUnits?: MicroLearningUnit[];
   linkedCLOIds: string[];
   bloomLevel?: BloomLevel;
   learningActivity?: string;
@@ -465,11 +515,21 @@ export interface Course {
   // Step 1: Framework & Setup
   frameworkId?: string;
   frameworkVersionId?: string;
+  accreditationFramework?: string;
+  institutionName?: string;
+  institutionLogo?: string; // Institutional emblem/logo (base64 data URL or web image URL)
+  dossierColorTheme?: string; // e.g. 'navy' | 'emerald' | 'burgundy' | 'slate' | 'cobalt' | 'crimson' | 'amber' | 'violet' | 'custom'
+  dossierPrimaryColor?: string; // Custom hex code (e.g. #1e3a8a)
+  dossierAccentColor?: string; // Custom accent hex code (e.g. #3b82f6)
+  frameworkValidationStatus?: 'valid' | 'missing_docs' | 'deprecated' | 'unrecognized';
+  frameworkValidationMessage?: string;
 
   // Step 2: Course Information
   title: string;
   code: string;
   slug: string;
+  language?: CourseLanguage | string;
+  textDirection?: 'ltr' | 'rtl';
   category: string;
   programme: string;
   department?: string;
@@ -510,6 +570,7 @@ export interface Course {
   // Step 4 & 5: Outcomes & Mappings
   plos: PLO[];
   clos: CLO[];
+  ploMapping?: Record<string, Record<string, number>>;
 
   // Step 6: Weekly Course Plan
   weeklyPlan?: WeeklyCoursePlanItem[];
@@ -519,6 +580,7 @@ export interface Course {
   mlos: MLO[];
   lessons: Lesson[];
   activities: Activity[];
+  resources?: ResourceItem[]; // Associated supporting documents (syllabi, rubrics, lecture notes, lab guides)
 
   // Step 8: Assessments & Questions
   assessments: Assessment[];
@@ -626,5 +688,65 @@ export interface CourseVersion {
   };
   course: Course;
   changesSummary?: string[];
+}
+
+export type ResourceTagCategory =
+  | 'Module'
+  | 'Assessment'
+  | 'Project'
+  | 'Reference'
+  | 'Accreditation'
+  | 'Syllabus'
+  | 'Rubric'
+  | 'LabManual'
+  | 'LectureNotes';
+
+export type ResourcePreviewType =
+  | 'image'
+  | 'pdf'
+  | 'doc'
+  | 'sheet'
+  | 'slides'
+  | 'code'
+  | 'text'
+  | 'archive'
+  | 'audio'
+  | 'video'
+  | 'link'
+  | 'generic';
+
+export interface ModuleFolder {
+  id: string;
+  name: string;
+  moduleNumber?: number;
+  description?: string;
+  courseId?: string;
+  courseName?: string;
+  colorTheme?: string;
+}
+
+export interface ResourceItem {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'file' | 'link';
+  url?: string; // external URL or data URL
+  fileName?: string;
+  fileSize?: number; // size in bytes
+  fileType?: string; // mime type or extension
+  previewThumbnail?: string; // Data URL or canvas/SVG thumbnail
+  previewType?: ResourcePreviewType; // Formatted category of file for specialized previews
+  textContentSnippet?: string; // Preview text content for text/code/csv/markdown files
+  categoryTags: ResourceTagCategory[]; // 'Module' | 'Assessment' | 'Project' etc.
+  customTags?: string[]; // user defined custom tags e.g. "Week 4", "Midterm Rubric"
+  courseId?: string; // optional linked course/project ID, or "global"
+  courseName?: string;
+  moduleId?: string; // ID of the specific Module folder or undefined if root/unassigned
+  moduleName?: string; // Display name of the specific Module folder
+  orderIndex?: number; // Custom drag-and-drop sort order position
+  uploadedAt: string; // ISO timestamp
+  updatedAt?: string;
+  notes?: string;
+  starred?: boolean;
 }
 

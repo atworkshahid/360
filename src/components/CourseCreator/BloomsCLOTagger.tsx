@@ -122,7 +122,7 @@ export const BloomsCLOTagger: React.FC<BloomsCLOTaggerProps> = ({
   const isLevelMismatch = clo.bloomLevel !== activeTag.suggestedLevel;
   const isVerbMismatch =
     Boolean(activeTag.detectedVerb) &&
-    (!clo.bloomVerb || clo.bloomVerb.toLowerCase() !== activeTag.detectedVerb.toLowerCase());
+    (!clo.bloomVerb || (clo.bloomVerb || '').toLowerCase() !== (activeTag.detectedVerb || '').toLowerCase());
   const needsTagging = isLevelMismatch || isVerbMismatch;
 
   // Clear AI result when statement changes significantly

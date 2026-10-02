@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Course } from '../types';
+import { LogoMark } from './Logo';
 import {
   LMSExportSchemaOptions,
   generateMoodleCompetencyCSV,
@@ -273,10 +274,8 @@ export const LMSFormatExportModal: React.FC<LMSFormatExportModalProps> = ({
         {/* Header */}
         <div className="px-6 py-5 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           <div className="space-y-1">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-400 flex items-center justify-center">
-                <Package className="w-4 h-4" />
-              </div>
+            <div className="flex items-center space-x-3">
+              <LogoMark size={36} variant="light" />
               <div>
                 <h2 className="text-lg font-bold tracking-tight">
                   LMS Schema Export Engine

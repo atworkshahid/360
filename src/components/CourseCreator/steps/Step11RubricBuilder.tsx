@@ -14,11 +14,14 @@ import {
   FileSpreadsheet,
   Check,
   Target,
+  FolderOpen,
 } from 'lucide-react';
 import { Course, Rubric, RubricCriterion } from '../../../types';
 import { generateRubricCriteria } from '../../../services/api';
 import { RubricGeneratorModal } from '../RubricGeneratorModal';
 import { StructuredRubricGenerator } from '../StructuredRubricGenerator';
+import { CourseResourceLibrary } from '../../ResourceLibrary/CourseResourceLibrary';
+import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
 
 interface StepProps {
   course: Course;
@@ -34,6 +37,7 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorModalOpen, setGeneratorModalOpen] = useState<boolean>(false);
   const [generatorCLOId, setGeneratorCLOId] = useState<string | undefined>(course.clos[0]?.id);
+  const [resourceLibraryOpen, setResourceLibraryOpen] = useState<boolean>(false);
 
   const selectedRubric = course.rubrics.find((r) => r.id === selectedRubricId) || course.rubrics[0];
 
@@ -181,6 +185,16 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
             >
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Structured Matrix Generator</span>
+            </button>
+            <button
+              type="button"
+              id="step11-open-resource-library-btn"
+              onClick={() => setResourceLibraryOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100 text-xs font-semibold shadow-2xs transition cursor-pointer"
+              title="Browse and attach rubrics and scoring guides from Course Resource Library"
+            >
+              <FolderOpen className="w-4 h-4 text-teal-600" />
+              <span>Resource Library (Rubrics)</span>
             </button>
             <button
               onClick={handleAddRubric}
@@ -620,6 +634,18 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
         </div>
       )}
 
+      {/* Rubric Section Collaborative Comments Thread */}
+      <div className="pt-2">
+        <InlineSectionFeedback
+          course={course}
+          onChangeCourse={onChange}
+          sectionKey="step-11-rubrics"
+          sectionTitle="Step 11: Grading Rubrics & Evaluative Descriptors"
+          stepNumber={11}
+          targetType="Rubric"
+        />
+      </div>
+
       {/* Navigation Footer */}
       <div className="flex justify-between pt-4 border-t border-slate-200">
         <button
@@ -647,6 +673,16 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
         onChange={onChange}
         initialCLOId={generatorCLOId}
         targetRubricId={selectedRubric?.id}
+      />
+
+      {/* Centralized Course Resource Library (Rubrics View) */}
+      <CourseResourceLibrary
+        course={course}
+        isOpen={resourceLibraryOpen}
+        onClose={() => setResourceLibraryOpen(false)}
+        onUpdateCourse={onChange}
+        initialCategory="Rubric"
+        mode="modal"
       />
     </div>
   );

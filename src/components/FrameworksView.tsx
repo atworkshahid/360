@@ -10,6 +10,9 @@ import {
   ChevronRight,
   Info,
   X,
+  ArrowLeft,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { Framework } from '../types';
 import {
@@ -17,17 +20,26 @@ import {
   INITIAL_FRAMEWORK_VERSIONS,
   getFrameworkOutcomes,
 } from '../data/frameworksData';
+import { downloadFrameworkGuidebookPDF } from '../utils/frameworkGuidebookPdf';
+import { Guidebook } from './Guidebook';
 
-export const FrameworksView: React.FC = () => {
+interface FrameworksViewProps {
+  onBack?: () => void;
+}
+
+export const FrameworksView: React.FC<FrameworksViewProps> = ({ onBack }) => {
   const [selectedFramework, setSelectedFramework] = useState<Framework | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [guidebookOpen, setGuidebookOpen] = useState<boolean>(false);
+  const [guidebookFwId, setGuidebookFwId] = useState<string>('fw-washington-accord');
 
   const filteredFrameworks = INITIAL_FRAMEWORKS.filter((fw) => {
+    const q = (searchQuery || '').toLowerCase();
     const matchesSearch =
-      fw.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fw.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fw.discipline.toLowerCase().includes(searchQuery.toLowerCase());
+      (fw.name || '').toLowerCase().includes(q) ||
+      (fw.code || '').toLowerCase().includes(q) ||
+      (fw.discipline || '').toLowerCase().includes(q);
     if (!matchesSearch) return false;
 
     if (filterType === 'all') return true;
@@ -77,6 +89,48 @@ export const FrameworksView: React.FC = () => {
           <p className="text-xs text-slate-500 mt-0.5">
             Pre-configured international accords, commission criteria, and national standards with standardized graduate attributes and terminology.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setGuidebookFwId('fw-washington-accord');
+              setGuidebookOpen(true);
+            }}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+            title="Open Interactive OBE Accreditation Guidebook & PDF Viewer"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Open Guidebook &amp; PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              downloadFrameworkGuidebookPDF({
+                frameworkId: 'fw-washington-accord',
+                frameworkName: 'Washington Accord-aligned Engineering OBE',
+              })
+            }
+            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            title="Download complete Accreditation & OBE Frameworks Guidebook (PDF)"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">Direct PDF</span>
+            <Download className="w-3 h-3 text-indigo-500" />
+          </button>
+
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Courses</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -160,10 +214,26 @@ export const FrameworksView: React.FC = () => {
                   <span className="font-bold text-indigo-700">
                     {outcomes.length} Standard Attributes
                   </span>
-                  <span className="text-indigo-600 font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition">
-                    <span>Inspect</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setGuidebookFwId(fw.id);
+                        setGuidebookOpen(true);
+                      }}
+                      className="text-slate-500 hover:text-indigo-600 hover:underline flex items-center gap-0.5 font-medium"
+                      title={`View ${fw.code} Guidebook & PDF`}
+                    >
+                      <BookOpen className="w-3 h-3 text-indigo-500" />
+                      <span>PDF</span>
+                    </button>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-indigo-600 font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition">
+                      <span>Inspect</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -269,7 +339,37 @@ export const FrameworksView: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGuidebookFwId(selectedFramework.id);
+                    setGuidebookOpen(true);
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Open {selectedFramework.code} Guidebook &amp; PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadFrameworkGuidebookPDF({
+                      frameworkId: selectedFramework.id,
+                      frameworkName: selectedFramework.name,
+                    })
+                  }
+                  className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  title={`Download ${selectedFramework.code} Guidebook in PDF`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline">Direct Download</span>
+                  <Download className="w-3 h-3 text-indigo-500" />
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedFramework(null)}
@@ -281,6 +381,13 @@ export const FrameworksView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Guidebook Modal */}
+      <Guidebook
+        isOpen={guidebookOpen}
+        onClose={() => setGuidebookOpen(false)}
+        initialFrameworkId={guidebookFwId}
+      />
     </div>
   );
 };

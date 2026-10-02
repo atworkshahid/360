@@ -592,18 +592,18 @@ const ConstructiveAlignmentFlowCanvas: React.FC<InnerGraphProps> = ({
 
       if (query) {
         const matchesCLO =
-          triad.clo.code.toLowerCase().includes(query) ||
-          triad.clo.statement.toLowerCase().includes(query) ||
-          triad.clo.bloomLevel.toLowerCase().includes(query);
+          (triad.clo.code || '').toLowerCase().includes(query) ||
+          (triad.clo.statement || '').toLowerCase().includes(query) ||
+          (triad.clo.bloomLevel || '').toLowerCase().includes(query);
         const matchesTLA = triad.activities.some(
           (a) =>
-            a.activity.title.toLowerCase().includes(query) ||
-            a.activity.activityType.toLowerCase().includes(query)
+            (a.activity?.title || '').toLowerCase().includes(query) ||
+            (a.activity?.activityType || '').toLowerCase().includes(query)
         );
         const matchesAsmt = triad.assessments.some(
           (a) =>
-            a.assessment.name.toLowerCase().includes(query) ||
-            a.assessment.type.toLowerCase().includes(query)
+            (a.assessment?.name || '').toLowerCase().includes(query) ||
+            (a.assessment?.type || '').toLowerCase().includes(query)
         );
         if (!matchesCLO && !matchesTLA && !matchesAsmt) return false;
       }

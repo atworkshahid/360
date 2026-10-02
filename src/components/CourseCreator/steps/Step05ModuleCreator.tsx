@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -18,9 +18,23 @@ import {
   Check,
   ChevronRight,
   RefreshCw,
+  FolderOpen,
+  Upload,
+  FileText,
+  Paperclip,
+  ExternalLink,
 } from 'lucide-react';
-import { Course, Module, WeeklyCoursePlanItem } from '../../../types';
+import { Course, Module, WeeklyCoursePlanItem, ResourceItem } from '../../../types';
 import { evaluateStage } from '../../../utils/stageProgress';
+import { CourseResourceLibrary } from '../../ResourceLibrary/CourseResourceLibrary';
+import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
+import { getCommentsForModule } from '../../../utils/commentUtils';
+import {
+  getStoredResources,
+  getFileTypeBadge,
+  getCategoryTagStyle,
+  formatFileSize,
+} from '../../../services/resourceLibraryService';
 
 interface StepProps {
   course: Course;
@@ -46,8 +60,22 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
   const [selectedModuleId, setSelectedModuleId] = useState<string>(course.modules[0]?.id || '');
   const [newResource, setNewResource] = useState('');
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [moduleResourceLibraryOpen, setModuleResourceLibraryOpen] = useState(false);
+  const [moduleResources, setModuleResources] = useState<ResourceItem[]>([]);
 
   const selectedModule = course.modules.find((m) => m.id === selectedModuleId) || course.modules[0];
+
+  useEffect(() => {
+    const loadModResources = () => {
+      try {
+        const all = getStoredResources();
+        setModuleResources(all.filter((r) => r.moduleId === selectedModule?.id));
+      } catch {}
+    };
+    loadModResources();
+    window.addEventListener('obe_resources_updated', loadModResources);
+    return () => window.removeEventListener('obe_resources_updated', loadModResources);
+  }, [selectedModule?.id]);
 
   // Live Accreditation Evaluation for Stage 05 (Granular15)
   const stageEval = evaluateStage(course, 5, 'granular15');
@@ -58,6 +86,9 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
   const totalStudyHours = course.modules.reduce((sum, m) => sum + (m.expectedStudyHours || 0), 0);
   const expectedCreditHours = (course.credits || 3) * 45; // 45 hours total learner workload per credit
   const weeksBalanced = totalModuleWeeks === targetWeeks;
+
+  const selectedModuleComments = selectedModule ? getCommentsForModule(course.comments, selectedModule.id) : [];
+  const moduleCommentsCount = selectedModuleComments.length;
 
   const handleUpdateModule = (id: string, updates: Partial<Module>) => {
     const updated = course.modules.map((m) => (m.id === id ? { ...m, ...updates } : m));
@@ -306,6 +337,7 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
             {onOpenComments && selectedModule && (
               <button
                 type="button"
+                id={`step05-module-${selectedModule.id}-feedback-btn`}
                 onClick={() =>
                   onOpenComments(
                     selectedModule.id,
@@ -313,10 +345,16 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
                     `Module ${selectedModule.number}: ${selectedModule.title}`
                   )
                 }
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                title={`View or leave feedback threads on Module ${selectedModule.number}`}
               >
-                <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                <span>Review Feedback</span>
+                <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                <span>Module Feedback</span>
+                {moduleCommentsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">
+                    {moduleCommentsCount}
+                  </span>
+                )}
               </button>
             )}
 
@@ -698,6 +736,82 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Associated Supporting Documents from Course Resource Library */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center space-x-1.5">
+                    <FolderOpen className="w-4 h-4 text-indigo-600" />
+                    <span>Module Supporting Documents &amp; Syllabi</span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold">
+                      {moduleResources.length}
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Supporting syllabi, rubrics, guides, and files associated with this module in the Course Resource Library.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  id="step05-open-resource-library-btn"
+                  onClick={() => setModuleResourceLibraryOpen(true)}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 transition cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>+ Attach / Upload Document</span>
+                </button>
+              </div>
+
+              {moduleResources.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {moduleResources.map((res) => {
+                    const badge = getFileTypeBadge(res);
+                    return (
+                      <div
+                        key={res.id}
+                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-indigo-300 hover:bg-white transition flex items-center justify-between group shadow-2xs"
+                      >
+                        <div className="flex items-center space-x-2 min-w-0 flex-1 mr-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${badge.bg} ${badge.text} ${badge.border}`}
+                          >
+                            {badge.label}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold text-slate-900 truncate block">
+                              {res.title}
+                            </span>
+                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                              <span>{(res.categoryTags || []).join(', ')}</span>
+                              {res.fileSize && <span>• {formatFileSize(res.fileSize)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setModuleResourceLibraryOpen(true)}
+                          className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                        >
+                          View
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                  No supporting documents attached to this module yet.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setModuleResourceLibraryOpen(true)}
+                    className="text-indigo-600 font-bold hover:underline cursor-pointer ml-1"
+                  >
+                    Upload or attach a document
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Module Sub-Elements Summary: 4 cols */}
@@ -771,6 +885,22 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
         </div>
       )}
 
+      {/* Module & Section Collaborative Feedback Thread */}
+      <div className="pt-2">
+        <InlineSectionFeedback
+          course={course}
+          onChangeCourse={onChange}
+          sectionKey={selectedModule ? selectedModule.id : 'step-5-modules'}
+          sectionTitle={selectedModule ? `Module ${selectedModule.number}: ${selectedModule.title}` : 'Step 5: Content Modules & Syllabus Breakdown'}
+          stepNumber={5}
+          moduleId={selectedModule?.id}
+          targetType={selectedModule ? 'Module' : 'Section'}
+          onOpenFullReview={(targetId, targetType, targetTitle) => {
+            if (onOpenComments) onOpenComments(targetId, targetType, targetTitle);
+          }}
+        />
+      </div>
+
       {/* Navigation Footer */}
       <div className="flex justify-between pt-4 border-t border-slate-200">
         <button
@@ -789,6 +919,16 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Centralized Course Resource Library Modal for this Module */}
+      <CourseResourceLibrary
+        course={course}
+        isOpen={moduleResourceLibraryOpen}
+        onClose={() => setModuleResourceLibraryOpen(false)}
+        onUpdateCourse={onChange}
+        initialModuleId={selectedModule?.id}
+        mode="modal"
+      />
     </div>
   );
 };

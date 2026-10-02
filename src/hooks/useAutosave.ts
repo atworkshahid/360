@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { offlineSyncService } from '../services/offlineSyncService';
 
 export type AutoSaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
@@ -17,6 +18,8 @@ export interface UseAutosaveReturn<T> {
   lastSaved: Date | null;
   errorMessage: string | null;
   saveNow: () => void;
+  savedToastVisible: boolean;
+  dismissToast: () => void;
 }
 
 export function useAutosave<T>({
@@ -44,6 +47,8 @@ export function useAutosave<T>({
 
   const [status, setStatus] = useState<AutoSaveStatus>('saved');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [savedToastVisible, setSavedToastVisible] = useState<boolean>(false);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep latest refs for data and callbacks to avoid stale closures in timeouts
   const dataRef = useRef<T>(data);
@@ -92,9 +97,41 @@ export function useAutosave<T>({
         })
       );
 
+      // Persist to offline IndexedDB storage and auto-sync queue for Firebase
+      try {
+        if (Array.isArray(dataToSave)) {
+          const active = activeCourseId ? dataToSave.find((c: any) => c.id === activeCourseId) : dataToSave[0];
+          if (active && active.id && active.title) {
+            offlineSyncService.saveCourseBlueprintOffline(active).catch(() => {});
+          }
+        } else if (dataToSave && typeof dataToSave === 'object' && 'id' in dataToSave && 'title' in dataToSave) {
+          offlineSyncService.saveCourseBlueprintOffline(dataToSave as any).catch(() => {});
+        }
+      } catch (offlineErr) {
+        console.warn('Offline storage auto-sync dispatch error:', offlineErr);
+      }
+
       setLastSaved(now);
       setStatus('saved');
       hasUnsavedChangesRef.current = false;
+
+      // Show brief subtle 'Saved' confirmation toast
+      setSavedToastVisible(true);
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+      toastTimeoutRef.current = setTimeout(() => {
+        setSavedToastVisible(false);
+      }, 2500);
+
+      window.dispatchEvent(
+        new CustomEvent('course_autosaved', {
+          detail: {
+            timestamp: timestampIso,
+            activeCourseId: activeCourseId || null,
+          },
+        })
+      );
 
       if (onAfterSaveRef.current) {
         try {
@@ -164,10 +201,30 @@ export function useAutosave<T>({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [performSave]);
 
+  // Dismiss toast manually
+  const dismissToast = useCallback(() => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
+    setSavedToastVisible(false);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return {
     status,
     lastSaved,
     errorMessage,
     saveNow: performSave,
+    savedToastVisible,
+    dismissToast,
   };
 }

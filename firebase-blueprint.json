@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "SharedCourse": {
+      "title": "SharedCourse",
+      "description": "Unique read-only shareable course blueprint with configurable access permissions",
+      "type": "object",
+      "properties": {
+        "shareId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "courseTitle": { "type": "string" },
+        "courseCode": { "type": "string" },
+        "courseData": { "type": "object" },
+        "permissionLevel": { "type": "string", "enum": ["public_read", "restricted", "reviewer_only"] },
+        "allowReviewerComments": { "type": "boolean" },
+        "allowExport": { "type": "boolean" },
+        "expiresAt": { "type": "string" },
+        "passcode": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdByEmail": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "accessCount": { "type": "number" },
+        "lastAccessedAt": { "type": "string" }
+      },
+      "required": ["shareId", "courseId", "courseTitle", "courseData", "permissionLevel", "isActive"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Full Outcome-Based Education Course Blueprint document synchronized with cloud",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "code": { "type": "string" },
+        "status": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "courseData": { "type": "object" }
+      },
+      "required": ["id", "title", "code", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/shared_courses/{shareId}": {
+      "schema": { "$ref": "#/entities/SharedCourse" },
+      "description": "Collection of shared read-only course blueprints with permission management"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Collection of offline-synchronized course blueprints"
+    }
+  }
+}

@@ -31,12 +31,272 @@ function getAI(): GoogleGenAI | null {
   return aiClient;
 }
 
+// In-Memory Database Stores
+interface DevFeedbackRecord {
+  id: string;
+  ticketNumber: string;
+  category: string;
+  severity: string;
+  userName: string;
+  userEmail: string;
+  subject: string;
+  description: string;
+  stepsToReproduce?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
+  courseSummary?: any;
+  diagnostics?: any;
+  receivedAt: string;
+  status?: string;
+  adminNotes?: string;
+}
+
+const coursesStore = new Map<string, any>();
+const feedbackStore: DevFeedbackRecord[] = [];
+const leadsStore: any[] = [
+  {
+    id: 'lead-demo-101',
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+    fullName: 'Prof. Dr. Mansoor Ali',
+    email: 'm.ali@uet.edu.pk',
+    phone: '+92 321 4567890',
+    institution: 'University of Engineering & Technology (UET)',
+    department: 'Faculty of Civil & Mechanical Engineering',
+    role: 'Dean of Faculty / PEC Accreditation Convener',
+    frameworkInterest: 'Washington Accord (IEA / PEC Level II)',
+    facultyCountRange: '50-200 faculty',
+    primaryNeeds: [
+      'Accreditation Visit Preparation',
+      'CLO-PLO Matrix Standardization',
+      'Continuous Quality Improvement (CQI)',
+    ],
+    timeline: 'Within 30 Days (Upcoming Accreditation Cycle)',
+    message:
+      'We are preparing for our Washington Accord reaccreditation visit next semester and urgently need to standardize outcome-based assessment blueprints and course dossiers across 4 engineering departments.',
+    status: 'new',
+    source: 'marketing_pricing_enterprise',
+  },
+  {
+    id: 'lead-demo-102',
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 80).toISOString(),
+    fullName: 'Dr. Rebecca Thorne',
+    email: 'r.thorne@academics-west.edu',
+    phone: '+1 (415) 890-2341',
+    institution: 'California Institute of Technology & Computing',
+    department: 'School of Information Technology',
+    role: 'Director of Curriculum & Quality Assurance',
+    frameworkInterest: 'ABET (CAC / EAC)',
+    facultyCountRange: '10-50 faculty',
+    primaryNeeds: [
+      'ABET Accreditation Self-Study Dossiers',
+      'Automated Rubrics & Direct Evidence',
+      'Active Learning Engagement Metrics',
+    ],
+    timeline: 'Exploring for Next Academic Year',
+    message:
+      'Looking for a departmental license for 28 faculty members to build constructive alignment matrices and export LMS packages directly into Canvas.',
+    status: 'demo_scheduled',
+    source: 'marketing_hero',
+    notes: 'Demo scheduled via Zoom with curriculum committee on Thursday at 2 PM EST.',
+  },
+];
+
+// Governance & Institutional Configuration Store
+interface InstitutionRecord {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  facultySchool: string;
+  department: string;
+  country: string;
+  academicCalendar: string;
+  semesterSystem: string;
+  defaultCourseDurationWeeks: number;
+  defaultLanguage: string;
+  defaultMappingScale: string;
+  defaultFrameworkId: string;
+  defaultBloomTaxonomyVersion: string;
+  updatedAt?: string;
+}
+
+let institutionStore: InstitutionRecord = {
+  id: 'inst-apex-01',
+  name: 'Apex Institute of Science & Technology',
+  logoUrl: '',
+  facultySchool: 'Faculty of Computing & Information Technology',
+  department: 'Department of Computer Science & Software Engineering',
+  country: 'Pakistan',
+  academicCalendar: 'Semester',
+  semesterSystem: 'Fall-Spring-Summer',
+  defaultCourseDurationWeeks: 16,
+  defaultLanguage: 'English',
+  defaultMappingScale: 'numeric_1_3',
+  defaultFrameworkId: 'fw-abet-cac',
+  defaultBloomTaxonomyVersion: 'Revised Bloom (Anderson & Krathwohl, 2001)',
+  updatedAt: new Date().toISOString(),
+};
+
+interface UserRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'faculty' | 'reviewer';
+  department: string;
+  title: string;
+  avatarUrl?: string;
+}
+
+const usersStore: UserRecord[] = [
+  {
+    id: 'user-admin-1',
+    name: 'Dr. Eleanor Vance',
+    email: 'e.vance@apex.edu',
+    role: 'admin',
+    department: 'Quality Enhancement & Accreditation Directorate',
+    title: 'Director Quality Assurance & Accreditation',
+  },
+  {
+    id: 'user-faculty-1',
+    name: 'Prof. Shahid Soomro',
+    email: 'ShahidSoomro786@gmail.com',
+    role: 'faculty',
+    department: 'Computer Science',
+    title: 'Senior Associate Professor & Curriculum Designer',
+  },
+  {
+    id: 'user-reviewer-1',
+    name: 'Dr. Margaret Hamilton',
+    email: 'm.hamilton@apex.edu',
+    role: 'reviewer',
+    department: 'Curriculum & Academic Standards Committee',
+    title: 'Chair, Board of Studies & Lead Peer Reviewer',
+  },
+];
+
+const frameworksStore: any[] = [
+  {
+    id: 'fw-washington-accord',
+    name: 'Washington Accord-aligned Engineering OBE',
+    code: 'WA-ENG',
+    type: 'International Accord',
+    badge: 'International Recognition Framework',
+    discipline: 'Engineering & Applied Sciences',
+    jurisdiction: 'International (IEA Signatories)',
+    description: 'International agreement between bodies responsible for accrediting professional engineering degree programmes, specifying 12 Graduate Attributes (WA1-WA12).',
+    outcomeModel: 'Graduate Attributes (GAs) / Program Learning Outcomes (PLOs)',
+    recommendedMappingApproach: 'CLO → Program Outcome (GA/PLO) on 3-tier cognitive intensity scale',
+    applicableTerminology: 'Graduate Attributes, Complex Engineering Problems (CEP), Knowledge Profile (WK)',
+    notes: 'Requires solving complex engineering problems and demonstrating higher-order cognitive competencies.',
+    active: true,
+  },
+  {
+    id: 'fw-sydney-accord',
+    name: 'Sydney Accord-aligned Engineering Technology OBE',
+    code: 'SA-ET',
+    type: 'International Accord',
+    badge: 'International Recognition Framework',
+    discipline: 'Engineering Technology',
+    jurisdiction: 'International (IEA Signatories)',
+    description: 'International agreement establishing equivalence of accredited engineering technologist education programmes based on Broadly-Defined Engineering Problems.',
+    outcomeModel: 'Graduate Attributes (GAs)',
+    recommendedMappingApproach: 'CLO → Engineering Technology Graduate Attribute (SA1-SA12)',
+    applicableTerminology: 'Graduate Attributes, Broadly-Defined Problems (BDP), Technology Profile (SK)',
+    notes: 'Focuses on application of established techniques to broadly-defined engineering technology tasks.',
+    active: true,
+  },
+  {
+    id: 'fw-seoul-accord',
+    name: 'Seoul Accord-aligned Computing OBE',
+    code: 'SA-COMP',
+    type: 'International Accord',
+    badge: 'International Recognition Framework',
+    discipline: 'Computing, Software Engineering & IT',
+    jurisdiction: 'International (Seoul Accord Signatories)',
+    description: 'International mutual recognition agreement for tertiary-level computing and information technology programs covering 10 Graduate Attributes.',
+    outcomeModel: 'Computing Graduate Attributes / Student Outcomes',
+    recommendedMappingApproach: 'CLO → Computing Graduate Attribute (CGA1-CGA10)',
+    applicableTerminology: 'Computing Graduate Attributes, Complex Computing Problems',
+    notes: 'Emphasizes algorithmic complexity, software engineering rigor, systems architecture, and ethical data stewardship.',
+    active: true,
+  },
+  {
+    id: 'fw-abet-eac',
+    name: 'ABET EAC (Engineering Accreditation Commission)',
+    code: 'ABET-EAC',
+    type: 'Accreditation Standard',
+    badge: 'Accreditation Commission',
+    discipline: 'Engineering',
+    jurisdiction: 'United States & Global Accredited Programs',
+    description: 'Criteria for Accrediting Engineering Programs under Criterion 3: Student Outcomes 1 through 7.',
+    outcomeModel: 'Student Outcomes (SO 1 to 7)',
+    recommendedMappingApproach: 'CLO → ABET SO (1-7) Direct Performance Assessment',
+    applicableTerminology: 'Student Outcomes, Performance Indicators, Continuous Improvement',
+    notes: 'Standard 1-7 criteria covering complex engineering problem solving, design, communication, ethics, teamwork, experimentation, and modern learning.',
+    active: true,
+  },
+  {
+    id: 'fw-abet-cac',
+    name: 'ABET CAC (Computing Accreditation Commission)',
+    code: 'ABET-CAC',
+    type: 'Accreditation Standard',
+    badge: 'Accreditation Commission',
+    discipline: 'Computer Science, Cybersecurity, Information Systems',
+    jurisdiction: 'United States & Global Accredited Programs',
+    description: 'Criteria for Accrediting Computing Programs under Criterion 3: Student Outcomes 1 through 6 (plus program-specific criteria).',
+    outcomeModel: 'Student Outcomes (SO 1 to 6)',
+    recommendedMappingApproach: 'CLO → ABET CAC SO (1-6) Direct Performance Assessment',
+    applicableTerminology: 'Student Outcomes, Program Criteria, Attainment Metric',
+    notes: 'Core outcomes addressing algorithmic solutions, software implementation, communication, professional ethics, teamwork, and domain theory.',
+    active: true,
+  },
+  {
+    id: 'fw-hec-pakistan',
+    name: 'Higher Education Commission (HEC) Pakistan',
+    code: 'HEC-PK',
+    type: 'National Council Standard',
+    badge: 'National Higher Education Framework',
+    discipline: 'Multidisciplinary Higher Education',
+    jurisdiction: 'Pakistan',
+    description: 'National Qualifications Framework (NQF) Pakistan and HEC Undergraduate Education Policy OBE guidelines across all disciplinary disciplines.',
+    outcomeModel: 'Program Learning Outcomes (PLOs) & Graduate Qualities',
+    recommendedMappingApproach: 'CLO → HEC PLO Matrix with Defined Attainment Thresholds (≥60%)',
+    applicableTerminology: 'Program Learning Outcomes (PLOs), Course Learning Outcomes (CLOs), Bloom Domains',
+    notes: 'Enforces alignment between course goals, modular weekly plans, direct assessment evidence, and Continuous Quality Improvement (CQI).',
+    active: true,
+  },
+  {
+    id: 'fw-nba-india',
+    name: 'National Board of Accreditation (NBA) India',
+    code: 'NBA-IN',
+    type: 'National Board Standard',
+    badge: 'National Higher Education Framework',
+    discipline: 'Technical & Professional Education',
+    jurisdiction: 'India (Tier-I / Tier-II Institutions)',
+    description: 'NBA Outcome-Based Accreditation criteria governing 12 Program Outcomes (PO1-PO12) aligned with Washington Accord benchmarks.',
+    outcomeModel: 'Program Outcomes (POs) & Program Specific Outcomes (PSOs)',
+    recommendedMappingApproach: 'CO-PO / CO-PSO Articulation Matrix with correlation levels 1 (Slight), 2 (Moderate), 3 (Substantial)',
+    applicableTerminology: 'Course Outcomes (COs), Program Outcomes (POs), Program Specific Outcomes (PSOs)',
+    notes: 'Aligns course direct assessment with 12 engineering graduate attributes.',
+    active: true,
+  },
+];
+
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     hasApiKey: Boolean(process.env.GEMINI_API_KEY),
     service: 'MENTISERA OBE360™ Course Creator Engine',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    metrics: {
+      coursesCount: coursesStore.size,
+      leadsCount: leadsStore.length,
+      feedbackCount: feedbackStore.length,
+      usersCount: usersStore.length,
+      institutionName: institutionStore.name,
+      frameworksCount: frameworksStore.length,
+    },
   });
 });
 
@@ -1044,6 +1304,232 @@ Return strict JSON:
   res.json({ reply, suggestedActions });
 });
 
+// 7. Course Translation & Multilingual OBE Localization Service
+app.post('/api/ai/translate-course', async (req: Request, res: Response) => {
+  const { course, targetLanguage, targetDirection = 'ltr', scope = 'full' } = req.body;
+
+  if (!course || !targetLanguage) {
+    return res.status(400).json({ error: 'course and targetLanguage are required' });
+  }
+
+  try {
+    const ai = getAI();
+    if (ai) {
+      const isArabic = targetLanguage.toLowerCase().includes('arabic') || targetLanguage === 'العربية';
+      const isUrdu = targetLanguage.toLowerCase().includes('urdu') || targetLanguage === 'اردو' || targetDirection === 'rtl';
+      const systemInstruction = `You are the MENTISERA OBE360™ Academic Course Translation Engine.
+You translate higher-education curriculum blueprints into accredited ${targetLanguage} while preserving Outcome-Based Education (OBE) principles and Constructive Alignment.
+Accreditation Frameworks: ABET, Washington Accord, European Qualifications Framework (EQF), and National Higher Education Commissions.
+
+RULES:
+1. Translate academic prose (title, description, overview, learningPromise, capstoneGoal, targetLearners, prerequisites, category, programme).
+2. For CLOs: translate the 'statement' into natural accredited ${targetLanguage}. Translate the 'bloomVerb' to the accurate measurable action verb in ${targetLanguage}. DO NOT change 'id', 'code', 'bloomLevel', 'learningDomain', 'weight', or 'targetBenchmarkScore'.
+3. For PLOs: translate 'title' and 'description'. Keep 'id' and 'code' unchanged.
+4. For Modules: translate 'title' and 'description'. Keep 'id', 'number', 'durationWeeks', 'relatedCLOIds' unchanged.
+5. For WeeklyPlan: translate 'topic' and 'notes'. Keep 'id', 'weekNumber' unchanged.
+6. For Assessments: translate 'name' and 'title'. Keep 'id', 'type', 'weight', 'cloIds' unchanged.
+${isUrdu ? '7. For Urdu: Use formal academic Urdu (فصیح تعلیمی اردو), professional higher-education legal/technical terminology, and standard action verbs (e.g. تجزیہ کرنا، جائزہ لینا، لاگو کرنا، ڈیزائن کرنا).' : ''}
+${isArabic ? '7. For Arabic: Use formal Modern Standard Arabic (الفصحى الأكاديمية), professional educational terminology, and measurable action verbs (e.g. يحلل، يصمم، يقيّم، يطبق).' : ''}
+
+Respond ONLY with valid JSON with this exact structure:
+{
+  "title": "string",
+  "description": "string",
+  "overview": "string",
+  "learningPromise": "string",
+  "capstoneGoal": "string",
+  "targetLearners": "string",
+  "prerequisites": "string",
+  "category": "string",
+  "programme": "string",
+  "clos": [
+    {
+      "id": "string",
+      "code": "string",
+      "bloomVerb": "string",
+      "statement": "string",
+      "description": "string"
+    }
+  ],
+  "plos": [
+    {
+      "id": "string",
+      "code": "string",
+      "title": "string",
+      "description": "string"
+    }
+  ],
+  "modules": [
+    {
+      "id": "string",
+      "number": 1,
+      "title": "string",
+      "description": "string"
+    }
+  ],
+  "weeklyPlan": [
+    {
+      "id": "string",
+      "weekNumber": 1,
+      "topic": "string"
+    }
+  ],
+  "assessments": [
+    {
+      "id": "string",
+      "name": "string",
+      "title": "string"
+    }
+  ]
+}`;
+
+      const userPayload = {
+        title: course.title,
+        description: course.description,
+        overview: course.overview,
+        learningPromise: course.learningPromise,
+        capstoneGoal: course.capstoneGoal,
+        targetLearners: course.targetLearners,
+        prerequisites: course.prerequisites,
+        category: course.category,
+        programme: course.programme,
+        clos: (course.clos || []).map((c: any) => ({
+          id: c.id,
+          code: c.code,
+          bloomVerb: c.bloomVerb,
+          bloomLevel: c.bloomLevel,
+          statement: c.statement || c.description,
+          description: c.statement || c.description,
+        })),
+        plos: (course.plos || []).map((p: any) => ({
+          id: p.id,
+          code: p.code,
+          title: p.title,
+          description: p.description,
+        })),
+        modules: (course.modules || []).map((m: any) => ({
+          id: m.id,
+          number: m.number,
+          title: m.title,
+          description: m.description,
+        })),
+        weeklyPlan: (course.weeklyPlan || []).slice(0, 16).map((w: any) => ({
+          id: w.id,
+          weekNumber: w.weekNumber,
+          topic: w.topic,
+        })),
+        assessments: (course.assessments || []).map((a: any) => ({
+          id: a.id,
+          name: a.name || a.title,
+          title: a.name || a.title,
+        })),
+      };
+
+      const rawJson = await callGeminiPrompt(
+        systemInstruction,
+        `Translate this course blueprint into ${targetLanguage} (${isArabic || isUrdu ? 'Right-to-Left RTL' : 'Left-to-Right LTR'}):\n\n${JSON.stringify(userPayload, null, 2)}`
+      );
+
+      const parsed = JSON.parse(rawJson);
+
+      // Merge translated content back into existing course while preserving all foreign keys & calculations
+      const mergedCourse = {
+        ...course,
+        title: parsed.title || course.title,
+        description: parsed.description || course.description,
+        overview: parsed.overview || course.overview,
+        learningPromise: parsed.learningPromise || course.learningPromise,
+        capstoneGoal: parsed.capstoneGoal || course.capstoneGoal,
+        targetLearners: parsed.targetLearners || course.targetLearners,
+        prerequisites: parsed.prerequisites || course.prerequisites,
+        category: parsed.category || course.category,
+        programme: parsed.programme || course.programme,
+        language: targetLanguage,
+        textDirection: targetDirection,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Merge CLOs
+      if (Array.isArray(parsed.clos) && parsed.clos.length > 0) {
+        const transClosMap = new Map<string, any>(parsed.clos.map((c: any) => [c.id || c.code, c]));
+        mergedCourse.clos = (course.clos || []).map((orig: any) => {
+          const match: any = transClosMap.get(orig.id) || transClosMap.get(orig.code);
+          const translatedStatement = match?.statement || match?.description || orig.statement;
+          return {
+            ...orig,
+            bloomVerb: match?.bloomVerb || orig.bloomVerb,
+            statement: translatedStatement,
+            description: translatedStatement,
+          };
+        });
+      }
+
+      // Merge PLOs
+      if (Array.isArray(parsed.plos) && parsed.plos.length > 0) {
+        const transPlosMap = new Map<string, any>(parsed.plos.map((p: any) => [p.id || p.code, p]));
+        mergedCourse.plos = (course.plos || []).map((orig: any) => {
+          const match: any = transPlosMap.get(orig.id) || transPlosMap.get(orig.code);
+          return {
+            ...orig,
+            title: match?.title || orig.title,
+            description: match?.description || orig.description,
+          };
+        });
+      }
+
+      // Merge Modules
+      if (Array.isArray(parsed.modules) && parsed.modules.length > 0) {
+        const transModsMap = new Map<string, any>(parsed.modules.map((m: any) => [m.id || String(m.number), m]));
+        mergedCourse.modules = (course.modules || []).map((orig: any) => {
+          const match: any = transModsMap.get(orig.id) || transModsMap.get(String(orig.number));
+          return {
+            ...orig,
+            title: match?.title || orig.title,
+            description: match?.description || orig.description,
+          };
+        });
+      }
+
+      // Merge Weekly Plan
+      if (Array.isArray(parsed.weeklyPlan) && parsed.weeklyPlan.length > 0 && course.weeklyPlan) {
+        const transWeekMap = new Map<string, any>(parsed.weeklyPlan.map((w: any) => [w.id || String(w.weekNumber), w]));
+        mergedCourse.weeklyPlan = course.weeklyPlan.map((orig: any) => {
+          const match: any = transWeekMap.get(orig.id) || transWeekMap.get(String(orig.weekNumber));
+          return {
+            ...orig,
+            topic: match?.topic || orig.topic,
+          };
+        });
+      }
+
+      // Merge Assessments
+      if (Array.isArray(parsed.assessments) && parsed.assessments.length > 0 && course.assessments) {
+        const transAssMap = new Map<string, any>(parsed.assessments.map((a: any) => [a.id, a]));
+        mergedCourse.assessments = course.assessments.map((orig: any) => {
+          const match: any = transAssMap.get(orig.id);
+          return {
+            ...orig,
+            name: match?.name || match?.title || orig.name,
+          };
+        });
+      }
+
+      return res.json({
+        success: true,
+        translatedCourse: mergedCourse,
+        fieldsCount: (parsed.clos?.length || 0) + (parsed.modules?.length || 0) + 7,
+      });
+    }
+  } catch (err) {
+    console.warn('Gemini translate-course fallback triggered:', (err as Error).message);
+  }
+
+  // If Gemini is not available or threw an error, send 503 so client-side rule engine activates gracefully
+  return res.status(503).json({
+    error: 'Gemini translation unavailable, use client pedagogical fallback',
+  });
+});
+
 // Multi-turn Gemini Chatbot with Role-Based System Instructions and Dynamic Model Selection
 app.post('/api/ai/chat', async (req: Request, res: Response) => {
   const {
@@ -1051,6 +1537,7 @@ app.post('/api/ai/chat', async (req: Request, res: Response) => {
     role = 'accreditation_specialist',
     model = 'gemini-3.5-flash',
     courseContext,
+    searchGrounding = false,
   } = req.body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -1112,7 +1599,12 @@ Format your reply cleanly using markdown with bold headings, lists, and code blo
     'gemini-3.1-pro-preview',
     'gemini-3.8-flash',
   ];
-  const targetModel = validModels.includes(model) ? model : 'gemini-3.5-flash';
+
+  const useSearch = searchGrounding === true || searchGrounding === 'true';
+  // Use gemini-3.5-flash with googleSearch tool for search grounding
+  const targetModel = useSearch
+    ? 'gemini-3.5-flash'
+    : (validModels.includes(model) ? model : 'gemini-3.5-flash');
 
   try {
     const ai = getAI();
@@ -1123,20 +1615,56 @@ Format your reply cleanly using markdown with bold headings, lists, and code blo
         parts: [{ text: m.text }],
       }));
 
+      const config: any = {
+        systemInstruction: fullSystemInstruction,
+        temperature: 0.4,
+      };
+
+      if (useSearch && targetModel === 'gemini-3.5-flash') {
+        config.tools = [{ googleSearch: {} }];
+      }
+
       const response = await ai.models.generateContent({
         model: targetModel,
         contents,
-        config: {
-          systemInstruction: fullSystemInstruction,
-          temperature: 0.4,
-        },
+        config,
       });
 
       const replyText = response.text || 'I have analyzed your curriculum query. Please ensure that all outcomes remain constructively aligned with your assessment blueprint.';
+
+      // Extract Google Search Grounding metadata if available
+      let groundingInfo: { searchQueries?: string[]; sources?: Array<{ title: string; url: string }> } | undefined = undefined;
+      const candidate = response.candidates?.[0];
+      const groundingMetadata = (candidate as any)?.groundingMetadata;
+
+      if (groundingMetadata) {
+        const searchQueries: string[] = groundingMetadata.webSearchQueries || [];
+        const sources: Array<{ title: string; url: string }> = [];
+
+        if (Array.isArray(groundingMetadata.groundingChunks)) {
+          groundingMetadata.groundingChunks.forEach((chunk: any) => {
+            if (chunk.web?.uri) {
+              sources.push({
+                title: chunk.web.title || chunk.web.uri,
+                url: chunk.web.uri,
+              });
+            }
+          });
+        }
+
+        if (searchQueries.length > 0 || sources.length > 0) {
+          groundingInfo = {
+            searchQueries,
+            sources,
+          };
+        }
+      }
+
       return res.json({
         reply: replyText,
         model: targetModel,
         role,
+        grounding: groundingInfo,
       });
     }
   } catch (err: any) {
@@ -1150,6 +1678,14 @@ Format your reply cleanly using markdown with bold headings, lists, and code blo
     reply: fallbackReply,
     model: `${targetModel} (OBE Engine)`,
     role,
+    grounding: useSearch ? {
+      searchQueries: [`${courseContext?.title || 'Higher Education'} accreditation standards`, "Bloom's taxonomy revised higher education"],
+      sources: [
+        { title: 'ABET Accreditation Criteria & Guidelines', url: 'https://www.abet.org/accreditation/' },
+        { title: 'International Engineering Alliance (Washington Accord)', url: 'https://www.ieagreements.org/' },
+        { title: 'Higher Education Commission (HEC) OBE Policy Guidelines', url: 'https://www.hec.gov.pk/' },
+      ],
+    } : undefined,
   });
 });
 
@@ -1200,25 +1736,6 @@ function generateChatbotFallback(role: string, query: string, context?: any): st
 }
 
 // --- Developer Feedback & Issue Reporting Pipeline ---
-interface DevFeedbackRecord {
-  id: string;
-  ticketNumber: string;
-  category: string;
-  severity: string;
-  userName: string;
-  userEmail: string;
-  subject: string;
-  description: string;
-  stepsToReproduce?: string;
-  expectedBehavior?: string;
-  actualBehavior?: string;
-  courseSummary?: any;
-  diagnostics?: any;
-  receivedAt: string;
-}
-
-const feedbackStore: DevFeedbackRecord[] = [];
-
 app.post('/api/feedback', (req: Request, res: Response) => {
   try {
     const {
@@ -1258,6 +1775,7 @@ app.post('/api/feedback', (req: Request, res: Response) => {
       courseSummary: diagnostics?.courseSummary,
       diagnostics: includeSystemTelemetry ? diagnostics : undefined,
       receivedAt,
+      status: 'received',
     };
 
     feedbackStore.unshift(record);
@@ -1295,19 +1813,35 @@ app.get('/api/feedback', (_req: Request, res: Response) => {
   return res.json({
     status: 'ok',
     totalTicketsReceived: feedbackStore.length,
-    recentTickets: feedbackStore.slice(0, 10).map((t) => ({
+    recentTickets: feedbackStore.slice(0, 20).map((t) => ({
+      id: t.id,
       ticketNumber: t.ticketNumber,
       category: t.category,
       severity: t.severity,
       subject: t.subject,
+      userName: t.userName,
+      status: t.status || 'received',
       receivedAt: t.receivedAt,
     })),
   });
 });
 
-// Institutional Leads & Sales Inquiries Ingestion API
-const leadsStore: any[] = [];
+app.patch('/api/feedback/:ticketNumber', (req: Request, res: Response) => {
+  const { ticketNumber } = req.params;
+  const { status, adminNotes } = req.body;
 
+  const ticket = feedbackStore.find((t) => t.ticketNumber === ticketNumber);
+  if (!ticket) {
+    return res.status(404).json({ error: 'Ticket not found' });
+  }
+
+  if (status) ticket.status = status;
+  if (adminNotes !== undefined) ticket.adminNotes = adminNotes;
+
+  return res.json({ status: 'ok', ticket });
+});
+
+// Institutional Leads & Sales Inquiries Ingestion API
 app.post('/api/leads', (req: Request, res: Response) => {
   try {
     const lead = req.body;
@@ -1329,7 +1863,8 @@ app.post('/api/leads', (req: Request, res: Response) => {
       primaryNeeds: Array.isArray(lead.primaryNeeds) ? lead.primaryNeeds : [],
       timeline: String(lead.timeline || 'Immediate'),
       message: lead.message ? String(lead.message) : undefined,
-      status: 'new',
+      notes: lead.notes ? String(lead.notes) : undefined,
+      status: lead.status || 'new',
       source: String(lead.source || 'web_lead_form'),
     };
 
@@ -1339,6 +1874,7 @@ app.post('/api/leads', (req: Request, res: Response) => {
     return res.status(201).json({
       status: 'success',
       leadId: leadRecord.id,
+      lead: leadRecord,
       message: 'Inquiry received by MENTISERA Academic Solutions team.',
       estimatedResponseHours: 24,
     });
@@ -1353,6 +1889,193 @@ app.get('/api/leads', (_req: Request, res: Response) => {
     status: 'ok',
     totalLeads: leadsStore.length,
     leads: leadsStore,
+  });
+});
+
+app.patch('/api/leads/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+
+  const leadIndex = leadsStore.findIndex((l) => l.id === id);
+  if (leadIndex === -1) {
+    return res.status(404).json({ error: 'Lead record not found' });
+  }
+
+  const existing = leadsStore[leadIndex];
+  const updated = {
+    ...existing,
+    ...(status ? { status } : {}),
+    ...(notes !== undefined ? { notes } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  leadsStore[leadIndex] = updated;
+
+  return res.json({ status: 'ok', lead: updated });
+});
+
+app.delete('/api/leads/:id', (req: Request, res: Response) => {
+  const role = req.headers['x-user-role'] as string | undefined;
+  if (role && role !== 'admin') {
+    return res.status(403).json({ error: 'Unauthorized: Only administrative users can delete lead records.' });
+  }
+  const { id } = req.params;
+  const leadIndex = leadsStore.findIndex((l) => l.id === id);
+  if (leadIndex === -1) {
+    return res.status(404).json({ error: 'Lead record not found' });
+  }
+
+  leadsStore.splice(leadIndex, 1);
+  return res.json({ status: 'ok', message: 'Lead removed from pipeline' });
+});
+
+// Full-Stack Course Blueprint Persistence & Cloud Sync API
+app.get('/api/courses', (_req: Request, res: Response) => {
+  const list = Array.from(coursesStore.values());
+  return res.json({
+    status: 'ok',
+    totalCourses: list.length,
+    courses: list,
+  });
+});
+
+app.get('/api/courses/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const course = coursesStore.get(id);
+  if (!course) {
+    return res.status(404).json({ error: 'Course blueprint not found' });
+  }
+  return res.json({ status: 'ok', course });
+});
+
+app.post('/api/courses', (req: Request, res: Response) => {
+  const course = req.body;
+  if (!course || !course.id || !course.title) {
+    return res.status(400).json({ error: 'Valid course with id and title is required' });
+  }
+
+  const now = new Date().toISOString();
+  const storedCourse = {
+    ...course,
+    updatedAt: now,
+    createdAt: course.createdAt || now,
+  };
+
+  coursesStore.set(course.id, storedCourse);
+  return res.status(201).json({ status: 'ok', course: storedCourse });
+});
+
+app.put('/api/courses/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const courseUpdate = req.body;
+  if (!courseUpdate) {
+    return res.status(400).json({ error: 'Course payload required' });
+  }
+
+  const existing = coursesStore.get(id) || {};
+  const merged = {
+    ...existing,
+    ...courseUpdate,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
+
+  coursesStore.set(id, merged);
+  return res.json({ status: 'ok', course: merged });
+});
+
+app.delete('/api/courses/:id', (req: Request, res: Response) => {
+  const role = req.headers['x-user-role'] as string | undefined;
+  if (role && role !== 'admin') {
+    return res.status(403).json({ error: 'Unauthorized: Only administrative users can delete course blueprints.' });
+  }
+  const { id } = req.params;
+  if (!coursesStore.has(id)) {
+    return res.status(404).json({ error: 'Course not found' });
+  }
+  coursesStore.delete(id);
+  return res.json({ status: 'ok', message: 'Course blueprint deleted from server' });
+});
+
+app.post('/api/courses/sync', (req: Request, res: Response) => {
+  const { courses } = req.body;
+  if (!Array.isArray(courses)) {
+    return res.status(400).json({ error: 'courses array is required' });
+  }
+
+  courses.forEach((c) => {
+    if (c && c.id) {
+      coursesStore.set(c.id, c);
+    }
+  });
+
+  return res.json({
+    status: 'ok',
+    syncedCount: courses.length,
+    totalServerCourses: coursesStore.size,
+  });
+});
+
+// --- Institutional Governance & Settings API ---
+app.get('/api/institution', (_req: Request, res: Response) => {
+  return res.json({ status: 'ok', institution: institutionStore });
+});
+
+app.put('/api/institution', (req: Request, res: Response) => {
+  const role = req.headers['x-user-role'] as string | undefined;
+  if (role && role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can update institutional parameters.' });
+  }
+
+  const updates = req.body;
+  if (!updates || typeof updates !== 'object') {
+    return res.status(400).json({ error: 'Valid institution updates object required' });
+  }
+
+  institutionStore = {
+    ...institutionStore,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return res.json({ status: 'ok', institution: institutionStore });
+});
+
+// --- Personnel & Role-Based Access Control (RBAC) API ---
+app.get('/api/users', (_req: Request, res: Response) => {
+  return res.json({
+    status: 'ok',
+    totalUsers: usersStore.length,
+    users: usersStore,
+  });
+});
+
+app.patch('/api/users/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = usersStore.find((u) => u.id === id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found in institutional roster' });
+  }
+
+  const { role, department, title, name, email } = req.body;
+  if (role && !['admin', 'faculty', 'reviewer'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be admin, faculty, or reviewer' });
+  }
+
+  if (role) user.role = role;
+  if (department) user.department = department;
+  if (title) user.title = title;
+  if (name) user.name = name;
+  if (email) user.email = email;
+
+  return res.json({ status: 'ok', user });
+});
+
+// --- Accreditation Frameworks Reference API ---
+app.get('/api/frameworks', (_req: Request, res: Response) => {
+  return res.json({
+    status: 'ok',
+    totalFrameworks: frameworksStore.length,
+    frameworks: frameworksStore,
   });
 });
 

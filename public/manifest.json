@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "MENTISERA OBE360™ Outcome-Based Course Creator",
+  "short_name": "OBE360",
+  "description": "Outcome-Based Course Creator enabling educators to design complete, measurable, outcome-aligned courses with offline storage and Firebase cloud synchronization.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

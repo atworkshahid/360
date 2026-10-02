@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, HelpCircle, ArrowRight, BookOpen, Layers } from 'lucide-react';
-import { Course, DeliveryMode, CourseLevel } from '../../../types';
+import { Course, DeliveryMode, CourseLevel, SUPPORTED_LANGUAGES, CourseLanguage } from '../../../types';
 
 interface StepProps {
   course: Course;
@@ -190,6 +190,60 @@ export const Step01CourseSetup: React.FC<StepProps> = ({ course, onChange, onNex
               <option value="Training">Training</option>
               <option value="Certification">Certification</option>
             </select>
+          </div>
+        </div>
+
+        {/* Course Language & Direction */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Instructional Language</label>
+            <select
+              value={course.language || 'English'}
+              onChange={(e) => {
+                const langName = e.target.value as CourseLanguage;
+                const langOpt = SUPPORTED_LANGUAGES.find((l) => l.name === langName);
+                onChange({
+                  ...course,
+                  language: langName,
+                  textDirection: langOpt?.dir || 'ltr',
+                });
+              }}
+              className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.name}>
+                  {lang.flag} {lang.nativeName} ({lang.name}) — {lang.dir.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Text Flow Direction</label>
+            <div className="flex items-center space-x-2 mt-1">
+              <button
+                type="button"
+                onClick={() => onChange({ ...course, textDirection: 'ltr' })}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  (course.textDirection || 'ltr') === 'ltr'
+                    ? 'bg-blue-50 border-blue-300 text-blue-700 font-bold'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                LTR (Left-to-Right)
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...course, textDirection: 'rtl' })}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  course.textDirection === 'rtl'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                RTL (Arabic)
+              </button>
+            </div>
           </div>
         </div>
 

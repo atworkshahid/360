@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   UploadCloud,
   Eye,
+  Building2,
 } from 'lucide-react';
 import { Course, CourseAuditReport } from '../types';
 import { calculateCourseAudit } from '../utils/obeCalculator';
@@ -27,6 +28,9 @@ import { downloadCourseDocx } from '../utils/docxExport';
 import { GoogleDriveSyncModal } from './GoogleDriveSyncModal';
 import { PDFPreviewModal } from './PDFPreviewModal';
 import { triggerWithLeadGate } from '../services/leadService';
+import { LogoMark } from './Logo';
+import { InstitutionalLogoUploader } from './InstitutionalLogoUploader';
+import { DossierThemeSelector } from './DossierThemeSelector';
 
 interface CoursePDFExportModalProps {
   course: Course;
@@ -46,18 +50,31 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
   const [driveSyncModalOpen, setDriveSyncModalOpen] = useState(false);
   const [driveSyncModalMode, setDriveSyncModalMode] = useState<'sync' | 'share'>('sync');
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [showLogoUploader, setShowLogoUploader] = useState(false);
 
   // Section inclusion options
   const [options, setOptions] = useState<PDFExportOptions>({
+    includeCoverPage: true,
+    includeTableOfContents: true,
+    includeExecutiveSummary: true,
     includeCourseInfo: true,
     includeCLOs: true,
     includePLOMapping: true,
     includeModules: true,
+    includeWeeklyPlan: true,
     includeAssessments: true,
     includeRubrics: true,
     includeEvidenceRules: true,
     includeAuditReport: true,
     includeCQIPlan: true,
+    includeSignOffSheet: true,
+    colorTheme: course.dossierColorTheme || 'navy',
+    primaryColor: course.dossierPrimaryColor,
+    accentColor: course.dossierAccentColor,
+    confidentialityLevel: 'Official Institutional Dossier',
+    watermarkText: '',
+    institutionLogo: course.institutionLogo || '',
+    institutionName: course.institutionName || 'Apex Institute of Science & Technology',
   });
 
   if (!isOpen) return null;
@@ -78,8 +95,8 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
         }
       },
       {
-        featureTitle: `${course.code} PDF Accreditation Dossier`,
-        featureDescription: `Verify your academic affiliation to download the formatted PDF specification for ${course.title}.`,
+        featureTitle: 'Accreditation Dossier Export',
+        featureDescription: `Verify your academic affiliation to download the formatted PDF accreditation dossier specification for ${course.title} (${course.code}).`,
         source: 'pdf_export_modal',
         framework: course.accreditationFramework,
       }
@@ -156,10 +173,8 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
       <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
-              <FileText className="w-5 h-5" />
-            </div>
+          <div className="flex items-center space-x-3.5">
+            <LogoMark size={38} variant="light" />
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-base font-bold font-serif text-white">
@@ -281,6 +296,98 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
               </div>
             </div>
 
+            {/* Theme & Branding Palette */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Dossier Styling & Theme
+              </span>
+
+              <div className="space-y-2">
+                <DossierThemeSelector
+                  selectedThemeId={options.colorTheme || 'navy'}
+                  customPrimaryColor={options.primaryColor}
+                  customAccentColor={options.accentColor}
+                  institutionName={options.institutionName}
+                  institutionLogo={options.institutionLogo}
+                  showPreviewCard={false}
+                  onThemeSelect={(themeId) => setOptions((prev) => ({ ...prev, colorTheme: themeId as any }))}
+                  onCustomColorChange={(primary, accent) =>
+                    setOptions((prev) => ({
+                      ...prev,
+                      primaryColor: primary || undefined,
+                      accentColor: accent || undefined,
+                    }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Custom Watermark (Optional):</label>
+                <input
+                  type="text"
+                  placeholder="e.g. DRAFT, CONFIDENTIAL"
+                  value={options.watermarkText || ''}
+                  onChange={(e) => setOptions((prev) => ({ ...prev, watermarkText: e.target.value }))}
+                  className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Institutional Logo Section */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Institutional Logo</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoUploader(!showLogoUploader)}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                  >
+                    {showLogoUploader
+                      ? 'Hide Uploader'
+                      : (options.institutionLogo ? 'Change / Replace' : '+ Upload Logo')}
+                  </button>
+                </div>
+
+                {showLogoUploader ? (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <InstitutionalLogoUploader
+                      currentLogoUrl={options.institutionLogo}
+                      institutionName={options.institutionName}
+                      onLogoChange={(dataUrl) => setOptions((prev) => ({ ...prev, institutionLogo: dataUrl }))}
+                      onClearLogo={() => setOptions((prev) => ({ ...prev, institutionLogo: '' }))}
+                      showPresets={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200">
+                    {options.institutionLogo ? (
+                      <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-0.5 flex items-center justify-center shrink-0 shadow-2xs">
+                        <img
+                          src={options.institutionLogo}
+                          alt="Institutional Seal"
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
+                        <Building2 className="w-4 h-4 text-slate-300" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-bold text-slate-800 truncate">
+                        {options.institutionLogo ? 'Logo Attached for Cover & Headers' : 'No Logo Uploaded'}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        {options.institutionName || 'Default Institutional Crest'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Section Toggles */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
@@ -290,23 +397,44 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                 <button
                   type="button"
                   onClick={() => {
-                    const allSelected = Object.values(options).every(Boolean);
+                    const allSelected = [
+                      options.includeCoverPage,
+                      options.includeTableOfContents,
+                      options.includeExecutiveSummary,
+                      options.includeCourseInfo,
+                      options.includeCLOs,
+                      options.includePLOMapping,
+                      options.includeModules,
+                      options.includeWeeklyPlan,
+                      options.includeAssessments,
+                      options.includeRubrics,
+                      options.includeEvidenceRules,
+                      options.includeAuditReport,
+                      options.includeCQIPlan,
+                      options.includeSignOffSheet,
+                    ].every(Boolean);
                     const newSetting = !allSelected;
-                    setOptions({
+                    setOptions((prev) => ({
+                      ...prev,
+                      includeCoverPage: newSetting,
+                      includeTableOfContents: newSetting,
+                      includeExecutiveSummary: newSetting,
                       includeCourseInfo: newSetting,
                       includeCLOs: newSetting,
                       includePLOMapping: newSetting,
                       includeModules: newSetting,
+                      includeWeeklyPlan: newSetting,
                       includeAssessments: newSetting,
                       includeRubrics: newSetting,
                       includeEvidenceRules: newSetting,
                       includeAuditReport: newSetting,
                       includeCQIPlan: newSetting,
-                    });
+                      includeSignOffSheet: newSetting,
+                    }));
                   }}
                   className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
                 >
-                  {Object.values(options).every(Boolean) ? 'Deselect All' : 'Select All'}
+                  Toggle All
                 </button>
               </div>
 
@@ -314,11 +442,41 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
+                    checked={options.includeCoverPage}
+                    onChange={() => toggleOption('includeCoverPage')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">Cover Page & Institutional Branding</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={options.includeTableOfContents}
+                    onChange={() => toggleOption('includeTableOfContents')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">Table of Contents & Directory</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={options.includeExecutiveSummary}
+                    onChange={() => toggleOption('includeExecutiveSummary')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">1. Executive Summary & Health Audit</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
                     checked={options.includeCourseInfo}
                     onChange={() => toggleOption('includeCourseInfo')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">1. Course Specification & Blueprint</span>
+                  <span className="text-slate-700 font-medium">2. Course Specification & Blueprint</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -328,7 +486,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeCLOs')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">2. CLOs & Bloom Taxonomy</span>
+                  <span className="text-slate-700 font-medium">3. CLOs & Bloom Taxonomy ({course.clos?.length || 0})</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -338,7 +496,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includePLOMapping')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">3. Outcome Alignment Matrix (CLO ➔ PLO)</span>
+                  <span className="text-slate-700 font-medium">4. Outcome Articulation Matrix (CLO ➔ PLO)</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -348,7 +506,17 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeModules')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">4. Modules, MLOs & Instructional Units</span>
+                  <span className="text-slate-700 font-medium">5. Modules & Instructional Units ({course.modules?.length || 0})</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={options.includeWeeklyPlan}
+                    onChange={() => toggleOption('includeWeeklyPlan')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">6. Weekly Instructional Plan & TLAs</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -358,7 +526,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeAssessments')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">5. Assessment Blueprint & Weightages (100%)</span>
+                  <span className="text-slate-700 font-medium">7. Assessment Blueprint & Weightages (100%)</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -368,7 +536,17 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeEvidenceRules')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">6. Direct Evidence & Benchmark Rules</span>
+                  <span className="text-slate-700 font-medium">8. Direct Evidence & Benchmark Rules</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={options.includeRubrics}
+                    onChange={() => toggleOption('includeRubrics')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">9. Analytic Rubrics & Performance Criteria</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -378,7 +556,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeAuditReport')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">7. Constructive Alignment Audit Report</span>
+                  <span className="text-slate-700 font-medium">10. Constructive Alignment Audit Report</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -388,7 +566,17 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeCQIPlan')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">8. Academic Sign-off & CQI Action Plan</span>
+                  <span className="text-slate-700 font-medium">11. CQI Action Plan & Closing the Loop</span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={options.includeSignOffSheet}
+                    onChange={() => toggleOption('includeSignOffSheet')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">12. Compliance Certificate & Sign-Off Sheet</span>
                 </label>
               </div>
             </div>
@@ -418,9 +606,12 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
               {/* Institutional Header & Stamp */}
               <div className="pb-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                    MENTISERA OBE360™ • ACCREDITATION QUALITY DOSSIER
-                  </span>
+                  <div className="flex items-center space-x-2.5 mb-1.5">
+                    <LogoMark size={26} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      MENTISERA OBE360™ • ACCREDITATION QUALITY DOSSIER
+                    </span>
+                  </div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif mt-1">
                     {course.title || 'Untitled Outcome-Based Course'}
                   </h1>
@@ -618,7 +809,10 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
 
               {/* Document Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-400">
-                <span>MENTISERA OBE360™ Accreditation Suite</span>
+                <div className="flex items-center space-x-1.5 font-medium text-slate-600">
+                  <LogoMark size={14} />
+                  <span>MENTISERA OBE360™ Accreditation Suite</span>
+                </div>
                 <span>Confidential Academic Dossier • Validated Specification</span>
               </div>
             </div>

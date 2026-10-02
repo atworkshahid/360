@@ -11,8 +11,19 @@ import {
   Award,
   Layers,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react';
 import { Course, Assessment, AssessmentType, BloomLevel } from '../../../types';
+import { OutcomeAssessmentDependencyAlert } from '../OutcomeAssessmentDependencyAlert';
+import { DependencyConflictModal } from '../DependencyConflictModal';
+import { getFrameworkGuideline } from '../../../data/frameworkGuidelines';
+import {
+  CourseService,
+  FrameworkDeviationWarning,
+  FrameworkContentValidationReport,
+} from '../../../services/courseService';
+import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
+import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
 
 interface StepProps {
   course: Course;
@@ -20,6 +31,14 @@ interface StepProps {
   onNext: () => void;
   onPrev: () => void;
   onAskCopilot?: (prompt: string) => void;
+  onOpenComments?: (
+    targetId: string,
+    targetType: 'CLO' | 'Assessment' | 'Rubric' | 'Module' | 'General',
+    targetTitle: string
+  ) => void;
+  onOpenFrameworkGuidance?: (stageKey?: string) => void;
+  frameworkValidationReport?: FrameworkContentValidationReport;
+  onApplyFrameworkFix?: (warning: FrameworkDeviationWarning) => void;
 }
 
 const ASSESSMENT_TYPES: AssessmentType[] = [
@@ -48,9 +67,19 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
   onNext,
   onPrev,
   onAskCopilot,
+  onOpenComments,
+  onOpenFrameworkGuidance,
+  frameworkValidationReport,
+  onApplyFrameworkFix,
 }) => {
   const clos = course.clos || [];
   const assessments: Assessment[] = course.assessments || [];
+  const [isDepModalOpen, setIsDepModalOpen] = useState<boolean>(false);
+  const guideline = getFrameworkGuideline(course.frameworkId);
+
+  const validationReport = React.useMemo(() => {
+    return frameworkValidationReport || CourseService.validateCourseContentAgainstFramework(course);
+  }, [course, frameworkValidationReport]);
 
   const totalWeight = assessments.reduce((acc, a) => acc + (a.weightage || 0), 0);
   const isWeightValid = Math.abs(totalWeight - 100) < 0.05;
@@ -113,15 +142,54 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleAddAssessment}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Assessment Instrument</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="step08-framework-guidelines-btn"
+            onClick={() => {
+              if (onOpenFrameworkGuidance) {
+                onOpenFrameworkGuidance('step_assessments');
+              } else {
+                window.dispatchEvent(
+                  new CustomEvent('open_framework_guidance', { detail: { stageKey: 'step_assessments' } })
+                );
+              }
+            }}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+            title={`View ${guideline.frameworkCode} Assessment Weighting & Rubric Criteria`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+            <span>{guideline.frameworkCode} Assessment Rules</span>
+          </button>
+
+          <button
+            type="button"
+            id="step08-open-dep-auditor-btn"
+            onClick={() => setIsDepModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white border border-rose-300 hover:bg-rose-50 text-rose-800 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+            title="Inspect circular or conflicting dependencies between outcomes and assessments"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+            <span>Dependency Auditor</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleAddAssessment}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Assessment Instrument</span>
+          </button>
+        </div>
       </div>
+
+      {/* Framework Level Assessment & Direct Measurement Warnings */}
+      <FrameworkFieldWarning
+        field="assessments"
+        report={validationReport}
+        onApplyFix={onApplyFrameworkFix}
+      />
 
       {/* Live Weightage Indicator Bar */}
       <div
@@ -173,6 +241,13 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Visual Dependency & Conflict Warning Banner */}
+      <OutcomeAssessmentDependencyAlert
+        course={course}
+        onChange={onChange}
+        mode="banner"
+      />
 
       {/* Unassessed Outcome Warning */}
       {unassessedCLOs.length > 0 && (
@@ -396,6 +471,18 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
         </div>
       </div>
 
+      {/* Assessment Plan Collaborative Comments Thread */}
+      <div className="pt-2">
+        <InlineSectionFeedback
+          course={course}
+          onChangeCourse={onChange}
+          sectionKey="step-9-assessments"
+          sectionTitle="Step 9: Summative Assessment Blueprint"
+          stepNumber={9}
+          targetType="Assessment"
+        />
+      </div>
+
       {/* Footer Navigation */}
       <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
         <button
@@ -414,6 +501,14 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Dependency Conflict & Circular Loop Auditor Modal */}
+      <DependencyConflictModal
+        course={course}
+        isOpen={isDepModalOpen}
+        onClose={() => setIsDepModalOpen(false)}
+        onChange={onChange}
+      />
     </div>
   );
 };

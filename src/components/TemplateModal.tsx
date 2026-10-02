@@ -292,15 +292,28 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                     >
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <span
-                            className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
-                              tmpl.isSystem
-                                ? 'bg-slate-100 text-slate-700'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {tmpl.isSystem ? 'System Blueprint' : 'User Template'}
-                          </span>
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                            <span
+                              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
+                                tmpl.isSystem
+                                  ? 'bg-slate-100 text-slate-700'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {tmpl.isSystem ? 'System Blueprint' : 'User Template'}
+                            </span>
+                            {data.language && (
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                                  data.textDirection === 'rtl'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                }`}
+                              >
+                                {data.language} {data.textDirection === 'rtl' ? '(RTL)' : ''}
+                              </span>
+                            )}
+                          </div>
                           {!tmpl.isSystem && (
                             <button
                               type="button"

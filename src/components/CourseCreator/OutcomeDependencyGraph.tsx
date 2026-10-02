@@ -395,8 +395,8 @@ export const OutcomeDependencyGraphInner: React.FC<OutcomeDependencyGraphProps> 
       // Search match
       if (
         query &&
-        !plo.code.toLowerCase().includes(query) &&
-        !plo.title.toLowerCase().includes(query) &&
+        !(plo.code || '').toLowerCase().includes(query) &&
+        !(plo.title || '').toLowerCase().includes(query) &&
         !(plo.description || '').toLowerCase().includes(query)
       ) {
         return;
@@ -450,9 +450,9 @@ export const OutcomeDependencyGraphInner: React.FC<OutcomeDependencyGraphProps> 
       // Search match
       if (
         query &&
-        !clo.code.toLowerCase().includes(query) &&
-        !clo.statement.toLowerCase().includes(query) &&
-        !clo.bloomVerb.toLowerCase().includes(query)
+        !(clo.code || '').toLowerCase().includes(query) &&
+        !(clo.statement || '').toLowerCase().includes(query) &&
+        !(clo.bloomVerb || '').toLowerCase().includes(query)
       ) {
         return;
       }

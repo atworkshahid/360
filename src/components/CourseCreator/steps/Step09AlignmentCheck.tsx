@@ -12,12 +12,19 @@ import {
   ChevronRight,
   RefreshCw,
   Award,
+  FileDown,
+  Loader2,
+  Compass,
+  ChevronDown,
 } from 'lucide-react';
 import { Course, BloomLevel } from '../../../types';
 import {
   CourseValidationService,
   CourseValidationSummary,
 } from '../../../services/courseValidationService';
+import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
+import { OutcomeAssessmentDependencyAlert } from '../OutcomeAssessmentDependencyAlert';
+import { BloomDomainRadarChart } from '../../AlignmentAnalysis/BloomDomainRadarChart';
 
 interface StepProps {
   course: Course;
@@ -39,6 +46,7 @@ export const Step09AlignmentCheck: React.FC<StepProps> = ({
   const [activeFindingTab, setActiveFindingTab] = useState<
     'all' | 'critical' | 'warning' | 'suggestion' | 'passed'
   >('all');
+  const [isPdfExporting, setIsPdfExporting] = useState<boolean>(false);
 
   const summary: CourseValidationSummary = CourseValidationService.validateCourse(course);
 
@@ -80,6 +88,29 @@ export const Step09AlignmentCheck: React.FC<StepProps> = ({
           <p className="text-xs text-slate-500 mt-1">
             Institutional syllabus quality check and constructive alignment verification. Verifies the triangular link between Outcomes, Teaching Activities, and Assessments.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="step09-export-pdf-btn"
+            onClick={() => {
+              setIsPdfExporting(true);
+              try {
+                exportCourseBlueprintWithGate(course, {}, () => setIsPdfExporting(false));
+              } catch (err) {
+                console.error('Failed to export PDF:', err);
+              } finally {
+                setTimeout(() => setIsPdfExporting(false), 800);
+              }
+            }}
+            disabled={isPdfExporting}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center space-x-2 transition cursor-pointer shadow-xs"
+            title="Export printable PDF of current course audit and structure"
+          >
+            {isPdfExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            <span>{isPdfExporting ? 'Exporting...' : 'Export to PDF'}</span>
+          </button>
         </div>
       </div>
 
@@ -161,6 +192,43 @@ export const Step09AlignmentCheck: React.FC<StepProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Bloom's Taxonomy Domain Alignment Radar (D3.js) */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="p-4 bg-gradient-to-r from-indigo-50/80 via-white to-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100/70 border border-indigo-200 flex items-center justify-center text-indigo-700">
+              <Compass className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>Bloom's Taxonomy Domain Radar</span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold">
+                  D3.js Visualization
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Visualizes alignment coverage across cognitive domains (Remember to Create), tripartite learning domains, and accreditation benchmark targets.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 sm:p-6">
+          <BloomDomainRadarChart
+            course={course}
+            onAskCopilot={onAskCopilot}
+            onJumpToStep={onJumpToStep}
+          />
+        </div>
+      </div>
+
+      {/* Outcome & Assessment Dependency and Conflict Warning Card */}
+      <OutcomeAssessmentDependencyAlert
+        course={course}
+        onChange={onChange}
+        mode="card"
+        onNavigateToStep={onJumpToStep}
+      />
 
       {/* Signature Section: The Alignment Triangle (CLO ↕ TLA ↕ Assessment) */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">

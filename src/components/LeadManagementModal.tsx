@@ -19,7 +19,8 @@ import {
   Edit3,
 } from 'lucide-react';
 import { InstitutionalLead, LeadStatus } from '../types/lead';
-import { getSavedLeads, updateLeadStatus, exportLeadsToCSV } from '../services/leadService';
+import { getSavedLeads, fetchServerLeads, updateLeadStatus, deleteLead, exportLeadsToCSV } from '../services/leadService';
+import { LogoMark } from './Logo';
 
 interface LeadManagementModalProps {
   isOpen: boolean;
@@ -39,12 +40,25 @@ export const LeadManagementModal: React.FC<LeadManagementModalProps> = ({
   const [activeNotes, setActiveNotes] = useState('');
   const [statusUpdatedToast, setStatusUpdatedToast] = useState(false);
 
-  const loadLeads = () => {
-    const list = getSavedLeads();
-    setLeads(list);
-    if (list.length > 0 && !selectedLead) {
-      setSelectedLead(list[0]);
-      setActiveNotes(list[0].notes || '');
+  const loadLeads = async () => {
+    // Immediate local display
+    const localList = getSavedLeads();
+    setLeads(localList);
+    if (localList.length > 0 && !selectedLead) {
+      setSelectedLead(localList[0]);
+      setActiveNotes(localList[0].notes || '');
+    }
+
+    // Refresh from server
+    try {
+      const serverList = await fetchServerLeads();
+      setLeads(serverList);
+      if (serverList.length > 0 && (!selectedLead || !serverList.some((l) => l.id === selectedLead.id))) {
+        setSelectedLead(serverList[0]);
+        setActiveNotes(serverList[0].notes || '');
+      }
+    } catch {
+      // ignore
     }
   };
 
@@ -57,11 +71,12 @@ export const LeadManagementModal: React.FC<LeadManagementModalProps> = ({
   if (!isOpen) return null;
 
   const filteredLeads = leads.filter((l) => {
+    const q = (searchQuery || '').toLowerCase();
     const matchesSearch =
-      l.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.frameworkInterest.toLowerCase().includes(searchQuery.toLowerCase());
+      (l.fullName || '').toLowerCase().includes(q) ||
+      (l.institution || '').toLowerCase().includes(q) ||
+      (l.email || '').toLowerCase().includes(q) ||
+      (l.frameworkInterest || '').toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || l.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -99,9 +114,7 @@ export const LeadManagementModal: React.FC<LeadManagementModalProps> = ({
         {/* Header Ribbon */}
         <div className="bg-slate-900 text-white p-5 px-6 flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-sm shadow-indigo-400/20">
-              <Building className="w-5 h-5" />
-            </div>
+            <LogoMark size={36} variant="light" />
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-lg font-bold font-serif text-white tracking-tight">
@@ -384,8 +397,8 @@ export const LeadManagementModal: React.FC<LeadManagementModalProps> = ({
         {/* Modal Footer */}
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-2.5 text-[11px] text-slate-500 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>MENTISERA Higher Education CRM Ingestion Pipeline</span>
+            <LogoMark size={16} />
+            <span className="font-semibold text-slate-700">MENTISERA Higher Education CRM Ingestion Pipeline</span>
           </div>
           <div className="text-slate-400">
             Exported leads formatted for Salesforce, HubSpot, and Excel

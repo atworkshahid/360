@@ -13,10 +13,13 @@ import {
   Scale,
   Layers,
   FileText,
+  FileDown,
   HelpCircle,
   Info,
   ChevronDown,
   GitGraph,
+  Compass,
+  Loader2,
 } from 'lucide-react';
 import { Course, CourseAuditReport, GapIssue } from '../../../types';
 import { calculateCourseAudit } from '../../../utils/obeCalculator';
@@ -25,7 +28,9 @@ import { analyzeConstructiveAlignment } from '../../../services/constructiveAlig
 import { AlignmentAnalysisReport } from '../../AlignmentAnalysis/AlignmentAnalysisReport';
 import { AlignmentMatrixChart } from '../../AlignmentAnalysis/AlignmentMatrixChart';
 import { ConstructiveAlignmentDashboard } from '../../ConstructiveAlignment/ConstructiveAlignmentDashboard';
+import { BloomDomainRadarChart } from '../../AlignmentAnalysis/BloomDomainRadarChart';
 import { CoursePDFExportModal } from '../../CoursePDFExportModal';
+import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
 
 interface StepProps {
   course: Course;
@@ -44,8 +49,9 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
   onJumpToStep,
   onAskCopilot,
 }) => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'node-link-map' | 'matrix' | 'assessment-analysis'>('audit');
+  const [activeTab, setActiveTab] = useState<'audit' | 'radar' | 'node-link-map' | 'matrix' | 'assessment-analysis'>('audit');
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [showGapGuidance, setShowGapGuidance] = useState(false);
   const auditReport: CourseAuditReport = calculateCourseAudit(course);
   const assessmentAnalysis = analyzeAssessmentPlan(course);
@@ -104,12 +110,32 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
 
           <div className="flex items-center flex-wrap gap-2">
             <button
+              type="button"
+              id="step13-export-pdf-btn"
+              onClick={() => {
+                setIsPdfExporting(true);
+                try {
+                  exportCourseBlueprintWithGate(course, {}, () => setIsPdfExporting(false));
+                } catch (err) {
+                  console.error('Failed to export PDF:', err);
+                } finally {
+                  setTimeout(() => setIsPdfExporting(false), 800);
+                }
+              }}
+              disabled={isPdfExporting}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Export printable PDF of current course audit and structure"
+            >
+              {isPdfExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5 text-white" />}
+              <span>{isPdfExporting ? 'Exporting...' : 'Export to PDF'}</span>
+            </button>
+            <button
               onClick={() => setPdfModalOpen(true)}
               className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-xs transition cursor-pointer"
-              title="Export Course Audit Report & Configuration as PDF"
+              title="Export Course Audit Report & Custom Configuration as PDF"
             >
               <FileText className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Export Audit PDF</span>
+              <span>Export Options...</span>
             </button>
             <button
               onClick={handleAutoBalanceWeights}
@@ -133,10 +159,10 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center space-x-2 mt-6 border-b border-slate-200">
+        <div className="flex items-center space-x-2 mt-6 border-b border-slate-200 overflow-x-auto pb-px">
           <button
             onClick={() => setActiveTab('audit')}
-            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer ${
+            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'audit'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -150,8 +176,24 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
           </button>
 
           <button
+            id="step13-tab-radar-btn"
+            onClick={() => setActiveTab('radar')}
+            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'radar'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            <span>Bloom's Domain Radar</span>
+            <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold">
+              D3.js
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('node-link-map')}
-            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer ${
+            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'node-link-map'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -174,7 +216,7 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
 
           <button
             onClick={() => setActiveTab('matrix')}
-            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer ${
+            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'matrix'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -189,7 +231,7 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
 
           <button
             onClick={() => setActiveTab('assessment-analysis')}
-            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer ${
+            className={`pb-3 px-3 text-xs font-bold transition flex items-center space-x-2 border-b-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'assessment-analysis'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -210,7 +252,13 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
         </div>
       </div>
 
-      {activeTab === 'node-link-map' ? (
+      {activeTab === 'radar' ? (
+        <BloomDomainRadarChart
+          course={course}
+          onAskCopilot={onAskCopilot}
+          onJumpToStep={onJumpToStep}
+        />
+      ) : activeTab === 'node-link-map' ? (
         <ConstructiveAlignmentDashboard
           course={course}
           onChangeCourse={onChange}
@@ -366,6 +414,40 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Interactive D3 Bloom's Taxonomy & Domain Alignment Radar in Audit Report */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Compass className="w-4 h-4 text-indigo-600" />
+              <span>Bloom's Taxonomy &amp; Learning Domain Alignment Radar</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold">
+                D3 Interactive
+              </span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Visualizes alignment coverage across Bloom's Taxonomy cognitive domains (Remember to Create), tripartite learning domains, and accreditation benchmark targets.
+            </p>
+          </div>
+          <button
+            type="button"
+            id="step13-audit-view-full-radar-btn"
+            onClick={() => setActiveTab('radar')}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 transition cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Full Radar View</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <BloomDomainRadarChart
+          course={course}
+          onAskCopilot={onAskCopilot}
+          onJumpToStep={onJumpToStep}
+        />
       </div>
 
       {/* Visual Matrix & Bubble Chart Quick Access Banner */}

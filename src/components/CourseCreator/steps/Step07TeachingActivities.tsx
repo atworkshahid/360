@@ -208,7 +208,7 @@ export const Step07TeachingActivities: React.FC<StepProps> = ({
           outcomeType: 'CLO',
           outcomeId: linkedId,
           title: w.learningActivity,
-          activityType: w.learningActivity.toLowerCase().includes('lab')
+          activityType: (w.learningActivity || '').toLowerCase().includes('lab')
             ? 'Practical Demonstration'
             : 'Problem Solving',
           studentActionPrompt: `Week ${w.weekNumber} instructional session focusing on ${w.topic}. ${w.subtopics || ''}`,

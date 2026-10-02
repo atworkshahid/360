@@ -19,6 +19,8 @@ import { Course, CourseStatus, CourseReviewComment } from '../../../types';
 import { getFrameworkById } from '../../../data/frameworksData';
 import { DEFAULT_INSTITUTION } from '../../../data/institutionData';
 import { exportSyllabusPDF, exportSyllabusDOCX } from '../../../utils/syllabusExport';
+import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
+import { downloadCourseDocx } from '../../../utils/docxExport';
 
 interface StepProps {
   course: Course;
@@ -524,12 +526,57 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
       {activeTab === 'export' && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">
-              Document Export & LMS Packages
-            </h3>
-            <p className="text-xs text-slate-500">
-              Download formatted syllabus publications or export standardized course metadata.
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Course Blueprint &amp; Document Exports
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                Print-Optimized
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Download your complete course blueprint or institutional syllabus in publication-grade PDF and editable Microsoft Word formats.
             </p>
+          </div>
+
+          {/* Featured: Official Course Blueprint (Print-Optimized) */}
+          <div className="p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                    Recommended
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Official OBE Course Blueprint (Print-Optimized)
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Complete accredited blueprint featuring outcome mappings, bloom taxonomy distribution, weekly modules, assessment plans, rubrics, and references.
+                </p>
+              </div>
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  type="button"
+                  id="step10-download-blueprint-pdf"
+                  onClick={() => exportCourseBlueprintWithGate(course)}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                  title="Export printable PDF of current course audit and structure"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Export to PDF</span>
+                </button>
+                <button
+                  type="button"
+                  id="step10-download-blueprint-docx"
+                  onClick={() => downloadCourseDocx(course)}
+                  className="px-3.5 py-2 bg-white border border-indigo-300 hover:bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-indigo-600" />
+                  <span>Word (.docx)</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -542,15 +589,16 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
                   Institutional Syllabus PDF
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  Full 4-page accredited syllabus formatted with institutional header, outcome matrix, and weekly schedule.
+                  Accredited syllabus document formatted with institutional header, outcome matrix, and weekly schedule.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleExportPDF}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition"
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center space-x-1.5"
               >
-                Download PDF
+                <FileDown className="w-3.5 h-3.5" />
+                <span>Export to PDF</span>
               </button>
             </div>
 
@@ -560,18 +608,18 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
                   DOC
                 </div>
                 <h4 className="text-sm font-bold text-slate-900">
-                  Editable Word Document (.doc)
+                  Editable Syllabus (.doc)
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  Pre-formatted Microsoft Word syllabus with HTML tables for manual faculty customization.
+                  Pre-formatted Microsoft Word syllabus document with HTML tables for manual faculty editing.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleExportDOCX}
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition"
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer"
               >
-                Download Word (.doc)
+                Download Syllabus (.doc)
               </button>
             </div>
 
@@ -603,7 +651,7 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
                   downloadAnchor.click();
                   downloadAnchor.remove();
                 }}
-                className="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold transition"
+                className="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold transition cursor-pointer"
               >
                 Download JSON Manifest
               </button>
