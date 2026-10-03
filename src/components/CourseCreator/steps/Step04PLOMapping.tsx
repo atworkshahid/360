@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { Course, PLO, CLO, MappingLevel } from '../../../types';
 import { OutcomeDependencyGraph } from '../OutcomeDependencyGraph';
+import { MasteryPathTimeline } from '../MasteryPathTimeline';
+import { MasteryTree } from '../MasteryTree';
+import { CognitiveIntensityRadar } from '../CognitiveIntensityRadar';
 import { evaluateStage } from '../../../utils/stageProgress';
 
 interface StepProps {
@@ -25,13 +28,19 @@ interface StepProps {
 }
 
 export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext, onPrev, onAskCopilot }) => {
-  const [viewMode, setViewMode] = useState<'graph' | 'matrix' | 'combined'>('graph');
+  const [viewMode, setViewMode] = useState<'graph' | 'matrix' | 'combined' | 'competencies'>('graph');
   const [selectedMapping, setSelectedMapping] = useState<{ cloId: string; ploId: string } | null>(null);
   const [newPLOCode, setNewPLOCode] = useState('');
   const [newPLOTitle, setNewPLOTitle] = useState('');
 
   const plos = course.plos || [];
   const clos = course.clos || [];
+
+  // Competency/Skill handlers
+  const handleUpdateCLOCompetencies = (cloId: string, competency: string, skills: string) => {
+    const updatedCLOs = clos.map((c) => (c.id === cloId ? { ...c, competency, skills } : c));
+    onChange({ ...course, clos: updatedCLOs });
+  };
 
   const handleSetMapping = (cloId: string, ploId: string, level: MappingLevel | 'None') => {
     const clo = clos.find((c) => c.id === cloId);
@@ -96,6 +105,10 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
   // Alignment checks
   const unmappedCLOs = clos.filter((c) => !c.mappedPLOs || c.mappedPLOs.length === 0);
   const unmappedPLOs = plos.filter((p) => !clos.some((c) => (c.mappedPLOs || []).some((m) => m.ploId === p.id)));
+
+  // Mastery Progress Calculation
+  const proficientOrExpertCount = clos.filter(c => c.proficiencyLevel === 'Proficient' || c.proficiencyLevel === 'Expert').length;
+  const masteryPercentage = clos.length > 0 ? Math.round((proficientOrExpertCount / clos.length) * 100) : 0;
 
   // Live Accreditation Evaluation for Stage 04
   const stageEval = evaluateStage(course, 4, 'granular15');
@@ -195,6 +208,17 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
             </div>
           </div>
         </div>
+        
+        {/* Mastery Progress Bar */}
+        <div className="w-full sm:w-48 space-y-1">
+          <div className="flex justify-between text-[10px] font-bold text-slate-600">
+            <span>Skill Mastery</span>
+            <span>{masteryPercentage}%</span>
+          </div>
+          <div className="w-full bg-slate-200 rounded-full h-2">
+            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${masteryPercentage}%` }}></div>
+          </div>
+        </div>
       </div>
 
       {/* PLO Framework Quick-Presets Bar */}
@@ -290,6 +314,19 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
             <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
             <span>Combined View</span>
           </button>
+          
+          <button
+            type="button"
+            onClick={() => setViewMode('competencies')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+              viewMode === 'competencies'
+                ? 'bg-white text-indigo-700 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+            <span>Competencies & Skills Mapping</span>
+          </button>
         </div>
 
         <div className="flex items-center space-x-2 text-xs text-slate-500 px-2">
@@ -302,6 +339,79 @@ export const Step04PLOMapping: React.FC<StepProps> = ({ course, onChange, onNext
           </span>
         </div>
       </div>
+
+      {/* Competency & Skill Mapping Table */}
+      {viewMode === 'competencies' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-4 bg-slate-50 border-b border-slate-200">
+              <h3 className="text-xs font-bold text-slate-800">Competency & Skill Mapping</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Map each Course Learning Outcome to specific competencies and skills.</p>
+            </div>
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100/70 border-b border-slate-200 text-slate-700">
+                  <th className="p-3 font-bold w-1/4">CLO</th>
+                  <th className="p-3 font-bold">Competency</th>
+                  <th className="p-3 font-bold">Skills</th>
+                  <th className="p-3 font-bold">Proficiency</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {clos.map((clo) => (
+                  <tr key={clo.id} className="hover:bg-slate-50/60 transition">
+                    <td className="p-3 font-bold text-blue-900">{clo.code}</td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        value={clo.competency || ''}
+                        onChange={(e) => handleUpdateCLOCompetencies(clo.id, e.target.value, clo.skills || '')}
+                        placeholder="e.g., Analytical Thinking"
+                        className="w-full px-2 py-1 text-xs rounded border border-slate-300"
+                      />
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        value={clo.skills || ''}
+                        onChange={(e) => handleUpdateCLOCompetencies(clo.id, clo.competency || '', e.target.value)}
+                        placeholder="e.g., Data Visualization, Python"
+                        className="w-full px-2 py-1 text-xs rounded border border-slate-300"
+                      />
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={clo.proficiencyLevel || 'Novice'}
+                          onChange={(e) => {
+                              const updatedCLOs = clos.map((c) => (c.id === clo.id ? { ...c, proficiencyLevel: e.target.value as any } : c));
+                              onChange({ ...course, clos: updatedCLOs });
+                          }}
+                          className="px-2 py-1 text-xs rounded border border-slate-300"
+                        >
+                          <option value="Novice">Novice</option>
+                          <option value="Proficient">Proficient</option>
+                          <option value="Expert">Expert</option>
+                        </select>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          (clo.proficiencyLevel || 'Novice') === 'Expert' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                          (clo.proficiencyLevel || 'Novice') === 'Proficient' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
+                          {clo.proficiencyLevel || 'Novice'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <MasteryPathTimeline course={course} />
+          <MasteryTree course={course} />
+          <CognitiveIntensityRadar course={course} />
+        </div>
+      )}
 
       {/* Visual Dependency Graph (ReactFlow) */}
       {(viewMode === 'graph' || viewMode === 'combined') && (

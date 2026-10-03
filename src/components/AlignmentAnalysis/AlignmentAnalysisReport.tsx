@@ -32,6 +32,8 @@ import {
   AssessmentPlanAnalysisReport,
 } from '../../utils/assessmentAnalysis';
 import { AlignmentMatrixChart } from './AlignmentMatrixChart';
+import { BloomHeatmap } from './BloomHeatmap';
+import { AlignmentPersonaGenerator } from './AlignmentPersonaGenerator';
 
 interface AlignmentAnalysisReportProps {
   course: Course;
@@ -300,6 +302,8 @@ export const AlignmentAnalysisReport: React.FC<AlignmentAnalysisReportProps> = (
       </div>
 
       {/* Visual Recharts Alignment Matrix & Bubble Chart */}
+      <BloomHeatmap course={course} className="mb-6" />
+      <AlignmentPersonaGenerator course={course} />
       <AlignmentMatrixChart
         course={course}
         onAskCopilot={onAskCopilot}

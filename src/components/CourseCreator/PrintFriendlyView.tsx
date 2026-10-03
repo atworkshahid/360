@@ -453,7 +453,14 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
                 </div>
               </div>
 
-              <div className="text-right shrink-0 pl-4 font-sans">
+              {/* Print-only Metadata Header */}
+              <div className="hidden print:block text-right font-sans text-[12px] text-slate-800 border-b border-slate-300 pb-2 mb-4">
+                <p><strong>Course Code:</strong> {course.code || 'N/A'}</p>
+                <p><strong>Instructor:</strong> {course.instructorName || 'Not specified'}</p>
+                <p><strong>Generated:</strong> {new Date().toLocaleDateString()}</p>
+              </div>
+
+              <div className="print:hidden text-right shrink-0 pl-4 font-sans">
                 <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-900 font-mono font-bold text-xs border border-slate-300">
                   {course.code || 'COURSE CODE'}
                 </span>

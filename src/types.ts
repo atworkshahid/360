@@ -99,6 +99,7 @@ export interface CLO {
   learningDomain: LearningDomain;
   competency: string;
   skills: string;
+  proficiencyLevel?: 'Novice' | 'Proficient' | 'Expert';
   assessmentMethod: string;
   achievementThreshold: number; // percentage, e.g. 60
   weightage: number; // percentage of overall course, e.g. 25
@@ -227,6 +228,24 @@ export interface EvidenceSource {
   weightInOutcome: number; // percentage
 }
 
+export interface LearningFrictionPoint {
+  cloId: string;
+  cloCode: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface StudentPersona {
+  id: string;
+  name: string;
+  background: string;
+  learningStyle: 'Visual' | 'Auditory' | 'Kinesthetic' | 'Logical';
+  strengths: string[];
+  weaknesses: string[];
+  predictedPerformance: Record<string, number>; // CLO ID to score
+  frictionPoints: LearningFrictionPoint[];
+}
+
 export interface EvidenceRule {
   id: string;
   outcomeId: string; // CLO id
@@ -277,6 +296,8 @@ export type CommentCategory =
 
 export type CommentStatus = 'open' | 'in_review' | 'resolved';
 
+export type CommentTag = 'Clarification Needed' | 'Suggestion' | 'Approval';
+
 export interface CommentReply {
   id: string;
   authorName: string;
@@ -313,6 +334,7 @@ export interface CourseElementComment {
   authorRole: StakeholderRole;
   authorAvatarColor?: string;
   category: CommentCategory;
+  tags?: CommentTag[];
   content: string;
   status: CommentStatus;
   suggestedChange?: string;
@@ -485,6 +507,7 @@ export interface CourseReviewComment {
   reviewerRole: string;
   section: string;
   comment: string;
+  tag?: 'Clarification Needed' | 'Suggestion' | 'Approval';
   suggestedChanges?: string;
   decision?: 'Approve' | 'Request Changes';
   createdAt: string;

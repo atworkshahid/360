@@ -60,6 +60,9 @@ import { calculateCourseProgress, calculateAlignmentTimeEstimate } from '../../u
 import { syncWeeklyPlanToModules, syncModulesToWeeklyPlan } from '../../utils/curriculumSynchronizer';
 import { evaluateDesignHealth } from '../../utils/designHealth';
 import { getUnresolvedCommentsCount, getTotalCommentsCount, COURSE_SECTIONS_META } from '../../utils/commentUtils';
+import { ActivityFeed } from './ActivityFeed';
+import { FeedbackIntensityMap } from './FeedbackIntensityMap';
+import { ReviewLinkModal } from './ReviewLinkModal';
 import { getCourseVersions } from '../../services/versionHistoryService';
 import { CourseValidationService } from '../../services/courseValidationService';
 import { TemplateModal } from '../TemplateModal';
@@ -79,6 +82,7 @@ import { StakeholderView } from './StakeholderView';
 import { RubricGeneratorModal } from './RubricGeneratorModal';
 import { ElementCommentDrawer } from './comments/ElementCommentDrawer';
 import { PrintFriendlyView } from './PrintFriendlyView';
+import { StudentPerspectiveModal } from './StudentPerspectiveModal';
 import { CourseSnapshotsModal } from './CourseSnapshotsModal';
 import { AuditTrailModal } from '../Collaboration/AuditTrailModal';
 import { BulkImportCLOsModal } from './BulkImportCLOsModal';
@@ -232,6 +236,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [syllabusModalOpen, setSyllabusModalOpen] = useState<boolean>(false);
   const [translationModalOpen, setTranslationModalOpen] = useState<boolean>(false);
   const [courseSettingsModalOpen, setCourseSettingsModalOpen] = useState<boolean>(false);
+  const [studentPerspectiveModalOpen, setStudentPerspectiveModalOpen] = useState<boolean>(false);
   const [wizardMode, setWizardMode] = useState<'obe10' | 'granular15'>('obe10');
   const [assistantOpen, setAssistantOpen] = useState<boolean>(false);
   const [showTips, setShowTips] = useState<boolean>(() => {
@@ -243,6 +248,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [snapshotsCount, setSnapshotsCount] = useState<number>(() => {
     return course?.id ? getCourseVersions(course.id).length : 0;
   });
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [reviewLinkModalOpen, setReviewLinkModalOpen] = useState(false);
+  const versions = useMemo(() => (course?.id ? getCourseVersions(course.id) : []), [course?.id]);
 
   // Centralized Course Resource Library State
   const [resourceLibraryOpen, setResourceLibraryOpen] = useState<boolean>(false);
@@ -1088,6 +1096,32 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               </span>
             </div>
 
+            {/* Share Link */}
+            <button
+              type="button"
+              id="wizard-share-link-btn"
+              onClick={() => setReviewLinkModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
+
+            {/* Activity Feed */}
+            <button
+              type="button"
+              id="wizard-activity-feed-btn"
+              onClick={() => setActivityFeedOpen(!activityFeedOpen)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer ${
+                activityFeedOpen
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Activity</span>
+            </button>
+
             {/* Direct Export to PDF */}
             <button
               type="button"
@@ -1371,6 +1405,40 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
 
             {/* Structured Executive Utilities Menu Bar */}
             <div className="wizard-menu-container flex items-center space-x-1.5 sm:space-x-2">
+              {/* Student View Button */}
+              <button
+                type="button"
+                onClick={() => setStudentPerspectiveModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Preview course as a student"
+              >
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                <span>Student View</span>
+              </button>
+              
+              {/* Student View Button */}
+              <button
+                type="button"
+                onClick={() => setStudentPerspectiveModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Preview course as a student"
+              >
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                <span>Student View</span>
+              </button>
+
+              {/* SHARE: Generate Review Link */}
+              <button
+                type="button"
+                id="wizard-header-share-btn"
+                onClick={() => setReviewLinkModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Generate a read-only, time-limited review link for collaborators"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                <span>Share</span>
+              </button>
+
               {/* PRIMARY ACTION: Direct Export to PDF (Current Course Audit & Structure) */}
               <button
                 type="button"
@@ -1548,7 +1616,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                   const currentSec = COURSE_SECTIONS_META.find((s) => s.stepNumber === currentStep);
                   handleOpenComments(
                     currentSec?.key || `step-${currentStep}`,
-                    'Section',
+                    'General',
                     currentSec ? `Step ${currentStep}: ${currentSec.title}` : `Step ${currentStep}`
                   );
                 }}
@@ -2626,6 +2694,18 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
           </div>
         </aside>
 
+        {activityFeedOpen && (
+          <div className="space-y-6">
+            <FeedbackIntensityMap course={course} />
+            <ActivityFeed versions={versions} comments={course.comments || []} />
+          </div>
+        )}
+        <ReviewLinkModal 
+          course={course} 
+          isOpen={reviewLinkModalOpen} 
+          onClose={() => setReviewLinkModalOpen(false)} 
+        />
+
         {/* Step Content View */}
         <main className="flex-1 p-6 sm:p-8 bg-white min-w-0 overflow-y-auto">
           <div className="max-w-5xl mx-auto">
@@ -2748,6 +2828,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         <ContextualAssistantPanel
           currentStep={currentStep}
           course={course}
+          onChange={onChange}
           isOpen={assistantOpen}
           onClose={() => setAssistantOpen(false)}
           onJumpToStep={handleJumpToStep}
@@ -2905,6 +2986,13 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         onAskCopilot={onAskCopilot}
       />
 
+      {/* Student View Modal */}
+      <StudentPerspectiveModal
+        course={course}
+        isOpen={studentPerspectiveModalOpen}
+        onClose={() => setStudentPerspectiveModalOpen(false)}
+      />
+
       {/* Course Snapshots & Revision History Modal / Side Panel */}
       <CourseSnapshotsModal
         isOpen={snapshotsModalOpen}
@@ -2957,7 +3045,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
           const currentSec = COURSE_SECTIONS_META.find((s) => s.stepNumber === currentStep);
           handleOpenComments(
             currentSec?.key || `step-${currentStep}`,
-            'Section',
+            'General',
             currentSec ? `Step ${currentStep}: ${currentSec.title}` : `Step ${currentStep}`
           );
         }}

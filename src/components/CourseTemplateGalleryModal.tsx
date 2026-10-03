@@ -30,6 +30,7 @@ import {
   CourseTemplateGalleryItem,
   TemplateDiscipline,
 } from '../data/courseTemplatesData';
+import { TemplatePreviewModal } from './TemplatePreviewModal';
 
 interface CourseTemplateGalleryModalProps {
   isOpen: boolean;
@@ -58,6 +59,8 @@ export const CourseTemplateGalleryModal: React.FC<CourseTemplateGalleryModalProp
   const [customCode, setCustomCode] = useState('');
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [templateToPreview, setTemplateToPreview] = useState<CourseTemplateGalleryItem | null>(null);
 
   // Sync state when modal opens
   useEffect(() => {
@@ -340,7 +343,18 @@ export const CourseTemplateGalleryModal: React.FC<CourseTemplateGalleryModalProp
                         isSelected ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-700'
                       }`}
                     >
-                      <span>Preview</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTemplateToPreview(template);
+                          setIsPreviewOpen(true);
+                        }}
+                        className="mr-3 text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview</span>
+                      </button>
+                      <span>Select</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
@@ -757,6 +771,17 @@ export const CourseTemplateGalleryModal: React.FC<CourseTemplateGalleryModalProp
           )}
         </div>
       </div>
+      {isPreviewOpen && templateToPreview && (
+        <TemplatePreviewModal
+          template={templateToPreview}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          onSelectTemplate={(t) => {
+            setSelectedTemplateId(t.id);
+            setIsPreviewOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

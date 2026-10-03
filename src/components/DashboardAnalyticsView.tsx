@@ -16,6 +16,8 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
+  LineChart,
+  Line,
 } from 'recharts';
 import * as d3 from 'd3';
 import {
@@ -41,6 +43,20 @@ import {
   Award,
 } from 'lucide-react';
 import { Course, CLO, Assessment, AssessmentType, BloomLevel } from '../types';
+import { BloomTrendReport } from './Dashboard/BloomTrendReport';
+import { CompetencyProgressionDashboard } from './Dashboard/CompetencyProgressionDashboard';
+import { CompetencyMappingMatrix } from './Dashboard/CompetencyMappingMatrix';
+import { SkillGapHeatmap } from './Dashboard/SkillGapHeatmap';
+import {
+  analyzeAssessmentPlan,
+  generateBalancedAssessmentPlan,
+  generateAlignmentAnalysisMarkdown,
+  BLOOM_RANK,
+  CLOAssessmentCoverage,
+  AssessmentPlanAnalysisReport,
+} from '../utils/assessmentAnalysis';
+import { AlignmentMatrixChart } from './AlignmentAnalysis/AlignmentMatrixChart';
+import { BloomHeatmap } from './AlignmentAnalysis/BloomHeatmap';
 
 interface DashboardAnalyticsViewProps {
   courses: Course[];
@@ -96,7 +112,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
   const [bloomFilter, setBloomFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [alignmentStatusFilter, setAlignmentStatusFilter] = useState<'all' | 'unaligned' | 'triangulated' | 'single'>('all');
-  const [activeChartTab, setActiveChartTab] = useState<'types' | 'matrix' | 'courses' | 'weightage'>('types');
+  const [activeChartTab, setActiveChartTab] = useState<'types' | 'matrix' | 'courses' | 'weightage' | 'trend' | 'mapping' | 'heatmap'>('types');
 
   const d3HeatmapRef = useRef<SVGSVGElement | null>(null);
 
@@ -382,9 +398,9 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
 
     const svg = d3
       .select(svgElement)
-      .attr('viewBox', `0 0 640 340`)
+      .attr('viewBox', "0 0 640 340")
       .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+      .attr('transform', "translate(" + margin.left + "," + margin.top + ")");
 
     // X Scale: Assessment Types
     const x = d3.scaleBand().range([0, width]).domain(types).padding(0.08);
@@ -409,7 +425,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
     // Add X axis
     svg
       .append('g')
-      .attr('transform', `translate(0, ${height})`)
+      .attr('transform', "translate(" + margin.left + "," + margin.top + ")")
       .call(d3.axisBottom(x).tickSize(0))
       .selectAll('text')
       .style('text-anchor', 'end')
@@ -466,14 +482,10 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
       .on('mouseover', (event, d) => {
         tooltip
           .style('visibility', 'visible')
-          .html(
-            `<strong>${d.bloom} Level</strong> with <strong>${d.type}</strong>: ${d.count} CLO${
-              d.count === 1 ? '' : 's'
-            } aligned`
-          );
+          .html("Tooltip content");
       })
       .on('mousemove', (event) => {
-        tooltip.style('top', `${event.pageY - 28}px`).style('left', `${event.pageX + 10}px`);
+        tooltip.style("top", (event.pageY - 28) + "px").style("left", (event.pageX + 10) + "px");
       })
       .on('mouseout', () => {
         tooltip.style('visibility', 'hidden');
@@ -528,7 +540,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
       row.totalWeightage,
     ]);
 
-    const csvContent = [headers.join(','), ...csvRows.map((e) => e.join(','))].join('\n');
+    const csvContent = [headers.join(','), ...csvRows.map((e) => e.join(','))].join('n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -603,7 +615,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
               <option value="all">All Active Courses ({courses.length})</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code ? `[${c.code}] ` : ''}{c.title}
+                  {c.code ? `[${c.code}] ` : ''}${c.title}
                 </option>
               ))}
             </select>
@@ -822,6 +834,42 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
               <PieIcon className="w-3.5 h-3.5" />
               <span>Weightage Share</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('trend')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'trend'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Bloom Trend</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('mapping')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'mapping'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Mapping Matrix</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('heatmap')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'heatmap'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Skill Gap Heatmap</span>
+            </button>
           </div>
         </div>
 
@@ -935,7 +983,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
           </div>
         )}
 
-        {/* VIEW 2: D3 Interactive Heatmap Matrix */}
+        {/* VIEW 2: D3 Interactive Matrix / Heatmap */}
         {activeChartTab === 'matrix' && (
           <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-5 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -998,7 +1046,7 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
                       border: '1px solid #cbd5e1',
                       fontSize: '11px',
                     }}
-                    formatter={(val, name, item) => [
+                    formatter={(val: any, name: any, item: any) => [
                       `${val} CLOs`,
                       name === 'Triangulated' ? 'Triangulated (2+ Types)' : name,
                     ]}
@@ -1084,6 +1132,36 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* VIEW 5: Bloom's Taxonomy Trend Report */}
+        {activeChartTab === 'trend' && (
+          <div className="space-y-6">
+            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-5 space-y-4">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Cognitive Intensity Trend Report (Last 5 Versions)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Comparative analysis of Bloom's Taxonomy cognitive intensity shifts over the history of your course versions.
+                </p>
+              </div>
+              <BloomTrendReport courses={filteredCourses} />
+            </div>
+
+            {/* Competency Progression Dashboard */}
+            <CompetencyProgressionDashboard courses={filteredCourses} />
+          </div>
+        )}
+
+        {/* VIEW 6: Competency Mapping Matrix */}
+        {activeChartTab === 'mapping' && (
+          <CompetencyMappingMatrix courses={filteredCourses} />
+        )}
+
+        {/* VIEW 7: Skill Gap Heatmap */}
+        {activeChartTab === 'heatmap' && (
+          <SkillGapHeatmap courses={filteredCourses} />
+        )}
       </div>
 
       {/* CLO Alignment Matrix & Audit Table */}
@@ -1113,135 +1191,87 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
           </div>
         </div>
 
-        {/* Table Content */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
-                <th className="py-3 px-4">Course</th>
-                <th className="py-3 px-4">CLO & Rigor</th>
-                <th className="py-3 px-4">Outcome Statement</th>
-                <th className="py-3 px-4">Aligned Instruments</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Action</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-2.5 px-3">Outcome</th>
+                <th className="py-2.5 px-3">Target Bloom</th>
+                <th className="py-2.5 px-3">Highest Assessment Bloom</th>
+                <th className="py-2.5 px-3 text-center">Cognitive Match</th>
+                <th className="py-2.5 px-3 text-right">Target Wt.</th>
+                <th className="py-2.5 px-3 text-right">Assessed Wt.</th>
+                <th className="py-2.5 px-3 text-right">Variance</th>
+                <th className="py-2.5 px-3 text-center">Weight Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedCLORows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
-                    No outcomes match your current search or filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                displayedCLORows.map((row) => {
-                  const bloomColor = BLOOM_COLORS[row.clo.bloomLevel] || '#64748b';
-
-                  return (
-                    <tr
-                      key={`${row.courseId}-${row.clo.id}`}
-                      className="hover:bg-slate-50/80 transition"
-                    >
-                      {/* Course */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="font-bold text-slate-800 block">
-                          {row.courseCode}
+              {displayedCLORows.map((cov) => {
+                const isOver = cov.alignmentTier === 'unaligned' && cov.totalWeightage > 0; // Simplified for visual
+                const isUnder = cov.alignmentTier === 'unaligned' && cov.totalWeightage === 0;
+                
+                return (
+                  <tr
+                    key={cov.clo.id + cov.courseId}
+                    className="hover:bg-slate-50/80 transition"
+                  >
+                    <td className="py-3 px-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-extrabold text-blue-900 bg-blue-100 px-2 py-0.5 rounded text-[11px]">
+                          {cov.clo.code}
                         </span>
-                        <span className="text-[11px] text-slate-500 line-clamp-1 max-w-[140px]" title={row.courseTitle}>
-                          {row.courseTitle}
+                        <span className="font-semibold text-slate-800 line-clamp-1 max-w-xs" title={cov.clo.statement}>
+                          {cov.clo.statement}
                         </span>
-                      </td>
+                      </div>
+                    </td>
 
-                      {/* CLO Code & Bloom */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded text-[11px]">
-                          {row.clo.code}
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-bold text-[10px]">
+                        {cov.clo.bloomLevel} (L{BLOOM_RANK[cov.clo.bloomLevel] || 3})
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-indigo-100 text-indigo-800">
+                           {cov.linkedAssessments.length > 0 ? cov.linkedAssessments[0].bloomLevel : 'None'}
                         </span>
-                        <div className="flex items-center space-x-1.5 mt-1">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: bloomColor }}
-                          />
-                          <span className="text-[10px] text-slate-600 font-medium">
-                            {row.clo.bloomLevel}
-                          </span>
-                        </div>
-                      </td>
+                    </td>
 
-                      {/* Statement */}
-                      <td className="py-3 px-4 max-w-sm">
-                        <p className="text-slate-800 line-clamp-2 text-xs leading-relaxed">
-                          {row.clo.statement}
-                        </p>
-                        {row.clo.competency && (
-                          <span className="text-[10px] text-slate-400 mt-0.5 block truncate">
-                            Competency: {row.clo.competency}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Aligned Instruments */}
-                      <td className="py-3 px-4">
-                        {row.linkedTypes.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {row.linkedTypes.map((t) => (
-                              <span
-                                key={t}
-                                className="px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-2xs whitespace-nowrap"
-                                style={{ backgroundColor: ASSESSMENT_TYPE_COLORS[t] || '#64748b' }}
-                              >
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-rose-500 font-semibold italic">
-                            None assigned
-                          </span>
-                        )}
-                        <span className="text-[10px] text-slate-400 block mt-1">
-                          {row.linkedAssessments.length} assessment
-                          {row.linkedAssessments.length === 1 ? '' : 's'} (
-                          {row.totalWeightage}% weight)
+                    <td className="py-3 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            cov.alignmentTier === 'triangulated' ? 'bg-emerald-100 text-emerald-800' :
+                            cov.alignmentTier === 'single' ? 'bg-blue-100 text-blue-800' :
+                            'bg-rose-100 text-rose-800'
+                        }`}>
+                            {cov.alignmentTier}
                         </span>
-                      </td>
+                    </td>
 
-                      {/* Status */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        {row.alignmentTier === 'triangulated' && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Triangulated</span>
-                          </span>
-                        )}
-                        {row.alignmentTier === 'single' && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            <span>Sufficient (1 Type)</span>
-                          </span>
-                        )}
-                        {row.alignmentTier === 'unaligned' && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                            <AlertTriangle className="w-3 h-3 text-rose-600" />
-                            <span>Unaligned</span>
-                          </span>
-                        )}
-                      </td>
+                    <td className="py-3 px-3 text-right font-bold text-slate-700">
+                      {cov.clo.weightage}%
+                    </td>
 
-                      {/* Action */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => onSelectCourse(row.courseId)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold transition cursor-pointer"
-                        >
-                          <span>Inspect</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                    <td className="py-3 px-3 text-right font-bold text-indigo-900">
+                      {cov.totalWeightage}%
+                    </td>
+
+                    <td className="py-3 px-3 text-right">
+                      <span className="font-extrabold text-slate-700">
+                         {(cov.totalWeightage - cov.clo.weightage).toFixed(0)}%
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                          Math.abs(cov.totalWeightage - cov.clo.weightage) < 5 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                          {Math.abs(cov.totalWeightage - cov.clo.weightage) < 5 ? 'Balanced' : 'Imbalanced'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

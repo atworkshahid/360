@@ -7,6 +7,10 @@ import { getFrameworkGuideline } from '../data/frameworkGuidelines';
 import { OBEFrameworkRegistry } from '../utils/OBEFrameworkRegistry';
 import { getStoredInstitution } from '../data/institutionData';
 import { buildDynamicThemePalette, DynamicThemePalette } from '../utils/dossierThemePresets';
+import { BLOOM_TAXONOMY_DATA } from '../components/CourseCreator/BloomsTaxonomyHelperModal';
+import { RadarAxisData } from '../components/AlignmentAnalysis/BloomDomainRadarChart';
+import { BloomLevel } from '../types';
+import { drawRadarChart } from './radarPdfService';
 
 export interface AccreditationDossierOptions {
   includeCoverPage?: boolean;
@@ -33,6 +37,7 @@ export interface AccreditationDossierOptions {
   includeAuditReport?: boolean;
   includeCQIPlan?: boolean;
   includeSignOffSheet?: boolean;
+  includeRadarChart?: boolean;
 }
 
 export interface DossierGenerationResult {
@@ -184,6 +189,7 @@ export class DossierPdfService {
       includeAuditReport: options.includeAuditReport ?? true,
       includeCQIPlan: options.includeCQIPlan ?? true,
       includeSignOffSheet: options.includeSignOffSheet ?? true,
+      includeRadarChart: options.includeRadarChart ?? true,
     };
 
     // Ensure all course collections are safe against null or undefined
@@ -1041,7 +1047,44 @@ export class DossierPdfService {
     }
 
     // =========================================================================
-    // 9. ANALYTIC ASSESSMENT RUBRICS
+    // 9. BLOOM'S TAXONOMY ALIGNMENT RADAR CHART
+    // =========================================================================
+    if (opts.includeRadarChart) {
+      checkPageBreak(90);
+      drawSectionTitle(
+        `${sectionNum++}. Bloom's Taxonomy Cognitive Alignment`,
+        'Visual distribution of course learning outcomes across Bloom cognitive levels'
+      );
+
+      const levels: BloomLevel[] = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
+      const benchmarks: Record<BloomLevel, number> = { Remember: 15, Understand: 25, Apply: 45, Analyze: 60, Evaluate: 40, Create: 30 };
+      
+      const radarData: RadarAxisData[] = levels.map((lvl, idx) => {
+        const matched = course.clos.filter((c) => c.bloomLevel === lvl);
+        const weightSum = matched.reduce((sum, c) => sum + (c.weightage || 0), 0);
+        let score = Math.min(100, (weightSum / 35) * 100);
+        return {
+          key: lvl,
+          label: lvl,
+          shortLabel: lvl.substring(0, 3),
+          orderIndex: idx,
+          actualScore: Math.max(15, Math.min(100, score)),
+          targetScore: benchmarks[lvl],
+          unitLabel: '%',
+          matchedCLOs: matched,
+          matchedAssessmentsCount: 0,
+          description: '',
+          recommendation: '',
+          color: '#4f46e5'
+        } as RadarAxisData;
+      });
+
+      drawRadarChart(doc, radarData, pageWidth/2, currentY + 35, 30, theme);
+      currentY += 80;
+    }
+
+    // =========================================================================
+    // 10. ANALYTIC ASSESSMENT RUBRICS
     // =========================================================================
     if (opts.includeRubrics && course.rubrics && course.rubrics.length > 0) {
       drawSectionTitle(

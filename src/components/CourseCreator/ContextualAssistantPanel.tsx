@@ -25,6 +25,7 @@ import { getFrameworkById } from '../../data/frameworksData';
 interface ContextualAssistantPanelProps {
   currentStep: number;
   course: Course;
+  onChange: (updatedCourse: Course) => void;
   isOpen: boolean;
   onClose: () => void;
   onJumpToStep?: (step: number) => void;
@@ -34,6 +35,7 @@ interface ContextualAssistantPanelProps {
 export const ContextualAssistantPanel: React.FC<ContextualAssistantPanelProps> = ({
   currentStep,
   course,
+  onChange,
   isOpen,
   onClose,
   onJumpToStep,
@@ -43,6 +45,11 @@ export const ContextualAssistantPanel: React.FC<ContextualAssistantPanelProps> =
 
   const summary: CourseValidationSummary = CourseValidationService.validateCourse(course);
   const framework = getFrameworkById(course.frameworkId);
+
+  const handleApplyFix = (rule: CourseValidationRuleResult) => {
+    const updated = CourseValidationService.applyAccessibilityFix(course, rule);
+    onChange(updated);
+  };
 
   const renderStepSpecificGuidance = () => {
     switch (currentStep) {
@@ -307,15 +314,26 @@ export const ContextualAssistantPanel: React.FC<ContextualAssistantPanelProps> =
                   >
                     <div className="font-bold flex items-center justify-between">
                       <span>{r.ruleTitle}</span>
-                      {onJumpToStep && (
-                        <button
-                          type="button"
-                          onClick={() => onJumpToStep(r.targetStep)}
-                          className="text-[10px] text-rose-700 underline font-semibold"
-                        >
-                          Step {r.targetStep}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {r.rule.startsWith('ACCESSIBILITY_') && (
+                          <button
+                            type="button"
+                            onClick={() => handleApplyFix(r)}
+                            className="text-[10px] text-white bg-rose-600 hover:bg-rose-500 px-2 py-0.5 rounded font-bold cursor-pointer"
+                          >
+                            Quick Fix
+                          </button>
+                        )}
+                        {onJumpToStep && (
+                          <button
+                            type="button"
+                            onClick={() => onJumpToStep(r.targetStep)}
+                            className="text-[10px] text-rose-700 underline font-semibold"
+                          >
+                            Step {r.targetStep}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-rose-800 opacity-90">{r.message}</p>
                   </div>

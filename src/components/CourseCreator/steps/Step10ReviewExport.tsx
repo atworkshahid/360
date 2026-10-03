@@ -21,6 +21,7 @@ import { DEFAULT_INSTITUTION } from '../../../data/institutionData';
 import { exportSyllabusPDF, exportSyllabusDOCX } from '../../../utils/syllabusExport';
 import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
 import { downloadCourseDocx } from '../../../utils/docxExport';
+import { ReviewLinkModal } from '../ReviewLinkModal';
 
 interface StepProps {
   course: Course;
@@ -86,8 +87,10 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
   );
   const [commentText, setCommentText] = useState('');
   const [commentSection, setCommentSection] = useState('General');
+  const [commentTag, setCommentTag] = useState<'Clarification Needed' | 'Suggestion' | 'Approval'>('Clarification Needed');
   const [versionNote, setVersionNote] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [reviewLinkModalOpen, setReviewLinkModalOpen] = useState(false);
 
   const framework = getFrameworkById(course.frameworkId);
   const comments: CourseReviewComment[] = course.reviewerComments || [];
@@ -136,6 +139,7 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
       reviewerRole: 'Reviewer',
       section: commentSection,
       comment: commentText.trim(),
+      tag: commentTag,
       createdAt: new Date().toISOString(),
       status: 'open',
     };
@@ -190,6 +194,14 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setReviewLinkModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Generate Review Link</span>
+          </button>
+          <button
+            type="button"
             onClick={handleExportPDF}
             disabled={isExporting}
             className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-indigo-200 transition cursor-pointer"
@@ -209,6 +221,12 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
           </button>
         </div>
       </div>
+
+      <ReviewLinkModal
+        course={course}
+        isOpen={reviewLinkModalOpen}
+        onClose={() => setReviewLinkModalOpen(false)}
+      />
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-slate-200 pb-3">
@@ -465,7 +483,16 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
                 <option value="WeeklyPlan">Weekly Schedule</option>
                 <option value="Assessments">Assessment & Grading</option>
               </select>
-              <span className="text-xs text-slate-400">Select section being audited</span>
+              <select
+                value={commentTag}
+                onChange={(e) => setCommentTag(e.target.value as any)}
+                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white"
+              >
+                <option value="Clarification Needed">Clarification Needed</option>
+                <option value="Suggestion">Suggestion</option>
+                <option value="Approval">Approval</option>
+              </select>
+              <span className="text-xs text-slate-400">Section & Tag</span>
             </div>
 
             <textarea

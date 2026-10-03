@@ -565,10 +565,25 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                   Outcome Statement <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  <BloomsTaxonomyHelperModal
+                    isOpen={bloomsModalOpen}
+                    onClose={() => setBloomsModalOpen(false)}
+                    onSelectVerb={handleSelectBloomVerb}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBloomsModalOpen(true)}
+                    className="inline-flex items-center space-x-1.5 text-xs text-indigo-950 bg-white hover:bg-slate-50 font-bold cursor-pointer py-1.5 px-3 rounded-lg border border-indigo-200 shadow-2xs transition"
+                    title="Open interactive Bloom's Taxonomy verb picker"
+                  >
+                    <Target className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Select Bloom's Verb</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleOpenRefiner(selectedCLO)}
-                    className="inline-flex items-center space-x-1.5 text-xs text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 font-semibold cursor-pointer py-1 px-3 rounded-lg shadow-xs shadow-indigo-200 hover:shadow-sm transition group"
+                    className="inline-flex items-center space-x-1.5 text-xs text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 font-semibold cursor-pointer py-1.5 px-3 rounded-lg shadow-xs shadow-indigo-200 hover:shadow-sm transition group"
                     title="AI analyzes current outcome and suggests clearer, measurable phrasing based on best practices"
                   >
                     <Wand2 className="w-3.5 h-3.5 text-purple-200 group-hover:rotate-12 transition-transform" />
@@ -579,7 +594,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                     type="button"
                     id="open-blooms-wheel-modal-btn"
                     onClick={() => setIsWheelModalOpen(true)}
-                    className="inline-flex items-center space-x-1.5 text-xs text-amber-950 bg-gradient-to-r from-amber-100 via-rose-50 to-indigo-100 hover:from-amber-200 hover:to-indigo-200 font-bold cursor-pointer py-1 px-2.5 rounded-lg border border-amber-300 shadow-2xs transition"
+                    className="inline-flex items-center space-x-1.5 text-xs text-amber-950 bg-gradient-to-r from-amber-100 via-rose-50 to-indigo-100 hover:from-amber-200 hover:to-indigo-200 font-bold cursor-pointer py-1.5 px-3 rounded-lg border border-amber-300 shadow-2xs transition"
                     title="Explore and select action verbs using the interactive Bloom's Taxonomy radial sunburst wheel"
                   >
                     <Compass className="w-3.5 h-3.5 text-indigo-700" />
@@ -594,7 +609,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                   <button
                     type="button"
                     onClick={() => setBloomsModalOpen(true)}
-                    className="inline-flex items-center space-x-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer py-1 px-2 rounded-lg hover:bg-indigo-50 transition"
+                    className="inline-flex items-center space-x-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer py-1.5 px-2 rounded-lg hover:bg-indigo-50 transition"
                     title="Open full Bloom's Taxonomy classification and action verbs"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
@@ -929,7 +944,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
             </div>
           </div>
         </div>
-      )}
+
 
       {/* Navigation Buttons */}
       <div className="flex justify-between pt-4">

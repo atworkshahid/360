@@ -77,6 +77,7 @@ import { CourseService } from '../services/courseService';
 import { OBEFrameworkRegistry, FrameworkValidationResult } from '../utils/OBEFrameworkRegistry';
 import { FrameworkGuidebookModal } from './FrameworkGuidebookModal';
 import { CourseSettingsModal } from './CourseSettingsModal';
+import { LongitudinalBloomTracker } from './Dashboard/LongitudinalBloomTracker';
 
 const HighlightMatch: React.FC<{ text: string; query: string }> = ({ text, query }) => {
   if (!query || !query.trim() || !text) return <>{text}</>;
@@ -1388,6 +1389,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </button>
             </div>
           </div>
+        )}
+
+        {/* Longitudinal Bloom's Tracker */}
+        {dashboardView === 'courses' && activeTab === 'all' && (
+          <LongitudinalBloomTracker courses={courses} className="mt-6" />
         )}
 
         {/* Course Cards Grid */}

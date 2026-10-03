@@ -82,6 +82,7 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
   // New Comment Form State
   const [newCommentTargetId, setNewCommentTargetId] = useState<string>(initialTargetId || 'step-1-overview');
   const [newCommentCategory, setNewCommentCategory] = useState<CommentCategory>('Alignment & Rigor');
+  const [newCommentTags, setNewCommentTags] = useState<CommentTag[]>([]);
   const [newCommentPriority, setNewCommentPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
   const [newCommentContent, setNewCommentContent] = useState('');
   const [newCommentSuggestedChange, setNewCommentSuggestedChange] = useState('');
@@ -242,6 +243,7 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
       authorRole,
       authorAvatarColor,
       category: newCommentCategory,
+      tags: newCommentTags,
       content: newCommentContent.trim(),
       status: 'open',
       suggestedChange: newCommentSuggestedChange.trim() ? newCommentSuggestedChange.trim() : undefined,
@@ -264,6 +266,7 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
       authorRole: newComment.authorRole,
       authorAvatarColor: newComment.authorAvatarColor,
       category: newComment.category,
+      tags: newComment.tags,
       content: newComment.content,
       suggestedChange: newComment.suggestedChange,
     }).catch((err) => console.warn('Real-time comment sync warning:', err));
@@ -271,6 +274,7 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
     // Reset input
     setNewCommentContent('');
     setNewCommentSuggestedChange('');
+    setNewCommentTags([]);
     setShowSuggestedChangeInput(false);
   };
 
@@ -852,6 +856,32 @@ export const ElementCommentDrawer: React.FC<ElementCommentDrawerProps> = ({
                         title={cat.description}
                       >
                         {cat.category}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Comment Tags */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Smart Tags
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(['Clarification Needed', 'Suggestion', 'Approval'] as CommentTag[]).map((tag) => {
+                    const isSelected = newCommentTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setNewCommentTags(prev => isSelected ? prev.filter(t => t !== tag) : [...prev, tag])}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer border ${
+                          isSelected
+                            ? 'bg-indigo-100 text-indigo-800 border-indigo-200 shadow-2xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {tag}
                       </button>
                     );
                   })}

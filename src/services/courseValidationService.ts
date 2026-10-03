@@ -94,6 +94,9 @@ export class CourseValidationService {
     // 9. RULE: COURSE_COMPLETENESS
     this.checkCompleteness(course, results);
 
+    // 10. RULE: ACCESSIBILITY_AUDIT
+    this.checkAccessibility(course, results);
+
     // Bloom Distribution
     const bloomDistribution: Record<BloomLevel, number> = {
       Remember: 0,
@@ -612,6 +615,52 @@ export class CourseValidationService {
         targetStep: 2,
       });
     }
+  }
+
+  private static checkAccessibility(course: Course, results: CourseValidationRuleResult[]) {
+    // Simulated Accessibility Audit Rules
+    
+    // 1. Check for missing images/resource alt text
+    const resourcesWithNoNotes = (course.resources || []).filter(r => !r.notes || r.notes.trim() === '');
+    if (resourcesWithNoNotes.length > 0) {
+      results.push({
+        rule: 'ACCESSIBILITY_AUDIT_NOTES',
+        ruleTitle: 'Missing Accessibility Notes for Resources',
+        severity: 'Warning',
+        message: `${resourcesWithNoNotes.length} resources are missing alt text or accessibility descriptions.`,
+        affectedEntity: 'Course',
+        recommendation: 'Add descriptive notes (e.g., alt text for images, transcript for audio) to all resources in the Resource Library.',
+        targetStep: 1, // Assumed location
+      });
+    }
+
+    // 2. Check for short link text
+    const shortLinks = (course.resources || []).filter(r => r.type === 'link' && r.title.length < 5);
+    if (shortLinks.length > 0) {
+      results.push({
+        rule: 'ACCESSIBILITY_AUDIT_LINKS',
+        ruleTitle: 'Non-Descriptive Link Text',
+        severity: 'Suggestion',
+        message: `${shortLinks.length} links have non-descriptive text (e.g., "link", "click here").`,
+        affectedEntity: 'Course',
+        recommendation: 'Use descriptive link text that indicates the destination or purpose.',
+        targetStep: 1,
+      });
+    }
+  }
+
+  public static applyAccessibilityFix(course: Course, rule: CourseValidationRuleResult): Course {
+    const updatedCourse = { ...course };
+    if (rule.rule === 'ACCESSIBILITY_AUDIT_NOTES') {
+      updatedCourse.resources = (updatedCourse.resources || []).map(r => 
+        !r.notes || r.notes.trim() === '' ? { ...r, notes: `Accessibility description for ${r.title}` } : r
+      );
+    } else if (rule.rule === 'ACCESSIBILITY_AUDIT_LINKS') {
+      updatedCourse.resources = (updatedCourse.resources || []).map(r => 
+        r.type === 'link' && r.title.length < 5 ? { ...r, title: `${r.title} - ${r.url}` } : r
+      );
+    }
+    return updatedCourse;
   }
 
   private static checkRubricAlignment(course: Course, results: CourseValidationRuleResult[]) {
