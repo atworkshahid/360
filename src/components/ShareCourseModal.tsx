@@ -27,7 +27,7 @@ import {
   CreateShareOptions,
   SharePermissionLevel,
 } from '../services/shareService';
-import { MentiseraLogo } from './Logo';
+import { OBE360Logo } from './Logo';
 
 interface ShareCourseModalProps {
   isOpen: boolean;
@@ -43,12 +43,16 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
   currentUser,
 }) => {
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create');
-  const [permissionLevel, setPermissionLevel] = useState<SharePermissionLevel>('public_read');
+  const [permissionLevel, setPermissionLevel] = useState<SharePermissionLevel>('reviewer_only');
   const [allowComments, setAllowComments] = useState<boolean>(true);
   const [allowExport, setAllowExport] = useState<boolean>(true);
   const [expirationDays, setExpirationDays] = useState<number | null>(30);
   const [passcode, setPasscode] = useState<string>('');
   const [requirePasscode, setRequirePasscode] = useState<boolean>(false);
+  const [stakeholderRolePreset, setStakeholderRolePreset] = useState<string>('Industry Advisory');
+  const [reviewInstructions, setReviewInstructions] = useState<string>(
+    'Seeking industry advisor & peer feedback on CLOs, assessment rubrics, and modern workplace skill relevance.'
+  );
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedRecord, setGeneratedRecord] = useState<SharedCourseRecord | null>(null);
@@ -93,6 +97,8 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
         allowExport,
         expiresInDays: expirationDays,
         passcode: requirePasscode && passcode.trim().length > 0 ? passcode.trim() : null,
+        stakeholderRolePreset,
+        reviewInstructions: reviewInstructions.trim() ? reviewInstructions.trim() : undefined,
       };
 
       const record = await ShareService.createShareLink(course, options, currentUser);
@@ -154,7 +160,7 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
         {/* Header */}
         <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between relative border-b border-indigo-900/50">
           <div className="flex items-center gap-3">
-            <MentiseraLogo size="sm" variant="light" showText={false} />
+            <OBE360Logo size="sm" variant="light" showText={false} />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-white tracking-tight">Share Course Blueprint</h3>
@@ -304,10 +310,35 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
                 </h4>
 
                 {/* Permission Level Selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <button
                     type="button"
-                    onClick={() => setPermissionLevel('public_read')}
+                    onClick={() => {
+                      setPermissionLevel('reviewer_only');
+                      setAllowComments(true);
+                      setStakeholderRolePreset('Industry Advisory');
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      permissionLevel === 'reviewer_only' && stakeholderRolePreset === 'Industry Advisory'
+                        ? 'border-amber-500 bg-amber-50/60 shadow-sm ring-1 ring-amber-500/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <UserCheck className="w-4 h-4 text-amber-600" />
+                      <span className="text-xs font-bold text-slate-900">Industry & Peers</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Read-only link with targeted commenting on specific sections.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPermissionLevel('public_read');
+                      setStakeholderRolePreset('Accreditation Reviewer');
+                    }}
                     className={`p-3.5 rounded-xl border text-left transition-all ${
                       permissionLevel === 'public_read'
                         ? 'border-indigo-600 bg-indigo-50/50 shadow-sm ring-1 ring-indigo-600/30'
@@ -319,25 +350,7 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
                       <span className="text-xs font-bold text-slate-900">Anyone with Link</span>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Instant read-only review without requiring account sign-in.
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPermissionLevel('reviewer_only')}
-                    className={`p-3.5 rounded-xl border text-left transition-all ${
-                      permissionLevel === 'reviewer_only'
-                        ? 'border-indigo-600 bg-indigo-50/50 shadow-sm ring-1 ring-indigo-600/30'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <UserCheck className="w-4 h-4 text-purple-600" />
-                      <span className="text-xs font-bold text-slate-900">Peer Reviewer</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Optimized for external curriculum auditors & BoS members.
+                      Instant open access review for broader institutional cohorts.
                     </p>
                   </button>
 
@@ -355,9 +368,67 @@ export const ShareCourseModal: React.FC<ShareCourseModalProps> = ({
                       <span className="text-xs font-bold text-slate-900">Restricted / PIN</span>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Protected with an optional 4-digit access code.
+                      Protected with an optional 4-digit security PIN.
                     </p>
                   </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPermissionLevel('co_editor');
+                      setAllowComments(true);
+                      setStakeholderRolePreset('Co-Editor');
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all ${
+                      permissionLevel === 'co_editor'
+                        ? 'border-rose-500 bg-rose-50/60 shadow-sm ring-1 ring-rose-500/30'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <UserCheck className="w-4 h-4 text-rose-600" />
+                      <span className="text-xs font-bold text-slate-900">Co-Editor</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Full access to edit course content and collaborate in real-time.
+                    </p>
+                  </button>
+                </div>
+
+                {/* Stakeholder Preset & Review Prompt Details */}
+                <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/40 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                      Invited Stakeholder Role Preset
+                    </label>
+                    <span className="text-[10px] text-amber-800 font-medium">Read-Only + Section Comments</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <select
+                        value={stakeholderRolePreset}
+                        onChange={(e) => setStakeholderRolePreset(e.target.value)}
+                        className="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 font-medium"
+                      >
+                        <option value="Industry Advisory">Industry Advisory Board (Employers & Practitioners)</option>
+                        <option value="External Examiner">External Academic Peer Reviewer</option>
+                        <option value="Accreditation Reviewer">Accreditation Evaluator (ABET / Washington Accord)</option>
+                        <option value="Instructional Designer">Instructional Designer</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Guidance for reviewers (e.g. Focus on CLO 2 & Module 4)"
+                        value={reviewInstructions}
+                        onChange={(e) => setReviewInstructions(e.target.value)}
+                        className="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Granular Toggles */}

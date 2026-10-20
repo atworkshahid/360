@@ -17,6 +17,8 @@ import {
   Sliders,
   GraduationCap,
   FileSpreadsheet,
+  HardDriveDownload,
+  Table,
 } from 'lucide-react';
 import { Course, AcademicReview, CQIActionPlan } from '../../../types';
 import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
@@ -27,6 +29,15 @@ import { LMSIntegrationModal } from '../../LMSIntegrationModal';
 import { PrintFriendlyView } from '../PrintFriendlyView';
 import { LMSFormatExportModal } from '../../LMSFormatExportModal';
 import { triggerWithLeadGate } from '../../../services/leadService';
+import { OfflineProjectService } from '../../../utils/offlineProjectService';
+import { MicroCredentialModal } from '../../MicroCredentials/MicroCredentialModal';
+import { UnifiedMLOCLOPLOMappingModal } from '../../ConstructiveAlignment/UnifiedMLOCLOPLOMappingModal';
+import { AccessibilityAuditModal } from '../AccessibilityAuditModal';
+import { ImageGenerator } from '../ImageGenerator';
+import { PeerFeedbackTracker } from '../PeerFeedbackTracker';
+import { exportToCalendar } from '../../../utils/AcademicSchedulePlanner';
+import { runAccessibilityAudit } from '../../../utils/accessibilityScanner';
+import { AuditGap } from '../../../types';
 
 interface StepProps {
   course: Course;
@@ -46,6 +57,13 @@ export const Step15ReviewExport: React.FC<StepProps> = ({ course, onChange, onNe
   const [isLmsExporting, setIsLmsExporting] = useState(false);
   const [lmsFormatExportModalOpen, setLmsFormatExportModalOpen] = useState(false);
   const [lmsFormatPlatform, setLmsFormatPlatform] = useState<'moodle' | 'blackboard'>('moodle');
+  const [microCredentialModalOpen, setMicroCredentialModalOpen] = useState(false);
+  const [unifiedMappingModalOpen, setUnifiedMappingModalOpen] = useState(false);
+  const [accessibilityModalOpen, setAccessibilityModalOpen] = useState(false);
+  const [accessibilityGaps, setAccessibilityGaps] = useState<AuditGap[]>([]);
+  const [headerImageModalOpen, setHeaderImageModalOpen] = useState(false);
+  const [headerImageUrl, setHeaderImageUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
   const handleQuickDownloadLMS = () => {
     triggerWithLeadGate(
@@ -106,19 +124,19 @@ export const Step15ReviewExport: React.FC<StepProps> = ({ course, onChange, onNe
     onChange({ ...course, cqiPlan: { ...cqi, ...updates } });
   };
 
+  const handleRunAccessibilityAudit = () => {
+    const gaps = runAccessibilityAudit(course);
+    setAccessibilityGaps(gaps);
+    setAccessibilityModalOpen(true);
+  };
+
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(course, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `${course.code || 'course'}-obe-specification.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    OfflineProjectService.downloadOfflineProject(course);
   };
 
   const handleExportMarkdown = () => {
     const mdContent = `# ${course.title} (${course.code})
-**Institution:** MENTISERA Institute of Learning and Development  
+**Institution:** Shahid Hussain Soomro (shahidsoomro@msn.com | +923009800135)  
 **Discipline:** ${course.category || course.programme} | **Credit Hours:** ${course.creditHours} | **Level:** ${course.courseLevel}  
 
 ## Description
@@ -150,7 +168,8 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
   };
 
   const handleCopyJSON = () => {
-    navigator.clipboard.writeText(JSON.stringify(course, null, 2));
+    const project = OfflineProjectService.generateOfflineProject(course);
+    navigator.clipboard.writeText(JSON.stringify(project, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -207,6 +226,19 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
 
           <div className="flex items-center flex-wrap gap-2">
             <button
+              onClick={() => setHeaderImageModalOpen(!headerImageModalOpen)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{headerImageModalOpen ? 'Close Header Generator' : 'Generate Header Image'}</span>
+            </button>
+            <button
+              onClick={() => exportToCalendar(course)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            >
+              <span>Export to Calendar</span>
+            </button>
+            <button
               onClick={() => setPdfModalOpen(true)}
               className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
               title="Preview, configure, and export course audit & specification as a PDF document"
@@ -257,6 +289,12 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={handleRunAccessibilityAudit}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer transition shadow-sm"
+            >
+              Run Accessibility Audit
+            </button>
             <span className="text-xs text-slate-500">Status:</span>
             <select
               value={review.status}
@@ -350,6 +388,22 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
           />
         </div>
       </div>
+
+      {headerImageModalOpen && (
+        <div className="mt-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <h4 className="font-bold text-sm mb-2">Header Image Generator</h4>
+            <ImageGenerator onImageGenerated={(url) => setHeaderImageUrl(url)} />
+        </div>
+      )}
+
+      <div className="mt-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-2">
+            <h4 className="font-bold text-sm">Cover Page Background Generator</h4>
+            <p className="text-xs text-slate-500">Generate a unique image based on discipline: {course.category}</p>
+            <ImageGenerator onImageGenerated={(url) => setCoverImageUrl(url)} />
+            {coverImageUrl && <img src={coverImageUrl} alt="Cover Preview" className="h-20 w-full object-cover mt-2 rounded" />}
+      </div>
+
+      <PeerFeedbackTracker course={course} onChange={onChange} />
 
       {/* CQI Action Plan Box */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
@@ -522,18 +576,18 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
               id="step15-card-export-pdf-btn"
               onClick={handleQuickDownloadPDF}
               disabled={isQuickDownloading}
-              className="py-3 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/40 transition cursor-pointer"
-              title="Export printable PDF of current course audit and structure"
+              className="py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/40 transition cursor-pointer"
+              title="Download official formatted accreditation dossier PDF aligned with course accreditation criteria"
             >
               {isQuickDownloading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Exporting PDF...</span>
+                  <span>Compiling Dossier...</span>
                 </>
               ) : (
                 <>
-                  <FileDown className="w-4 h-4" />
-                  <span>Export to PDF</span>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Download Accreditation Dossier</span>
                 </>
               )}
             </button>
@@ -649,6 +703,28 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
           </button>
 
           <button
+            type="button"
+            id="step15-footer-single-doc-emlo-btn"
+            onClick={() => setUnifiedMappingModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 text-emerald-900 text-xs font-bold shadow-sm transition cursor-pointer"
+            title="Single Doc I.EMLO-CLO-PLO Alignment Specification & Custom Mapping Studio"
+          >
+            <Table className="w-4 h-4 text-emerald-700" />
+            <span>Single Doc I.EMLO-CLO-PLO</span>
+          </button>
+
+          <button
+            type="button"
+            id="step15-footer-microcredentials-btn"
+            onClick={() => setMicroCredentialModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 text-xs font-semibold shadow-sm transition cursor-pointer"
+            title="Generate and view visual Micro-credential Badges for each masterable skill in this course"
+          >
+            <Award className="w-4 h-4 text-amber-600" />
+            <span>Skill Badges</span>
+          </button>
+
+          <button
             onClick={handleCopyJSON}
             className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition cursor-pointer"
           >
@@ -657,11 +733,13 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
           </button>
 
           <button
+            id="step15-footer-download-offline-btn"
             onClick={handleExportJSON}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+            title="Download current course as a JSON-based local project file (.obe.json) maintaining full OBE integrity"
           >
-            <Download className="w-4 h-4" />
-            <span>Download JSON</span>
+            <HardDriveDownload className="w-4 h-4" />
+            <span>Download for Offline (.obe.json)</span>
           </button>
         </div>
       </div>
@@ -681,6 +759,7 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
         course={course}
         isOpen={pdfModalOpen}
         onClose={() => setPdfModalOpen(false)}
+        coverBackgroundImageUrl={coverImageUrl || undefined}
       />
 
       {/* LMS Integration Hub Modal */}
@@ -699,6 +778,21 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
         initialPlatform={lmsFormatPlatform}
       />
 
+      {/* Micro-credential Badges Modal */}
+      <MicroCredentialModal
+        course={course}
+        isOpen={microCredentialModalOpen}
+        onClose={() => setMicroCredentialModalOpen(false)}
+      />
+
+      {/* Single Doc I.EMLO-CLO-PLO & Custom Mapping Modal */}
+      <UnifiedMLOCLOPLOMappingModal
+        course={course}
+        isOpen={unifiedMappingModalOpen}
+        onClose={() => setUnifiedMappingModalOpen(false)}
+        onChangeCourse={onChange}
+      />
+
       {/* Print-Friendly View */}
       {printFriendlyOpen && (
         <PrintFriendlyView
@@ -706,6 +800,13 @@ ${course.assessments.map((a) => `- **${a.name}** (${a.type}): ${a.marks} Marks, 
           onClose={() => setPrintFriendlyOpen(false)}
         />
       )}
+
+      <AccessibilityAuditModal
+        isOpen={accessibilityModalOpen}
+        onClose={() => setAccessibilityModalOpen(false)}
+        gaps={accessibilityGaps}
+        course={course}
+      />
     </div>
   );
 };

@@ -215,10 +215,45 @@ export const FrameworkGuidebookModal: React.FC<FrameworkGuidebookModalProps> = (
     }
   };
 
+  const [adoptionSuccess, setAdoptionSuccess] = useState<boolean>(false);
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleCopyFrameworkOutcomes = () => {
+    const header = `# ${activeGuidebook.name} (${activeGuidebook.code})\n` +
+      `Governing Body: ${activeGuidebook.governingBody}\n` +
+      `Outcome Model: ${activeGuidebook.outcomeModel}\n` +
+      `Standard Edition: ${activeGuidebook.standardEdition}\n\n` +
+      `## Key Outcomes & Graduate Attributes (${activeGuidebook.totalOutcomes} items):\n\n`;
+    const items = activeGuidebook.keyOutcomes.map((o) => (
+      `### ${o.code}: ${o.title}\n` +
+      `${o.description}\n` +
+      (o.bloomsLevel ? `Bloom Taxonomy Target: ${o.bloomsLevel}\n` : '')
+    )).join('\n');
+    handleCopy(header + items, 'all-outcomes');
+  };
+
+  const handleCopyChapterRequirements = () => {
+    if (!currentChapter) return;
+    const text = `## Chapter ${currentChapter.number}: ${currentChapter.title}\n` +
+      `Summary: ${currentChapter.summary}\n\n` +
+      `### Mandatory Requirements:\n` +
+      (currentChapter.requirements?.map((r) => `- ${r}`).join('\n') || 'None specified') +
+      `\n\n### Alignment Rules:\n` +
+      (currentChapter.alignmentRules?.map((r) => `- ${r}`).join('\n') || 'None specified');
+    handleCopy(text, `chapter-${currentChapter.number}`);
+  };
+
+  const handleAdopt = () => {
+    if (onAdoptFramework) {
+      onAdoptFramework(activeGuidebook.id);
+      setAdoptionSuccess(true);
+      setTimeout(() => setAdoptionSuccess(false), 4000);
+    }
   };
 
   const isCurrentCourseFramework =
@@ -362,27 +397,54 @@ export const FrameworkGuidebookModal: React.FC<FrameworkGuidebookModalProps> = (
         {/* Framework Selector & Associated Documentation Path Ribbon */}
         <div className="bg-slate-50 border-b border-slate-200 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-            <span className="font-semibold text-slate-700">Framework Standard:</span>
+            <span className="font-semibold text-slate-700">Accreditation Body &amp; Framework:</span>
             <select
               value={selectedFwId}
               onChange={(e) => setSelectedFwId(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer"
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer max-w-xs md:max-w-md truncate"
             >
-              <optgroup label="International Recognition Accords">
+              <optgroup label="International Engineering &amp; Computing Accords">
                 <option value="fw-washington-accord">Washington Accord (IEA WA-ENG)</option>
-                <option value="fw-sydney-accord">Sydney Accord (IEA SA-ET)</option>
                 <option value="fw-seoul-accord">Seoul Accord (SA-COMP)</option>
+                <option value="fw-sydney-accord">Sydney Accord (IEA SA-ET)</option>
+                <option value="fw-dublin-accord">Dublin Accord (IEA DA-ENGTECH)</option>
               </optgroup>
               <optgroup label="ABET Accreditation Commissions">
                 <option value="fw-abet-eac">ABET EAC (Engineering Accreditation)</option>
                 <option value="fw-abet-cac">ABET CAC (Computing Accreditation)</option>
                 <option value="fw-abet-etac">ABET ETAC (Engineering Technology)</option>
               </optgroup>
-              <optgroup label="National Statutory Standards">
-                <option value="fw-nba-tier1">NBA India Tier-I (Washington Accord Recognized)</option>
-                <option value="fw-hec-pakistan">HEC Pakistan &amp; NCEAC / PEC OBE Framework</option>
+              <optgroup label="Global Business Accreditation">
+                <option value="fw-aacsb">AACSB International Business Accreditation</option>
+                <option value="fw-acbsp">ACBSP Global Business Accreditation</option>
               </optgroup>
-              <optgroup label="Institutional & Classical OBE">
+              <optgroup label="Middle East &amp; National Statutory Standards">
+                <option value="fw-ncaaa-saudi">NCAAA (Saudi Arabia / ETEC Standards)</option>
+                <option value="fw-hec-pakistan">HEC Pakistan &amp; NCEAC / PEC OBE Framework</option>
+                <option value="fw-nba-india">National Board of Accreditation (NBA) India</option>
+              </optgroup>
+              <optgroup label="Teacher &amp; Educator Preparation">
+                <option value="fw-caep">CAEP (Educator Preparation)</option>
+                <option value="fw-cctc">CCTC (California Teacher Credentialing)</option>
+                <option value="fw-cctp">CCTP (Clinical Teacher Preparation)</option>
+              </optgroup>
+              <optgroup label="US Regional Institutional Accreditations">
+                <option value="fw-hlc">Higher Learning Commission (HLC)</option>
+                <option value="fw-msche">Middle States Commission on Higher Education (MSCHE)</option>
+                <option value="fw-neche">New England Commission of Higher Education (NECHE)</option>
+                <option value="fw-nwccu">Northwest Commission on Colleges and Universities (NWCCU)</option>
+                <option value="fw-sacscoc">Southern Association of Colleges and Schools (SACSCOC)</option>
+                <option value="fw-wscuc">WASC Senior College and University Commission (WSCUC)</option>
+              </optgroup>
+              <optgroup label="European Higher Education Area (EHEA) Standards">
+                <option value="fw-ehea">European Higher Education Area (EHEA / ESG Standards)</option>
+                <option value="fw-fibaa">FIBAA (International Business Administration)</option>
+                <option value="fw-acquin">ACQUIN (Accreditation, Certification &amp; QA)</option>
+                <option value="fw-eqaa">EQAA (European Quality Assurance Agency)</option>
+                <option value="fw-eua">EUA (European University Association)</option>
+                <option value="fw-eca">ECA (European Consortium for Accreditation)</option>
+              </optgroup>
+              <optgroup label="Institutional &amp; Classical OBE Models">
                 <option value="fw-custom-institutional">Custom Institutional Quality Blueprint</option>
                 <option value="fw-general-obe">Spady Classical Outcome-Based Education</option>
               </optgroup>
@@ -409,25 +471,47 @@ export const FrameworkGuidebookModal: React.FC<FrameworkGuidebookModalProps> = (
             <span className="text-slate-500 hidden lg:inline">~{activeGuidebook.estimatedPages} Pages</span>
           </div>
 
-          {/* Action button if currently viewing a framework not bound to the course */}
-          {!isCurrentCourseFramework && onAdoptFramework && (
+          <div className="flex items-center space-x-2">
+            {/* Copy / Adopt Framework to Course */}
+            {!isCurrentCourseFramework && onAdoptFramework && (
+              <button
+                type="button"
+                onClick={handleAdopt}
+                className="inline-flex items-center space-x-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer shadow-2xs"
+                title={`Copy ${activeGuidebook.name} standards and synchronize official PLOs to course`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Copy &amp; Adopt {activeGuidebook.code} to Course</span>
+              </button>
+            )}
+
+            {isCurrentCourseFramework && (
+              <div className="flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-semibold shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Adopted &amp; Bound to {courseCode}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Adoption Success Toast Banner */}
+        {adoptionSuccess && (
+          <div className="bg-emerald-600 text-white px-5 py-2 text-xs font-medium flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center space-x-2">
+              <Check className="w-4 h-4 shrink-0 text-white" />
+              <span>
+                <strong>Framework Copied Successfully!</strong> {activeGuidebook.name} ({activeGuidebook.code}) standards, guidelines, and {activeGuidebook.totalOutcomes} program learning outcomes are now synchronized to {courseCode}.
+              </span>
+            </div>
             <button
               type="button"
-              onClick={() => onAdoptFramework(activeGuidebook.id)}
-              className="inline-flex items-center space-x-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+              onClick={() => setAdoptionSuccess(false)}
+              className="text-white hover:text-emerald-100 text-xs underline cursor-pointer ml-3"
             >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Apply {activeGuidebook.code} to Course</span>
+              Dismiss
             </button>
-          )}
-
-          {isCurrentCourseFramework && (
-            <div className="flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Bound to {courseCode}</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Modal Main Content */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
@@ -564,19 +648,35 @@ export const FrameworkGuidebookModal: React.FC<FrameworkGuidebookModalProps> = (
                           )}
                         </div>
 
-                        {currentChapter.stageKey && onNavigateToStep && (
+                        <div className="flex items-center space-x-2">
                           <button
                             type="button"
-                            onClick={() => {
-                              onNavigateToStep(currentChapter.stageKey!);
-                              onClose();
-                            }}
-                            className="inline-flex items-center space-x-1 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+                            onClick={handleCopyChapterRequirements}
+                            className="inline-flex items-center space-x-1 text-xs text-slate-600 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer"
+                            title="Copy chapter standards and guidelines to clipboard"
                           >
-                            <span>Jump to Wizard Step</span>
-                            <ArrowRight className="w-3 h-3" />
+                            {copiedId === `chapter-${currentChapter.number}` ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>{copiedId === `chapter-${currentChapter.number}` ? 'Copied' : 'Copy Guidelines'}</span>
                           </button>
-                        )}
+
+                          {currentChapter.stageKey && onNavigateToStep && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onNavigateToStep(currentChapter.stageKey!);
+                                onClose();
+                              }}
+                              className="inline-flex items-center space-x-1 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+                            >
+                              <span>Jump to Wizard Step</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <h2 className="text-xl font-bold text-slate-900 font-serif">

@@ -31,6 +31,7 @@ import {
   CommentCategory,
   CommentStatus,
   CommentTargetType,
+  CommentTag,
 } from '../../../types';
 import {
   STAKEHOLDER_PERSONAS,

@@ -37,6 +37,21 @@
         "courseData": { "type": "object" }
       },
       "required": ["id", "title", "code", "updatedAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Inline comments for peer review on MLOs or assessments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courseId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "commentText": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "courseId", "targetId", "userId", "commentText", "createdAt"]
     }
   },
   "firestore": {
@@ -47,6 +62,10 @@
     "/courses/{courseId}": {
       "schema": { "$ref": "#/entities/Course" },
       "description": "Collection of offline-synchronized course blueprints"
+    },
+    "/courses/{courseId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Collection of inline comments for course elements"
     }
   }
 }

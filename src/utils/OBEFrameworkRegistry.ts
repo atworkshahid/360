@@ -5,8 +5,17 @@ import {
   GuidebookPdfOptions,
 } from './frameworkGuidebookPdf';
 import { getFrameworkGuideline } from '../data/frameworkGuidelines';
+import { ACCREDITATION_GUIDEBOOKS } from '../data/accreditationGuidebooksData';
 
-export type FrameworkCategory = 'international' | 'accreditation' | 'national' | 'institutional';
+export type FrameworkCategory =
+  | 'international'
+  | 'accreditation'
+  | 'national'
+  | 'institutional'
+  | 'business'
+  | 'education'
+  | 'regional'
+  | 'european';
 
 export type FrameworkValidationStatus = 'valid' | 'missing_docs' | 'deprecated' | 'unrecognized';
 
@@ -158,6 +167,51 @@ export interface CourseMetadataInput {
 // ---------------------------------------------------------------------------
 
 const FRAMEWORK_REGISTRY_CATALOG: Record<
+  string,
+  Omit<OBEFrameworkDefinition, 'generatePdfBlob' | 'downloadPdf'>
+> = {};
+
+ACCREDITATION_GUIDEBOOKS.forEach((raw) => {
+  FRAMEWORK_REGISTRY_CATALOG[raw.id] = {
+    id: raw.id,
+    code: raw.code,
+    name: raw.name,
+    title: raw.title,
+    governingBody: raw.governingBody,
+    jurisdiction: raw.jurisdiction,
+    category: raw.category as FrameworkCategory,
+    categoryLabel: raw.categoryLabel,
+    standardEdition: raw.edition,
+    documentRef: raw.documentRef,
+    publishedYear: raw.publishedYear,
+    estimatedPages: raw.pageCount,
+    pdfPath: raw.pdfPath,
+    pdfFileName: raw.pdfFileName,
+    officialUrl: raw.officialUrl,
+    description: raw.description,
+    accreditationScope: raw.accreditationScope,
+    outcomeModel: raw.outcomeModel,
+    totalOutcomes: raw.keyOutcomes.length,
+    corePrinciples: raw.principles,
+    keyOutcomes: raw.keyOutcomes.map((o) => ({
+      code: o.code,
+      title: o.title,
+      description: o.description,
+      bloomsLevel: o.bloomsLevel,
+    })),
+    chapters: raw.chapters.map((c) => ({
+      number: c.number,
+      title: c.title,
+      stageKey: c.stageKey,
+      stageLabel: c.stageLabel,
+      summary: c.summary,
+      requirements: c.requirements,
+      alignmentRules: c.alignmentRules,
+    })),
+  };
+});
+
+const LEGACY_FRAMEWORK_REGISTRY_CATALOG: Record<
   string,
   Omit<OBEFrameworkDefinition, 'generatePdfBlob' | 'downloadPdf'>
 > = {
@@ -672,14 +726,14 @@ export class OBEFrameworkRegistry {
     }
 
     // 4. Fuzzy / keyword match for course metadata inputs
+    if (norm.includes('etac') || norm.includes('abet-etac')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-abet-etac') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
     if (norm.includes('eac') || norm.includes('abet-eac')) {
       return OBEFrameworkRegistry.registryMap.get('fw-abet-eac')!;
     }
     if (norm.includes('cac') || norm.includes('computing')) {
       return OBEFrameworkRegistry.registryMap.get('fw-abet-cac')!;
-    }
-    if (norm.includes('etac')) {
-      return OBEFrameworkRegistry.registryMap.get('fw-abet-etac')!;
     }
     if (norm.includes('abet')) {
       return OBEFrameworkRegistry.registryMap.get('fw-abet-eac')!;
@@ -687,14 +741,71 @@ export class OBEFrameworkRegistry {
     if (norm.includes('seoul') || norm.includes('sa-comp')) {
       return OBEFrameworkRegistry.registryMap.get('fw-seoul-accord')!;
     }
-    if (norm.includes('sydney') || norm.includes('sa-et') || norm.includes('technology')) {
+    if (norm.includes('dublin')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-dublin-accord') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('sydney') || norm.includes('sa-et')) {
       return OBEFrameworkRegistry.registryMap.get('fw-sydney-accord')!;
     }
-    if (norm.includes('washington') || norm.includes('accord') || norm.includes('wa-eng')) {
+    if (norm.includes('washington') || norm.includes('wa-eng')) {
       return OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
     }
+    if (norm.includes('aacsb')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-aacsb') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('acbsp')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-acbsp') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('ncaaa') || norm.includes('saudi') || norm.includes('etec')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-ncaaa-saudi') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('caep')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-caep') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('cctc')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-cctc') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('cctp')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-cctp') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('hlc')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-hlc') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('msche')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-msche') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('neche')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-neche') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('nwccu')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-nwccu') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('sacscoc')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-sacscoc') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('wscuc') || norm.includes('wasc')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-wscuc') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('fibaa')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-fibaa') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('acquin')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-acquin') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('eqaa')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-eqaa') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('eua')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-eua') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('eca')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-eca') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
+    if (norm.includes('ehea') || norm.includes('esg')) {
+      return OBEFrameworkRegistry.registryMap.get('fw-ehea') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
+    }
     if (norm.includes('nba') || norm.includes('india') || norm.includes('tier1') || norm.includes('tier-1')) {
-      return OBEFrameworkRegistry.registryMap.get('fw-nba-tier1')!;
+      return OBEFrameworkRegistry.registryMap.get('fw-nba-tier1') || OBEFrameworkRegistry.registryMap.get('fw-nba-india') || OBEFrameworkRegistry.registryMap.get('fw-washington-accord')!;
     }
     if (norm.includes('hec') || norm.includes('pakistan') || norm.includes('pec') || norm.includes('nceac')) {
       return OBEFrameworkRegistry.registryMap.get('fw-hec-pakistan')!;

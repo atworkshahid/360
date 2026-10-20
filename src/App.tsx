@@ -6,6 +6,7 @@ import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { CourseWizard } from './components/CourseCreator/CourseWizard';
 import { CopilotPanel } from './components/CourseCreator/CopilotPanel';
+import { Footer } from './components/common/Footer';
 import { MarketingLandingPage } from './components/MarketingLandingPage';
 import { FeedbackModal } from './components/FeedbackModal';
 import { SignInModal } from './components/SignInModal';
@@ -588,6 +589,7 @@ export default function App() {
             onToggleExperienceMode={handleToggleExperienceMode}
           />
         )}
+        <Footer />
       </div>
 
       {/* Persistent AI Copilot Panel */}

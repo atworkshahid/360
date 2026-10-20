@@ -17,6 +17,7 @@ import {
   X,
   RotateCcw,
   SlidersHorizontal,
+  Copy,
 } from 'lucide-react';
 import { BloomLevel, CLO, Course } from '../../types';
 import {
@@ -29,6 +30,7 @@ export interface BloomsInteractiveReferenceProps {
   selectedCLO?: CLO | null;
   course?: Course;
   onSelectVerb: (verb: string, level: BloomLevel) => void;
+  onSelectLevel?: (level: BloomLevel) => void;
   onApplyStem?: (stem: string, level: BloomLevel) => void;
   onOpenFullModal?: () => void;
   compact?: boolean;
@@ -38,6 +40,7 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
   selectedCLO,
   course,
   onSelectVerb,
+  onSelectLevel,
   onApplyStem,
   onOpenFullModal,
   compact = false,
@@ -265,8 +268,8 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
                       type="button"
                       onClick={() => {
                         setActiveLevel(lvl);
-                        if (selectedCLO && isSelected) {
-                          // Already on this level
+                        if (onSelectLevel) {
+                          onSelectLevel(lvl);
                         }
                       }}
                       className={`p-2 rounded-xl text-left border transition relative cursor-pointer ${
@@ -314,6 +317,34 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
                 <p className="text-[11px] text-slate-600 italic">
                   "{levelDetails.guidingQuestion}"
                 </p>
+              </div>
+
+              {/* Quick Auto-Suggested Action Verbs for Selected Cognitive Level */}
+              <div className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-blue-50/80 border border-indigo-200/90 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center space-x-1.5 text-xs text-indigo-950 font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>Auto-Suggested {activeLevel} Verbs for CLO:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {levelDetails.categories.flatMap((c) => c.verbs).slice(0, 8).map((verb) => (
+                    <button
+                      key={verb}
+                      type="button"
+                      onClick={() => handleVerbClick(verb, activeLevel)}
+                      className={`px-2 py-0.5 rounded-md text-xs font-bold transition border cursor-pointer flex items-center space-x-1 shadow-2xs ${
+                        selectedCLO?.bloomVerb?.toLowerCase() === verb.toLowerCase()
+                          ? 'bg-indigo-600 text-white border-indigo-700'
+                          : 'bg-white hover:bg-indigo-600 hover:text-white text-indigo-900 border-indigo-200'
+                      }`}
+                      title={`Apply "${verb}" to CLO statement`}
+                    >
+                      <span>{verb}</span>
+                      {selectedCLO?.bloomVerb?.toLowerCase() === verb.toLowerCase() && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -377,11 +408,12 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
                         {category.verbs.map((verb) => {
                           const isSelected = selectedCLO?.bloomVerb?.toLowerCase() === verb.toLowerCase();
                           return (
+                          <div className="flex items-center space-x-0.5 group">
                             <button
                               key={verb}
                               type="button"
                               onClick={() => handleVerbClick(verb, activeLevel)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                              className={`px-2 py-1 rounded-l-lg text-xs font-semibold transition border cursor-pointer ${
                                 isSelected
                                   ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs font-bold'
                                   : 'bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 border-slate-200'
@@ -391,6 +423,20 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
                               <span>{verb}</span>
                               {isSelected && <Check className="w-3 h-3 ml-1 inline text-white" />}
                             </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(verb);
+                                setJustAppliedVerb(verb);
+                                setTimeout(() => setJustAppliedVerb(null), 1800);
+                              }}
+                              className={`px-1.5 py-1.5 rounded-r-lg border border-l-0 border-slate-200 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition cursor-pointer ${
+                                isSelected ? 'border-indigo-700' : ''
+                              }`}
+                              title="Copy verb to clipboard"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           );
                         })}
                       </div>
@@ -431,15 +477,28 @@ export const BloomsInteractiveReference: React.FC<BloomsInteractiveReferenceProp
                     </div>
 
                     {onApplyStem && (
-                      <button
-                        type="button"
-                        onClick={() => onApplyStem(stemObj.stem, activeLevel)}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 transition flex items-center space-x-1 cursor-pointer shadow-2xs"
-                        title="Adopt this stem into the current outcome statement"
-                      >
-                        <span>Adopt Stem</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => onApplyStem(stemObj.stem, activeLevel)}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1 cursor-pointer shadow-2xs"
+                          title="Adopt this stem into the current outcome statement"
+                        >
+                          <span>Adopt Stem</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(stemObj.stem);
+                            setJustAppliedVerb(stemObj.stem);
+                            setTimeout(() => setJustAppliedVerb(null), 1800);
+                          }}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition cursor-pointer"
+                          title="Copy stem to clipboard"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

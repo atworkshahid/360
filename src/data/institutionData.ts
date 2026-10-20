@@ -1,5 +1,52 @@
-import { Institution, AppUser, UserRole } from '../types';
+import { Institution, AppUser, UserRole, EMLO } from '../types';
 import { INSTITUTION_LOGO_PRESETS } from '../utils/logoHelper';
+
+export const DEFAULT_INSTITUTIONAL_EMLOS: EMLO[] = [
+  {
+    id: 'emlo-1',
+    code: 'I.EMLO 1',
+    title: 'Academic Excellence & Foundational Inquiry',
+    statement:
+      'Master foundational and advanced scientific, mathematical, and disciplinary principles to investigate and solve complex, ill-defined engineering and computing challenges.',
+    bloomLevel: 'Analyze',
+    targetDomain: 'Cognitive',
+    mappedPLOIds: ['plo-1', 'plo-2'],
+    weight: 25,
+  },
+  {
+    id: 'emlo-2',
+    code: 'I.EMLO 2',
+    title: 'Professional Practice, Design & Innovation',
+    statement:
+      'Conceive, design, implement, and validate innovative computational and engineering systems that satisfy real-world operational constraints and industry benchmarks.',
+    bloomLevel: 'Create',
+    targetDomain: 'Cognitive',
+    mappedPLOIds: ['plo-3', 'plo-4'],
+    weight: 30,
+  },
+  {
+    id: 'emlo-3',
+    code: 'I.EMLO 3',
+    title: 'Ethical Leadership, Sustainability & Societal Impact',
+    statement:
+      'Demonstrate ethical reasoning, environmental stewardship, safety compliance, and proactive social responsibility in all professional technological endeavors.',
+    bloomLevel: 'Evaluate',
+    targetDomain: 'Affective',
+    mappedPLOIds: ['plo-5', 'plo-6'],
+    weight: 20,
+  },
+  {
+    id: 'emlo-4',
+    code: 'I.EMLO 4',
+    title: 'Multidisciplinary Collaboration & Continuous Agility',
+    statement:
+      'Communicate technical concepts with clarity, lead collaborative multidisciplinary teams, and engage in lifelong autonomous skill acquisition and technical adaptability.',
+    bloomLevel: 'Apply',
+    targetDomain: 'Psychomotor',
+    mappedPLOIds: ['plo-7', 'plo-8'],
+    weight: 25,
+  },
+];
 
 export const DEFAULT_INSTITUTION: Institution = {
   id: 'inst-apex-01',

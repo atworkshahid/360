@@ -441,9 +441,7 @@ export const PrintFriendlyView: React.FC<PrintFriendlyViewProps> = ({ course, on
                   <LogoMark size={44} />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold tracking-widest text-slate-500 uppercase font-sans mb-1">
-                    MENTISERA INSTITUTE OF LEARNING AND DEVELOPMENT
-                  </p>
+                    SHAHID HUSSAIN SOOMRO (shahidsoomro@msn.com | +923009800135)
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
                     {course.title || 'Untitled Course Specification'}
                   </h1>

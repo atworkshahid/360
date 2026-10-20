@@ -1,3 +1,9 @@
+import { ModularLearningOutcome, MicroLearningUnit } from './types/mlu';
+
+export type MLO = ModularLearningOutcome;
+export type MLU = MicroLearningUnit;
+export type { ModularLearningOutcome, MicroLearningUnit };
+
 export type BloomLevel = 'Remember' | 'Understand' | 'Apply' | 'Analyze' | 'Evaluate' | 'Create';
 
 export type LearningDomain = 'Cognitive' | 'Psychomotor' | 'Affective';
@@ -59,7 +65,7 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'es', name: 'Spanish', nativeName: 'Español', dir: 'ltr', flag: '🇪🇸' },
 ];
 
-export type CLOStatus = 'Draft' | 'Validated' | 'Flagged';
+export type OutcomeStatus = 'Draft' | 'Approved' | 'Under Review';
 export type MappingLevel = PLOMappingLevel;
 
 export type CompletionRequirement =
@@ -70,6 +76,18 @@ export type CompletionRequirement =
   | 'submit_assignment'
   | 'participate_discussion'
   | 'demonstrate_skill';
+
+export interface EMLO {
+  id: string;
+  code: string; // e.g. "I.EMLO 1" or "EMLO 1"
+  title: string;
+  statement: string;
+  bloomLevel?: BloomLevel;
+  targetDomain?: LearningDomain;
+  mappedPLOIds?: string[];
+  mappedCLOIds?: string[];
+  weight?: number;
+}
 
 export interface PLO {
   id: string;
@@ -103,7 +121,8 @@ export interface CLO {
   assessmentMethod: string;
   achievementThreshold: number; // percentage, e.g. 60
   weightage: number; // percentage of overall course, e.g. 25
-  status: 'Draft' | 'Validated' | 'Flagged';
+  weight?: number; // alias for weightage
+  status: OutcomeStatus;
   qualityScore: number; // 0 to 100
   qualityChecks: CLOQualityCheck[];
   aiSuggestion?: string;
@@ -112,20 +131,7 @@ export interface CLO {
   dependentAssessmentIds?: string[];
 }
 
-export interface MLO {
-  id: string;
-  code: string; // e.g. "MLO 1.1.1" or "MLO 4.2.1"
-  moduleId: string;
-  linkedCLOId: string;
-  statement: string;
-  bloomVerb: string;
-  bloomLevel: BloomLevel;
-  learningDomain?: LearningDomain;
-  requiredActivity: string;
-  assessment: string;
-  evidence: string;
-  studyTimeHours: number;
-}
+
 
 export interface LessonContent {
   text?: string;
@@ -222,6 +228,70 @@ export interface Assessment {
   scheduledWeek?: number;
 }
 
+export interface AssessmentTaskSuggestion {
+  id: string;
+  title: string;
+  taskType: AssessmentType;
+  bloomLevel: BloomLevel;
+  cognitiveTier: 'LOTS' | 'MOTS' | 'HOTS';
+  format: string; // e.g. "Analytic Rubric (4 Performance Levels)", "Formative Scenario Quiz", "Milestone Capstone Project"
+  pedagogicalRationale: string;
+  studentTaskPrompt: string;
+  evidenceArtifact: string;
+  recommendedWeight: number;
+  recommendedMarks: number;
+  isSummative: boolean;
+  directOrIndirect: 'Direct' | 'Indirect';
+  achievementThreshold: number;
+  rubricBlueprint?: {
+    rubricTitle: string;
+    criteria: Array<{
+      criterionName: string;
+      weight: number;
+      levels: Array<{
+        level: RubricLevelName;
+        descriptor: string;
+        pointsRange: string;
+      }>;
+    }>;
+  };
+  sampleQuestions?: Array<{
+    questionStatement: string;
+    options: [string, string, string, string];
+    correctAnswerIndex: number;
+    explanation: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+  }>;
+  alignmentMatchScore: number; // 0-100
+  matchedCLOId?: string;
+  matchedCLOCode?: string;
+  matchedCLOStatement?: string;
+  tags?: string[];
+}
+
+export interface CourseAssessmentMappingSuite {
+  courseTitle: string;
+  courseCode: string;
+  totalSuggestedWeight: number; // 100%
+  overallCognitiveBalance: {
+    hotsPercent: number;
+    motsPercent: number;
+    lotsPercent: number;
+  };
+  cloMappings: Array<{
+    cloId: string;
+    cloCode: string;
+    cloStatement: string;
+    bloomLevel: BloomLevel;
+    cognitiveTier: 'LOTS' | 'MOTS' | 'HOTS';
+    selectedTask: AssessmentTaskSuggestion;
+    alternativeTasks: AssessmentTaskSuggestion[];
+  }>;
+  suggestedAssessments: Assessment[];
+  suggestedRubrics: Rubric[];
+  evidenceSummary: string;
+}
+
 export interface EvidenceSource {
   assessmentId: string;
   componentName: string;
@@ -292,7 +362,9 @@ export type CommentCategory =
   | 'Clarity & Wording'
   | 'Workload & Feasibility'
   | 'Accreditation Standards'
-  | 'Commendation';
+  | 'Commendation'
+  | 'Industry Relevance'
+  | 'Workplace Readiness';
 
 export type CommentStatus = 'open' | 'in_review' | 'resolved';
 
@@ -302,6 +374,7 @@ export interface CommentReply {
   id: string;
   authorName: string;
   authorRole: StakeholderRole;
+  authorAffiliation?: string;
   authorAvatarColor?: string;
   content: string;
   createdAt: string;
@@ -332,6 +405,7 @@ export interface CourseElementComment {
   priority?: 'low' | 'medium' | 'high' | 'critical';
   authorName: string;
   authorRole: StakeholderRole;
+  authorAffiliation?: string;
   authorAvatarColor?: string;
   category: CommentCategory;
   tags?: CommentTag[];
@@ -413,7 +487,11 @@ export type FrameworkTypeBadge =
   | 'Accreditation Commission'
   | 'National Higher Education Framework'
   | 'Educational Framework'
-  | 'Institutional Framework';
+  | 'Institutional Framework'
+  | 'Business Accreditation'
+  | 'Teacher Education Accreditation'
+  | 'US Regional Accreditation'
+  | 'European Quality Assurance';
 
 export interface Framework {
   id: string;
@@ -445,14 +523,30 @@ export interface FrameworkOutcome {
   code: string;
   title: string;
   description: string;
-  outcomeType: 'Graduate Attribute' | 'Student Outcome' | 'Program Learning Outcome' | 'General Outcome';
+  outcomeType:
+    | 'Graduate Attribute'
+    | 'Student Outcome'
+    | 'Program Learning Outcome'
+    | 'General Outcome'
+    | 'Institutional Standard'
+    | 'Accreditation Criterion'
+    | 'Core Competency'
+    | 'Teaching Standard'
+    | 'Learning Goal'
+    | 'Quality Standard';
   sequence: number;
 }
 
 export interface FrameworkTerminology {
   id: string;
   frameworkVersionId: string;
-  conceptKey: 'program_outcome' | 'student_outcome' | 'graduate_attribute' | 'course_learning_outcome';
+  conceptKey:
+    | 'program_outcome'
+    | 'student_outcome'
+    | 'graduate_attribute'
+    | 'course_learning_outcome'
+    | 'learning_goal'
+    | 'competency_standard';
   displayName: string;
 }
 
@@ -466,22 +560,7 @@ export type CourseType =
   | 'Capstone'
   | 'Other';
 
-export interface MicroLearningUnit {
-  id: string;
-  unitNumber: number; // 1, 2, 3, or 4 (each week has 4 sub-topics / micro-learning units)
-  title: string;
-  description?: string;
-  durationMinutes?: number; // e.g. 45 - 60 minutes
-  bloomLevel?: BloomLevel;
-  deliveryFormat?:
-    | 'Interactive Lecture'
-    | 'Hands-on Lab'
-    | 'Self-Paced Practice'
-    | 'Case Study'
-    | 'Discussion & Quiz'
-    | 'Problem-Solving Studio';
-  isCompleted?: boolean;
-}
+
 
 export interface WeeklyCoursePlanItem {
   weekNumber: number;
@@ -591,9 +670,13 @@ export interface Course {
   blueprint: CourseBlueprint;
 
   // Step 4 & 5: Outcomes & Mappings
+  emlos?: EMLO[];
   plos: PLO[];
   clos: CLO[];
   ploMapping?: Record<string, Record<string, number>>;
+  emloPloMapping?: Record<string, Record<string, string | number>>;
+  emloCloMapping?: Record<string, Record<string, string | number>>;
+  customAnyMappings?: Record<string, Record<string, string | number>>;
 
   // Step 6: Weekly Course Plan
   weeklyPlan?: WeeklyCoursePlanItem[];
@@ -619,6 +702,7 @@ export interface Course {
 
   // Stakeholder Feedback & Element Discussions
   comments?: CourseElementComment[];
+  peerFeedback?: PeerFeedback[];
 
   // Metadata & Workflow Status
   status: CourseStatus;
@@ -627,6 +711,16 @@ export interface Course {
   completionPercentage?: number;
   updatedAt: string;
   createdAt: string;
+}
+
+export interface PeerFeedback {
+  id: string;
+  reviewerName: string;
+  reviewerRole: string;
+  feedbackContent: string;
+  dateLogged: string;
+  status: 'pending' | 'addressed' | 'resolved';
+  followUpAction?: string;
 }
 
 export interface AuditGap {

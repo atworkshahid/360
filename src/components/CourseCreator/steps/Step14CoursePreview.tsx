@@ -621,7 +621,7 @@ export const Step14CoursePreview: React.FC<StepProps> = ({
           {/* Header */}
           <div className="border-b border-slate-200 pb-6 text-center space-y-2">
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-slate-500">
-              MENTISERA Institute of Learning and Development
+              Shahid Hussain Soomro (shahidsoomro@msn.com | +923009800135)
             </span>
             <h1 className="text-3xl font-black text-slate-900 font-serif">{course.title}</h1>
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600 pt-2 font-medium">

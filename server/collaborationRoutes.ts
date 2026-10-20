@@ -77,6 +77,7 @@ export interface CourseElementComment {
   priority?: 'low' | 'medium' | 'high' | 'critical';
   authorName: string;
   authorRole: string;
+  authorAffiliation?: string;
   authorAvatarColor?: string;
   category: string;
   content: string;
@@ -87,6 +88,7 @@ export interface CourseElementComment {
     id: string;
     authorName: string;
     authorRole: string;
+    authorAffiliation?: string;
     authorAvatarColor?: string;
     content: string;
     createdAt: string;
@@ -686,6 +688,7 @@ collaborationRouter.post('/courses/:courseId/comments', (req: Request, res: Resp
     priority,
     authorName,
     authorRole,
+    authorAffiliation,
     authorAvatarColor,
     category,
     content,
@@ -709,6 +712,7 @@ collaborationRouter.post('/courses/:courseId/comments', (req: Request, res: Resp
     priority: priority || 'medium',
     authorName,
     authorRole: authorRole || 'Accreditation Reviewer',
+    authorAffiliation,
     authorAvatarColor: authorAvatarColor || 'bg-purple-600 text-white',
     category: category || 'Alignment & Rigor',
     content,
@@ -762,7 +766,7 @@ collaborationRouter.post('/courses/:courseId/comments', (req: Request, res: Resp
  */
 collaborationRouter.post('/courses/:courseId/comments/:commentId/replies', (req: Request, res: Response) => {
   const { courseId, commentId } = req.params;
-  const { authorName, authorRole, authorAvatarColor, content } = req.body;
+  const { authorName, authorRole, authorAffiliation, authorAvatarColor, content } = req.body;
 
   if (!authorName || !content) {
     return res.status(400).json({ error: 'Author name and content are required.' });
@@ -779,6 +783,7 @@ collaborationRouter.post('/courses/:courseId/comments/:commentId/replies', (req:
     id: `rep-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     authorName,
     authorRole: authorRole || 'Faculty / Instructor',
+    authorAffiliation,
     authorAvatarColor: authorAvatarColor || 'bg-blue-600 text-white',
     content,
     createdAt: new Date().toISOString(),

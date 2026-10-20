@@ -362,6 +362,21 @@ class OfflineSyncEngine {
   // Firebase Firestore Synchronization Engine
   // ---------------------------------------------------------------------------
 
+  private calculateCourseDiff(oldCourse: Course, newCourse: Course): Record<string, any> {
+    const diff: Record<string, any> = {};
+    const fieldsToCompare: (keyof Course)[] = [
+      'frameworkId', 'title', 'code', 'slug', 'description', 'modules', 'mlos',
+      'lessons', 'activities', 'resources', 'assessments', 'rubrics', 'clos', 'plos'
+    ];
+
+    for (const field of fieldsToCompare) {
+      if (JSON.stringify(oldCourse[field]) !== JSON.stringify(newCourse[field])) {
+        diff[`courseData.${field}`] = newCourse[field];
+      }
+    }
+    return diff;
+  }
+
   /**
    * Automatically process all pending blueprint changes in the queue
    * and push them to Firebase Firestore collection `/courses/{courseId}`.
@@ -408,18 +423,33 @@ class OfflineSyncEngine {
         if (item.action === 'upsert' && item.courseData) {
           // Push blueprint document to Firebase Firestore /courses/{courseId}
           const courseDocRef = doc(db, 'courses', courseId);
+          const remoteDoc = await getDoc(courseDocRef);
+          
+          let updateData: Record<string, any> = {
+            id: item.courseData.id,
+            title: item.courseData.title,
+            code: item.courseData.code,
+            status: item.courseData.status || 'draft',
+            updatedAt: item.courseData.updatedAt || new Date().toISOString(),
+            syncedAt: new Date().toISOString(),
+            offlineSource: true,
+          };
+
+          if (remoteDoc.exists()) {
+            const remoteData = remoteDoc.data();
+            if (remoteData.courseData) {
+              const diff = this.calculateCourseDiff(remoteData.courseData, item.courseData);
+              updateData = { ...updateData, ...diff };
+            } else {
+              updateData.courseData = item.courseData;
+            }
+          } else {
+            updateData.courseData = item.courseData;
+          }
+
           await setDoc(
             courseDocRef,
-            {
-              id: item.courseData.id,
-              title: item.courseData.title,
-              code: item.courseData.code,
-              status: item.courseData.status || 'draft',
-              updatedAt: item.courseData.updatedAt || new Date().toISOString(),
-              courseData: item.courseData,
-              syncedAt: new Date().toISOString(),
-              offlineSource: true,
-            },
+            updateData,
             { merge: true }
           );
 
@@ -438,7 +468,12 @@ class OfflineSyncEngine {
           await this.removeQueueItem(qItem.id);
         }
       } catch (err: any) {
-        console.error(`[OfflineSync] Failed to sync course ${courseId} to Firebase:`, err);
+        if (err?.code === 'failed-precondition' || err?.message?.toLowerCase()?.includes('client is offline')) {
+          console.warn(`[OfflineSync] Firebase client is offline or pre-condition failed, postponing sync for ${courseId}.`);
+          continue;
+        } else {
+          console.error(`[OfflineSync] Failed to sync course ${courseId} to Firebase:`, err);
+        }
         errors++;
         this.lastError = err?.message || 'Firebase network write failed';
         await this.updateQueueItem({

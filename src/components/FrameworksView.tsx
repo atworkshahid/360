@@ -47,6 +47,14 @@ export const FrameworksView: React.FC<FrameworksViewProps> = ({ onBack }) => {
       return fw.badge === 'International Recognition Framework';
     if (filterType === 'accreditation')
       return fw.badge === 'Accreditation Commission';
+    if (filterType === 'business')
+      return fw.badge === 'Business Accreditation';
+    if (filterType === 'educator')
+      return fw.badge === 'Teacher Education Accreditation';
+    if (filterType === 'us-regional')
+      return fw.badge === 'US Regional Accreditation';
+    if (filterType === 'european')
+      return fw.badge === 'European Quality Assurance';
     if (filterType === 'national')
       return fw.badge === 'National Higher Education Framework';
     if (filterType === 'general')
@@ -62,6 +70,14 @@ export const FrameworksView: React.FC<FrameworksViewProps> = ({ onBack }) => {
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'Accreditation Commission':
         return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Business Accreditation':
+        return 'bg-amber-50 text-amber-800 border-amber-300';
+      case 'Teacher Education Accreditation':
+        return 'bg-teal-50 text-teal-800 border-teal-300';
+      case 'US Regional Accreditation':
+        return 'bg-indigo-50 text-indigo-800 border-indigo-300';
+      case 'European Quality Assurance':
+        return 'bg-sky-50 text-sky-800 border-sky-300';
       case 'National Higher Education Framework':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default:
@@ -138,10 +154,14 @@ export const FrameworksView: React.FC<FrameworksViewProps> = ({ onBack }) => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1.5 flex-wrap">
           {[
-            { id: 'all', label: 'All Standards (10)' },
-            { id: 'international', label: 'International Accords (3)' },
-            { id: 'accreditation', label: 'ABET Commissions (3)' },
-            { id: 'national', label: 'National Councils (HEC / NBA)' },
+            { id: 'all', label: `All Standards (${INITIAL_FRAMEWORKS.length})` },
+            { id: 'international', label: 'International Accords' },
+            { id: 'accreditation', label: 'ABET' },
+            { id: 'business', label: 'Business (AACSB / ACBSP)' },
+            { id: 'educator', label: 'Teacher Prep (CAEP / CCTC / CCTP)' },
+            { id: 'us-regional', label: 'US Regional (HLC / MSCHE / SACSCOC...)' },
+            { id: 'european', label: 'European EHEA & QA (FIBAA / ACQUIN...)' },
+            { id: 'national', label: 'National Councils (NCAAA / HEC / NBA)' },
             { id: 'general', label: 'General & Custom' },
           ].map((tab) => (
             <button

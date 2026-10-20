@@ -48,8 +48,12 @@ import {
   Settings,
   SlidersHorizontal,
   FolderOpen,
+  HardDriveDownload,
+  Network,
+  Building2,
 } from 'lucide-react';
 import { Course, CLO } from '../../types';
+import { ShareCourseModal } from '../ShareCourseModal';
 import { calculateCourseAudit } from '../../utils/obeCalculator';
 import { CourseSettingsModal } from '../CourseSettingsModal';
 import { CLOBulkEditorModal } from './CLOBulkEditorModal';
@@ -82,12 +86,19 @@ import { StakeholderView } from './StakeholderView';
 import { RubricGeneratorModal } from './RubricGeneratorModal';
 import { ElementCommentDrawer } from './comments/ElementCommentDrawer';
 import { PrintFriendlyView } from './PrintFriendlyView';
+import { PrintableCourseSummary } from './PrintableCourseSummary';
 import { StudentPerspectiveModal } from './StudentPerspectiveModal';
+import { DownloadForOfflineModal } from './DownloadForOfflineModal';
+import { MicroCredentialModal } from '../MicroCredentials/MicroCredentialModal';
+import { UnifiedMLOCLOPLOMappingModal } from '../ConstructiveAlignment/UnifiedMLOCLOPLOMappingModal';
+import { AIAccreditationGapAnalyzerModal } from '../AccreditationGapAnalyzer/AIAccreditationGapAnalyzerModal';
+import { AssessmentTaskSuggestionModal } from '../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
 import { CourseSnapshotsModal } from './CourseSnapshotsModal';
 import { AuditTrailModal } from '../Collaboration/AuditTrailModal';
 import { BulkImportCLOsModal } from './BulkImportCLOsModal';
 import { LMSFormatExportModal } from '../LMSFormatExportModal';
 import { ConstructiveAlignmentModal } from '../ConstructiveAlignment/ConstructiveAlignmentModal';
+import { CLOAssessmentVisualMapperModal } from './CLOAssessmentVisualMapperModal';
 import { SyllabusGeneratorModal } from './SyllabusGeneratorModal';
 import { CourseTranslationModal } from './CourseTranslationModal';
 import { CourseWizardStepper } from './CourseWizardStepper';
@@ -96,6 +107,7 @@ import { detectDependencyConflicts } from '../../utils/dependencyConflictDetecto
 import { ContextualAssistantPanel } from './ContextualAssistantPanel';
 import { ObeTipsGuide } from './ObeTipsGuide';
 import { FrameworkGuidanceModal } from './FrameworkGuidanceModal';
+import { OutcomeWeightWarningBanner } from './OutcomeWeightWarningBanner';
 import { FrameworkCoachBar } from './FrameworkCoachBar';
 import { Guidebook } from '../Guidebook';
 import { FrameworkGuidebookModal } from '../FrameworkGuidebookModal';
@@ -114,6 +126,9 @@ import {
 } from '../../utils/OBEFrameworkRegistry';
 
 // 10-Step OBE360 Primary Flow Components
+import { AccessibilityAuditModal } from './AccessibilityAuditModal';
+import { PathViewerModal } from './PathViewerModal';
+import { StudentViewContext } from '../../contexts/StudentViewContext';
 import { Step01FrameworkSelection } from './steps/Step01FrameworkSelection';
 import { Step02CourseInformation } from './steps/Step02CourseInformation';
 import { Step03CoursePurpose } from './steps/Step03CoursePurpose';
@@ -124,6 +139,9 @@ import { Step07TeachingActivities } from './steps/Step07TeachingActivities';
 import { Step08AssessmentPlan } from './steps/Step08AssessmentPlan';
 import { Step09AlignmentCheck } from './steps/Step09AlignmentCheck';
 import { Step10ReviewExport as Step10ObeReviewExport } from './steps/Step10ReviewExport';
+import { VisualizationTab } from './VisualizationTab';
+import { MLOStatusTracker } from './MLOStatusTracker';
+import { GapAnalysisView } from './GapAnalysisView';
 
 // Legacy 15-Step Modular Deep-Dive Components
 import { Step01CourseSetup } from './steps/Step01CourseSetup';
@@ -212,6 +230,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   onToggleExperienceMode,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentView, setCurrentView] = useState<'wizard' | 'visualization' | 'gap-analysis'>('wizard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [templateModalOpen, setTemplateModalOpen] = useState<boolean>(false);
   const [templateModalMode, setTemplateModalMode] = useState<'save' | 'load'>('save');
@@ -227,7 +246,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [rubricGeneratorModalOpen, setRubricGeneratorModalOpen] = useState<boolean>(false);
   const [designHealthOpen, setDesignHealthOpen] = useState<boolean>(false);
   const [isStakeholderView, setIsStakeholderView] = useState<boolean>(false);
+  const [isStudentView, setIsStudentView] = useState<boolean>(false);
   const [snapshotsModalOpen, setSnapshotsModalOpen] = useState<boolean>(false);
+  const [auditModalOpen, setAuditModalOpen] = useState<boolean>(false);
   const [bulkImportModalOpen, setBulkImportModalOpen] = useState<boolean>(false);
   const [cloBulkEditorOpen, setCloBulkEditorOpen] = useState<boolean>(false);
   const [lmsModalOpen, setLmsModalOpen] = useState<boolean>(false);
@@ -237,6 +258,13 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [translationModalOpen, setTranslationModalOpen] = useState<boolean>(false);
   const [courseSettingsModalOpen, setCourseSettingsModalOpen] = useState<boolean>(false);
   const [studentPerspectiveModalOpen, setStudentPerspectiveModalOpen] = useState<boolean>(false);
+  const [downloadOfflineModalOpen, setDownloadOfflineModalOpen] = useState<boolean>(false);
+  const [microCredentialModalOpen, setMicroCredentialModalOpen] = useState<boolean>(false);
+  const [unifiedMappingModalOpen, setUnifiedMappingModalOpen] = useState<boolean>(false);
+  const [pathViewerModalOpen, setPathViewerModalOpen] = useState<boolean>(false);
+  const [accreditationGapModalOpen, setAccreditationGapModalOpen] = useState<boolean>(false);
+  const [assessmentSuggesterModalOpen, setAssessmentSuggesterModalOpen] = useState<boolean>(false);
+  const [cloAssessmentMapperOpen, setCloAssessmentMapperOpen] = useState<boolean>(false);
   const [wizardMode, setWizardMode] = useState<'obe10' | 'granular15'>('obe10');
   const [assistantOpen, setAssistantOpen] = useState<boolean>(false);
   const [showTips, setShowTips] = useState<boolean>(() => {
@@ -251,6 +279,21 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [reviewLinkModalOpen, setReviewLinkModalOpen] = useState(false);
   const versions = useMemo(() => (course?.id ? getCourseVersions(course.id) : []), [course?.id]);
+
+  // Count CLOs lacking any assessment method
+  const unassessedCLOsCount = useMemo(() => {
+    const clos = course.clos || [];
+    const assessments = course.assessments || [];
+    return clos.filter((clo) => {
+      return !assessments.some(
+        (a) =>
+          (a.linkedCLOIds || []).includes(clo.id) ||
+          (a.linkedCLOIds || []).includes(clo.code) ||
+          (a.cloIds || []).includes(clo.id) ||
+          (a.cloIds || []).includes(clo.code)
+      );
+    }).length;
+  }, [course.clos, course.assessments]);
 
   // Centralized Course Resource Library State
   const [resourceLibraryOpen, setResourceLibraryOpen] = useState<boolean>(false);
@@ -532,8 +575,13 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
 
   useEffect(() => {
     const handleOpenTranslation = () => setTranslationModalOpen(true);
+    const handleOpenSyllabus = () => setSyllabusModalOpen(true);
     window.addEventListener('open_translation_modal', handleOpenTranslation);
-    return () => window.removeEventListener('open_translation_modal', handleOpenTranslation);
+    window.addEventListener('open_syllabus_generator_modal', handleOpenSyllabus);
+    return () => {
+      window.removeEventListener('open_translation_modal', handleOpenTranslation);
+      window.removeEventListener('open_syllabus_generator_modal', handleOpenSyllabus);
+    };
   }, []);
 
   useEffect(() => {
@@ -574,6 +622,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
     'CLO' | 'Assessment' | 'Rubric' | 'Module' | 'General'
   >('General');
   const [commentTargetTitle, setCommentTargetTitle] = useState<string | undefined>(undefined);
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
   const [depAuditorModalOpen, setDepAuditorModalOpen] = useState<boolean>(false);
 
@@ -654,16 +703,8 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   };
 
   const handleExportPDF = () => {
-    setIsPdfExporting(true);
-    try {
-      exportCourseBlueprintWithGate(course, {}, () => {
-        setIsPdfExporting(false);
-      });
-    } catch (err) {
-      console.error('Failed to export PDF blueprint:', err);
-    } finally {
-      setTimeout(() => setIsPdfExporting(false), 700);
-    }
+    // Triggers the browser's native print dialog to create a clean, professional course summary document using index.css print styles
+    window.print();
   };
 
   const handleExportWord = async () => {
@@ -732,6 +773,12 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
 
   // Render Step
   const renderCurrentStepComponent = () => {
+    if (currentView === 'visualization') {
+      return <VisualizationTab course={course} />;
+    }
+    if (currentView === 'gap-analysis') {
+      return <GapAnalysisView course={course} onChange={onChange} />;
+    }
     if (wizardMode === 'obe10') {
       switch (currentStep) {
         case 1:
@@ -831,6 +878,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               onOpenFrameworkGuidance={handleOpenFrameworkGuidance}
               frameworkValidationReport={frameworkReport}
               onApplyFrameworkFix={handleApplyFrameworkFix}
+              isStudentView={isStudentView}
             />
           );
         case 9:
@@ -1040,7 +1088,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f8fafc] flex flex-col">
       {/* Top Wizard Status Bar */}
-      {isStakeholderView ? (
+      {isStakeholderView && (
         <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-14 z-30 shadow-2xs">
           <div className="flex items-center space-x-3">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-600 text-white font-bold text-xs shadow-xs">
@@ -1064,6 +1112,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 />
               </div>
             )}
+            <MLOStatusTracker course={course} />
           </div>
 
           <div className="flex items-center space-x-2.5">
@@ -1081,6 +1130,32 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               </div>
             )}
 
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentView('wizard')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md ${
+                  currentView === 'wizard' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                Wizard
+              </button>
+              <button
+                onClick={() => setCurrentView('visualization')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md ${
+                  currentView === 'visualization' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                Visualization
+              </button>
+              <button
+                onClick={() => setCurrentView('gap-analysis')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md ${
+                  currentView === 'gap-analysis' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                Gap Analysis
+              </button>
+            </div>
             <div className="hidden lg:flex items-center space-x-2 text-xs text-slate-500 mr-2">
               <span>Alignment Health:</span>
               <span
@@ -1095,6 +1170,8 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 {auditReport.healthScore}%
               </span>
             </div>
+          </div>
+
 
             {/* Share Link */}
             <button
@@ -1105,6 +1182,17 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
+            </button>
+
+            {/* Path Viewer */}
+            <button
+              type="button"
+              id="wizard-path-viewer-btn"
+              onClick={() => setPathViewerModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
+            >
+              <GitGraph className="w-3.5 h-3.5" />
+              <span>Path</span>
             </button>
 
             {/* Activity Feed */}
@@ -1133,6 +1221,17 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
             >
               {isPdfExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
               <span>{isPdfExporting ? 'Exporting...' : 'Export to PDF'}</span>
+            </button>
+            
+            <button
+              type="button"
+              id="export-blueprint-btn"
+              onClick={() => exportCourseBlueprintWithGate(course)}
+              className="px-3 py-1.5 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-2xs"
+              title="Export complete course blueprint as a printable PDF"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>Export Blueprint</span>
             </button>
 
             {/* Standardized Export & Share Dropdown for Stakeholder View */}
@@ -1299,9 +1398,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               <span>Exit to Designer View</span>
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white border-b border-slate-200 sticky top-14 z-30 shadow-2xs">
+      )}
+      {!isStakeholderView && (
+        <div className="bg-white border-b border-slate-200 sticky top-14 z-30 shadow-2xs print:hidden no-print">
           <div className="px-4 sm:px-6 py-2.5 flex items-center justify-between">
             <div className="flex items-center space-x-3">
             <button
@@ -1351,6 +1450,36 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                   idPrefix="wizard-mobile-autosave"
                 />
               </div>
+            )}
+
+            {/* Student View Toggle */}
+            <button
+              onClick={() => setIsStudentView(!isStudentView)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer ${
+                isStudentView
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-2xs'
+                  : 'border-slate-200 text-slate-700 bg-white hover:bg-slate-50'
+              }`}
+              title="Toggle Student Preview View"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>{isStudentView ? 'Exit Student View' : 'Student View'}</span>
+            </button>
+
+            {/* Accessibility Audit */}
+            <button
+              onClick={() => setAuditModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer hover:bg-slate-50 text-slate-700"
+              title="Run Accessibility Audit"
+            >
+              <span>Audit</span>
+            </button>
+
+            {auditModalOpen && (
+              <AccessibilityAuditModal
+                course={course}
+                onClose={() => setAuditModalOpen(false)}
+              />
             )}
 
             <div className="hidden lg:flex items-center space-x-2 text-xs text-slate-500">
@@ -1408,23 +1537,49 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               {/* Student View Button */}
               <button
                 type="button"
+                id="wizard-header-student-view-btn"
                 onClick={() => setStudentPerspectiveModalOpen(true)}
                 className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
-                title="Preview course as a student"
+                title="Preview course as a student, including verified academic transcripts and micro-credential badges"
               >
                 <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
                 <span>Student View</span>
               </button>
-              
-              {/* Student View Button */}
+
+              {/* Micro-credential Badges Studio Button */}
               <button
                 type="button"
-                onClick={() => setStudentPerspectiveModalOpen(true)}
-                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
-                title="Preview course as a student"
+                id="wizard-header-microcredentials-btn"
+                onClick={() => setMicroCredentialModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/70 hover:bg-amber-100/80 active:scale-[0.98] text-amber-900 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Generate visual Micro-credential Badges for each masterable skill in this course"
               >
-                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
-                <span>Student View</span>
+                <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
+                <span>Skill Badges</span>
+              </button>
+
+              {/* Single Doc MLO-CLO-PLO Alignment Button */}
+              <button
+                type="button"
+                id="wizard-header-unified-mapping-btn"
+                onClick={() => setUnifiedMappingModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100/80 active:scale-[0.98] text-indigo-950 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Single Doc: MLO-CLO-PLO with Competencies Mapping aligned, and custom interactive mapping studio"
+              >
+                <Table className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-700" />
+                <span>Single Doc Alignment</span>
+              </button>
+              
+              {/* Download for Offline Button */}
+              <button
+                type="button"
+                id="wizard-header-download-offline-btn"
+                onClick={() => setDownloadOfflineModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100/80 active:scale-[0.98] text-emerald-900 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Download current course as a JSON-based local project file (.obe.json) for offline work"
+              >
+                <HardDriveDownload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                <span>Download for Offline</span>
               </button>
 
               {/* SHARE: Generate Review Link */}
@@ -1439,21 +1594,92 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                 <span>Share</span>
               </button>
 
-              {/* PRIMARY ACTION: Direct Export to PDF (Current Course Audit & Structure) */}
+              {/* PRIMARY ACTION: Single Doc I.EMLO-CLO-PLO Alignment */}
+              <button
+                type="button"
+                id="wizard-header-single-doc-emlo-btn"
+                onClick={() => setUnifiedMappingModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-emerald-500 bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] text-emerald-950 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Single Doc I.EMLO-CLO-PLO with Competencies Alignment & Custom Mapping Studio"
+              >
+                <Table className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700" />
+                <span>Single Doc I.EMLO-CLO-PLO</span>
+              </button>
+
+              {/* PRIMARY ACTION: AI Accreditation Gap Analyzer */}
+              <button
+                type="button"
+                id="wizard-header-ai-gap-analyzer-btn"
+                onClick={() => setAccreditationGapModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-purple-500 bg-purple-50 hover:bg-purple-100 active:scale-[0.98] text-purple-950 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="AI Accreditation Gap Analyzer: Compares competency mapping against national/international standards and remediates cognitive gaps"
+              >
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700" />
+                <span>AI Gap Analyzer</span>
+              </button>
+
+              {/* PRIMARY ACTION: Automated Assessment Task Suggester */}
+              <button
+                type="button"
+                id="wizard-header-assessment-suggester-btn"
+                onClick={() => setAssessmentSuggesterModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-blue-500 bg-blue-50 hover:bg-blue-100 active:scale-[0.98] text-blue-950 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
+              >
+                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-700" />
+                <span>Assessment Suggester</span>
+              </button>
+
+              {/* PRIMARY ACTION: Download Accreditation Dossier (High-Value Feature) */}
+              <button
+                type="button"
+                id="wizard-header-download-dossier-btn"
+                onClick={() => setPdfModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs shadow-emerald-200"
+                title="Download formatted Accreditation Dossier PDF report aligned with the selected accreditation body's specific documentation requirements"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                <span>Download Dossier</span>
+                <span className="hidden lg:inline-block px-1.5 py-0.2 rounded-xs bg-emerald-500 text-white text-[9px] font-extrabold uppercase tracking-wider">
+                  Accredited
+                </span>
+              </button>
+
+              {/* PRIMARY ACTION: CLO-to-Assessment Visual Mapper & Gap Analyzer */}
+              <button
+                type="button"
+                id="wizard-header-clo-mapper-btn"
+                onClick={() => setCloAssessmentMapperOpen(true)}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs ${
+                  unassessedCLOsCount > 0
+                    ? 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900'
+                    : 'border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900'
+                }`}
+                title="Interactive visual mapping component connecting Course Learning Outcomes to assessment methods, highlighting assessment gaps"
+              >
+                <Network className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-700" />
+                <span>CLO Mapper</span>
+                {unassessedCLOsCount > 0 ? (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-900 text-[9px] font-extrabold">
+                    {unassessedCLOsCount} Gaps
+                  </span>
+                ) : (
+                  <span className="hidden lg:inline-block px-1.5 py-0.2 rounded-xs bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                    Mapped
+                  </span>
+                )}
+              </button>
+
+              {/* PRIMARY ACTION: Export to PDF (Triggers browser's print dialog with print-optimized styles) */}
               <button
                 type="button"
                 id="wizard-header-export-pdf-btn"
                 onClick={handleExportPDF}
-                disabled={isPdfExporting}
-                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs disabled:opacity-50"
-                title="Generate clean, printable PDF of current course audit and structure"
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-800 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="Export to PDF: Triggers browser print dialog using print-optimized styles defined in index.css to create a clean, professional course summary document"
               >
-                {isPdfExporting ? (
-                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-white" />
-                ) : (
-                  <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                )}
-                <span>{isPdfExporting ? 'Exporting PDF...' : 'Export to PDF'}</span>
+                <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />
+                <span>Print PDF</span>
               </button>
 
               {/* FORMAT OPTIONS: Download Blueprint (PDF / Word) with Print-Optimized Styles */}
@@ -1486,20 +1712,39 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
 
                     <button
                       type="button"
+                      id="wizard-header-blueprint-dossier-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setPdfModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs text-slate-800 hover:text-emerald-950 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                          <span>Download Accreditation Dossier</span>
+                          <span className="text-emerald-700 font-semibold text-[9px] bg-emerald-100 px-1.5 py-0.2 rounded">Official PDF</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Formatted report aligned with accreditation body requirements</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
                       id="wizard-header-blueprint-pdf-btn"
                       onClick={() => {
                         setOpenMenu(null);
                         handleExportPDF();
                       }}
-                      disabled={isPdfExporting}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-800 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer disabled:opacity-50"
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-800 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
                     >
-                      <FileDown className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <Printer className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
                       <div>
                         <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
-                          <span>{isPdfExporting ? 'Exporting PDF...' : 'Download Blueprint (PDF)'}</span>
+                          <span>Export to PDF (Print Dialog)</span>
+                          <span className="text-emerald-700 font-semibold text-[9px] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Print-Optimized</span>
                         </div>
-                        <div className="text-[11px] text-slate-500">Print-styled publication PDF with high-contrast tables</div>
+                        <div className="text-[11px] text-slate-500">Opens browser print dialog with index.css clean paper styling</div>
                       </div>
                     </button>
 
@@ -1519,6 +1764,90 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                           <span>{isWordExporting ? 'Exporting Word...' : 'Download Blueprint (Word)'}</span>
                         </div>
                         <div className="text-[11px] text-slate-500">Editable Word doc (.docx) formatted with clean tables</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="wizard-header-blueprint-offline-json-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setDownloadOfflineModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs text-slate-800 hover:text-emerald-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <HardDriveDownload className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                          <span>Download for Offline (.obe.json)</span>
+                          <span className="px-1.5 py-0.2 rounded-xs bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider">
+                            Lossless
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Full JSON project with OBE integrity, CLOs, rubrics &amp; alignments</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="wizard-header-blueprint-single-doc-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setUnifiedMappingModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs text-slate-800 hover:text-emerald-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Table className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                          <span>Single Doc I.EMLO-CLO-PLO Alignment</span>
+                          <span className="px-1.5 py-0.2 rounded-xs bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider">
+                            OBE Aligned
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Publication single document with I.EMLO, PLO, CLO &amp; custom mapping</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="wizard-header-blueprint-ai-gap-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setAccreditationGapModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-purple-50 text-xs text-slate-800 hover:text-purple-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                          <span>AI Accreditation Gap Analyzer</span>
+                          <span className="px-1.5 py-0.2 rounded-xs bg-purple-100 text-purple-800 text-[9px] font-extrabold uppercase tracking-wider">
+                            AI Audit
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Compare against ABET/WA criteria &amp; fill cognitive gaps</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="wizard-header-blueprint-asmt-suggester-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setAssessmentSuggesterModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 text-xs text-slate-800 hover:text-blue-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Brain className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                          <span>Assessment Task Suggester</span>
+                          <span className="px-1.5 py-0.2 rounded-xs bg-blue-100 text-blue-800 text-[9px] font-extrabold uppercase tracking-wider">
+                            Bloom Aligned
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Suggest rubrics, quizzes, &amp; projects matched to CLO cognitive depth</div>
                       </div>
                     </button>
 
@@ -1630,6 +1959,18 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                     {totalCommentsCount}
                   </span>
                 )}
+              </button>
+
+              {/* Share Course for External Stakeholder Review Button */}
+              <button
+                type="button"
+                id="wizard-header-share-stakeholders-btn"
+                onClick={() => setShareModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer shadow-2xs shrink-0"
+                title="Share Course with External Stakeholders (Industry Advisory Board & Peer Reviewers)"
+              >
+                <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
+                <span className="hidden sm:inline">Share Review</span>
               </button>
 
               {/* UNIFIED DROPDOWN: Tools & Review */}
@@ -1809,6 +2150,32 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                     </button>
                     <button
                       type="button"
+                      id="wizard-tool-clo-asmt-mapper-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setCloAssessmentMapperOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 text-xs text-slate-700 hover:text-indigo-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Network className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-slate-900">CLO-Assessment Visual Mapper</span>
+                          {unassessedCLOsCount > 0 ? (
+                            <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                              {unassessedCLOsCount} unassessed
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              Aligned
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500">Interactive SVG flow &amp; matrix highlighting assessment gaps</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
                       id="wizard-tool-alignment-analysis-btn"
                       onClick={() => {
                         setOpenMenu(null);
@@ -1881,6 +2248,26 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                       <div>
                         <div className="font-semibold text-slate-900">Stakeholder Review View</div>
                         <div className="text-[11px] text-slate-500">Simplified presentation for committees</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      id="wizard-tool-share-stakeholders-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setShareModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-amber-50 text-xs text-slate-700 hover:text-amber-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <Building2 className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-semibold text-slate-900">Share with External Stakeholders</span>
+                          <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold">
+                            Advisors &amp; Peers
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Secure link for industry advisors &amp; peers to comment on specific sections</div>
                       </div>
                     </button>
                     <button
@@ -1965,6 +2352,26 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
                       <div>
                         <div className="font-semibold text-slate-900">Save as Template</div>
                         <div className="text-[11px] text-slate-500">Store blueprint as reusable template</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      id="wizard-action-offline-project-btn"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setDownloadOfflineModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs text-slate-700 hover:text-emerald-900 flex items-start space-x-2.5 transition cursor-pointer"
+                    >
+                      <HardDriveDownload className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-semibold text-slate-900">Download for Offline Work</span>
+                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                            .obe.json
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">Export or restore full JSON local project file</div>
                       </div>
                     </button>
 
@@ -2528,20 +2935,22 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         )}
 
         {/* Visual Progress Tracker & Alignment Time Estimator */}
-        <CourseWizardStepper
-          course={course}
-          currentStep={currentStep}
-          onJumpToStep={handleJumpToStep}
-          onToggleCurrentStageCompleted={handleToggleCurrentStageCompleted}
-          onOpenAlignmentAudit={() => setAlignmentModalOpen(true)}
-          mode={wizardMode}
-        />
+        <div className="print:hidden no-print">
+          <CourseWizardStepper
+            course={course}
+            currentStep={currentStep}
+            onJumpToStep={handleJumpToStep}
+            onToggleCurrentStageCompleted={handleToggleCurrentStageCompleted}
+            onOpenAlignmentAudit={() => setAlignmentModalOpen(true)}
+            mode={wizardMode}
+          />
+        </div>
       </div>
     )}
 
       {/* Main Workspace or Stakeholder View */}
       {isStakeholderView ? (
-        <main className="flex-1 bg-slate-50 min-w-0 overflow-y-auto">
+        <main className="flex-1 bg-slate-50 min-w-0 overflow-y-auto print:hidden no-print">
           <StakeholderView
             course={course}
             onChange={onChange}
@@ -2554,6 +2963,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         <>
           {/* Main Workspace: Left Sidebar + Content */}
           <div className="flex-1 flex w-full">
+            <OutcomeWeightWarningBanner summary={validationSummary} />
         {/* Left Wizard Sleek Sidebar - Single Source of Navigation */}
         <aside
           className={`fixed md:sticky top-[6.5rem] z-20 md:z-0 w-64 bg-slate-50 border-r border-slate-200 flex flex-col h-[calc(100vh-6.5rem)] shrink-0 transition-transform ${
@@ -2707,7 +3117,7 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         />
 
         {/* Step Content View */}
-        <main className="flex-1 p-6 sm:p-8 bg-white min-w-0 overflow-y-auto">
+        <main className="flex-1 p-6 sm:p-8 bg-white min-w-0 overflow-y-auto print:hidden no-print">
           <div className="max-w-5xl mx-auto">
             {/* Print-Optimized Visual Indicator Banner */}
             {!printIndicatorDismissed && (
@@ -2820,7 +3230,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
               onOpenAlignmentModal={() => setAlignmentModalOpen(true)}
             />
 
-            {renderCurrentStepComponent()}
+            <StudentViewContext.Provider value={{ isStudentView }}>
+              {renderCurrentStepComponent()}
+            </StudentViewContext.Provider>
           </div>
         </main>
 
@@ -2849,6 +3261,9 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
       </div>
       </>
       )}
+
+      {/* Print-Optimized Course Summary Document (Printed cleanly via browser print dialog) */}
+      <PrintableCourseSummary course={course} />
 
       {/* Template Management Modal */}
       <TemplateModal
@@ -2949,6 +3364,13 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         }}
       />
 
+      {/* Share Course for External Stakeholders (Advisors & Peers) Modal */}
+      <ShareCourseModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        course={course}
+      />
+
       {/* Print-Friendly View (strips away all surrounding UI for physical printing & simplified reading) */}
       {printFriendlyOpen && (
         <PrintFriendlyView
@@ -2991,6 +3413,51 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         course={course}
         isOpen={studentPerspectiveModalOpen}
         onClose={() => setStudentPerspectiveModalOpen(false)}
+      />
+
+      {/* Micro-credential Badges Modal */}
+      <MicroCredentialModal
+        course={course}
+        isOpen={microCredentialModalOpen}
+        onClose={() => setMicroCredentialModalOpen(false)}
+      />
+
+      {/* Unified MLO-CLO-PLO & Competencies Single Doc / Custom Mapping Modal */}
+      <UnifiedMLOCLOPLOMappingModal
+        course={course}
+        isOpen={unifiedMappingModalOpen}
+        onClose={() => setUnifiedMappingModalOpen(false)}
+        onChangeCourse={(updatedCourse) => onChange(updatedCourse)}
+      />
+
+      {/* AI Accreditation Gap Analyzer Modal */}
+      <AIAccreditationGapAnalyzerModal
+        course={course}
+        isOpen={accreditationGapModalOpen}
+        onClose={() => setAccreditationGapModalOpen(false)}
+        onChangeCourse={(updatedCourse) => onChange(updatedCourse)}
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={assessmentSuggesterModalOpen}
+        onClose={() => setAssessmentSuggesterModalOpen(false)}
+        onChangeCourse={(updatedCourse) => onChange(updatedCourse)}
+      />
+
+      {/* Download for Offline Modal */}
+      <DownloadForOfflineModal
+        course={course}
+        isOpen={downloadOfflineModalOpen}
+        onClose={() => setDownloadOfflineModalOpen(false)}
+        onImportCourse={(importedCourse) => {
+          if (onLoadCourse) {
+            onLoadCourse(importedCourse);
+          } else {
+            onChange(importedCourse);
+          }
+        }}
       />
 
       {/* Course Snapshots & Revision History Modal / Side Panel */}
@@ -3101,6 +3568,18 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         onJumpToStep={handleJumpToStep}
       />
 
+      {/* CLO-to-Assessment Visual Mapper & Gap Analyzer Modal */}
+      <CLOAssessmentVisualMapperModal
+        isOpen={cloAssessmentMapperOpen}
+        onClose={() => setCloAssessmentMapperOpen(false)}
+        course={course}
+        onChangeCourse={onChange}
+        onOpenTaskSuggester={(cloId, bloomLevel) => {
+          setCloAssessmentMapperOpen(false);
+          setAssessmentSuggesterModalOpen(true);
+        }}
+      />
+
       {/* Automated Course Syllabus Generator (PDF & Word docx) */}
       <SyllabusGeneratorModal
         isOpen={syllabusModalOpen}
@@ -3131,6 +3610,12 @@ export const CourseWizard: React.FC<CourseWizardProps> = ({
         onClose={() => setDepAuditorModalOpen(false)}
         onChange={onChange}
         onJumpToStep={handleJumpToStep}
+      />
+
+      <PathViewerModal
+        isOpen={pathViewerModalOpen}
+        onClose={() => setPathViewerModalOpen(false)}
+        course={course}
       />
 
       {/* Contextual OBE Framework Guidance Modal & PDF Guidebook Hub */}

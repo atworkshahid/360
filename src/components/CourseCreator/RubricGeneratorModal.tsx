@@ -19,6 +19,7 @@ import {
   ChevronUp,
   Target,
   FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Course, CLO, Assessment, Rubric, RubricCriterion, BloomLevel } from '../../types';
 import {
@@ -314,6 +315,21 @@ export const RubricGeneratorModal: React.FC<RubricGeneratorModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                const rubricToExport: Rubric = {
+                  id: 'export-temp',
+                  title: rubricTitle,
+                  assessmentId: selectedAssessmentId,
+                  criteria: criteria.map(c => ({ ...c, cloId: selectedCLO?.id || '' })),
+                };
+                import('../../utils/rubricExport').then(utils => utils.downloadRubricCSV(rubricToExport));
+              }}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition cursor-pointer"
+              title="Export Rubric as CSV"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+            </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"

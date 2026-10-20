@@ -29,7 +29,7 @@ export const LaymanGuideModal: React.FC<LaymanGuideModalProps> = ({ isOpen, onCl
             <div>
               <div className="flex items-center space-x-2 text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-0.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>MENTISERA OBE360™ • Quick Start Guide</span>
+                <span>OBE360™ by Shahid Hussain Soomro • Quick Start Guide</span>
               </div>
               <h3 className="text-xl font-bold text-white tracking-tight">
                 How to Build Your Course in 4 Easy Steps

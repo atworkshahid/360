@@ -271,6 +271,7 @@ export const BloomsTaxonomyHelperModal: React.FC<BloomsTaxonomyHelperModalProps>
   onOpenWheel,
 }) => {
   const [activeLevel, setActiveLevel] = useState<BloomLevel>(selectedLevel);
+  const [filterLevel, setFilterLevel] = useState<BloomLevel | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'verbs' | 'templates' | 'avoid'>('verbs');
   const [copiedVerb, setCopiedVerb] = useState<string | null>(null);
@@ -292,6 +293,7 @@ export const BloomsTaxonomyHelperModal: React.FC<BloomsTaxonomyHelperModalProps>
 
     const results: Array<{ verb: string; level: BloomLevel; category: string }> = [];
     (Object.keys(BLOOM_TAXONOMY_DATA) as BloomLevel[]).forEach((lvl) => {
+      if (filterLevel !== 'All' && lvl !== filterLevel) return;
       const data = BLOOM_TAXONOMY_DATA[lvl];
       data.categories.forEach((cat) => {
         cat.verbs.forEach((v) => {
@@ -302,7 +304,7 @@ export const BloomsTaxonomyHelperModal: React.FC<BloomsTaxonomyHelperModalProps>
       });
     });
     return results;
-  }, [searchQuery]);
+  }, [searchQuery, filterLevel]);
 
   const handleCopyVerb = (verb: string) => {
     navigator.clipboard.writeText(verb);
@@ -447,24 +449,36 @@ export const BloomsTaxonomyHelperModal: React.FC<BloomsTaxonomyHelperModalProps>
             </button>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search verbs (e.g. analyze, design)..."
-              className="w-full pl-9 pr-7 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
-              >
-                ✕
-              </button>
-            )}
+          {/* Quick Search & Filter */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-48">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search verbs (e.g. analyze, design)..."
+                className="w-full pl-9 pr-7 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <select
+              value={filterLevel}
+              onChange={(e) => setFilterLevel(e.target.value as BloomLevel | 'All')}
+              className="px-2 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            >
+              <option value="All">All Levels</option>
+              {['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'].map((lvl) => (
+                <option key={lvl} value={lvl}>{lvl}</option>
+              ))}
+            </select>
           </div>
         </div>
 

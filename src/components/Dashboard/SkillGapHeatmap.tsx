@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Course } from '../../types';
-import { ResponsiveContainer, HeatMap, Cell, Tooltip, XAxis, YAxis, Text } from 'recharts'; // Hypothetical heatmap usage
 
 interface SkillGapHeatmapProps {
   courses: Course[];

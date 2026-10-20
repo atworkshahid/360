@@ -23,6 +23,7 @@ import {
 import { Course, WeeklyCoursePlanItem, BloomLevel } from '../../../types';
 import { evaluateStage } from '../../../utils/stageProgress';
 import { MicroLearningUnitsEditor } from '../MicroLearningUnitsEditor';
+import { MLUGeneratorPanel } from '../MLUGeneratorPanel';
 import {
   calculateMicroUnitsStats,
   synthesize4MicroUnits,
@@ -67,6 +68,8 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
   const clos = course.clos || [];
   const weeklyPlan: WeeklyCoursePlanItem[] = course.weeklyPlan || [];
   const [filterCLOId, setFilterCLOId] = useState<string>('');
+  const [showMLUGenerator, setShowMLUGenerator] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Live Accreditation Evaluation for Stage 06 (OBE10)
   const stageEval = evaluateStage(course, 6, 'obe10');
@@ -273,8 +276,61 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
     ? weeklyPlan.filter((w) => (w.linkedCLOIds || []).includes(filterCLOId))
     : weeklyPlan;
 
+  const handleMLUGeneration = async (params: { weeksToGenerate: number[]; teachingModality: string; contactHours: number }) => {
+    setIsGenerating(true);
+    try {
+      const updatedPlan = [...weeklyPlan];
+      for (const weekNum of params.weeksToGenerate) {
+        const week = updatedPlan.find(w => w.weekNumber === weekNum);
+        if (!week) continue;
+
+        const response = await fetch('/api/ai/mlu-generator', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            courseTitle: course.title,
+            courseDescription: course.description,
+            weekNumber: week.weekNumber,
+            weeklyTopic: week.topic,
+            plos: course.plos,
+            clos: clos,
+            teachingModality: params.teachingModality,
+            competencies: course.blueprint?.targetCompetencies,
+            skills: course.blueprint?.requiredSkills
+          })
+        });
+
+        if (!response.ok) throw new Error('Generation failed');
+        const generatedMLUs = await response.json();
+        
+        const weekIndex = updatedPlan.findIndex(w => w.weekNumber === weekNum);
+        updatedPlan[weekIndex] = {
+          ...updatedPlan[weekIndex],
+          microLearningUnits: generatedMLUs.units,
+          subtopics: serializeMicroUnitsToSubtopics(generatedMLUs.units),
+          contactHours: params.contactHours
+        };
+      }
+      onChange({ ...course, weeklyPlan: updatedPlan });
+    } catch (error) {
+      console.error(error);
+      alert('Failed to generate MLUs.');
+    } finally {
+      setIsGenerating(false);
+      setShowMLUGenerator(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl">
+      {showMLUGenerator && (
+        <MLUGeneratorPanel 
+          course={course}
+          onClose={() => setShowMLUGenerator(false)}
+          onGenerate={handleMLUGeneration}
+          isGenerating={isGenerating}
+        />
+      )}
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -322,6 +378,15 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>AI Syllabus Advisor</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowMLUGenerator(true)}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI MLU Generator</span>
               </button>
 
               <button
@@ -669,8 +734,14 @@ export const Step06WeeklyPlan: React.FC<StepProps> = ({
                   defaultExpanded={true}
                   onAskCopilot={onAskCopilot}
                   courseTitle={course.title}
-                  courseLevel={course.level}
+                  courseDescription={course.description}
+                  courseLevel={course.courseLevel}
                   linkedCLOCodes={linkedCLOCodes}
+                  plos={course.plos}
+                  clos={course.clos}
+                  competencies={course.blueprint?.targetCompetencies}
+                  skills={course.blueprint?.requiredSkills}
+                  teachingModality={course.deliveryMode}
                 />
 
                 {/* Row 2: Teaching/Learning Activity */}

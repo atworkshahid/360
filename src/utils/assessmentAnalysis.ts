@@ -52,11 +52,27 @@ export interface CLOAssessmentCoverage {
   suggestedAction: string;
 }
 
+export interface MLOAssessmentCoverage {
+  mloId: string;
+  mloCode: string;
+  mloStatement: string;
+  moduleId: string;
+  parentCLOCode: string;
+  targetWeightage: number; // Configured target percentage
+  assessedWeightage: number; // Contribution from linked assessments
+  weightVariance: number;
+  coverageStatus: 'under-assessed' | 'over-assessed' | 'balanced';
+  linkedAssessmentNames: string[];
+}
+
 export interface AssessmentPlanAnalysisReport {
   totalConfiguredWeightage: number;
   isTotalWeightageValid: boolean; // 100%
+  cloWeightTotal: number;
+  isCloWeightTotalValid: boolean;
   overallBalanceScore: number; // 0 - 100
   cloCoverages: CLOAssessmentCoverage[];
+  mloCoverages: MLOAssessmentCoverage[];
   overAssessedCLOs: CLOAssessmentCoverage[];
   underAssessedCLOs: CLOAssessmentCoverage[];
   balancedCLOs: CLOAssessmentCoverage[];
@@ -76,8 +92,14 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
   );
   const isTotalWeightageValid = Math.abs(totalConfiguredWeightage - 100) < 0.1;
 
+  const cloWeightTotal = (course.clos || []).reduce(
+    (sum, c) => sum + (Number(c.weightage ?? c.weight) || 0),
+    0
+  );
+  const isCloWeightTotalValid = (course.clos || []).length === 0 || Math.abs(cloWeightTotal - 100) < 0.1;
+
   const cloCoverages: CLOAssessmentCoverage[] = course.clos.map((clo) => {
-    const targetWeight = Number(clo.weightage) || 0;
+    const targetWeight = Number(clo.weightage ?? clo.weight) || 0;
 
     // Find all assessments linked to this CLO
     const linked = course.assessments
@@ -185,6 +207,51 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
     };
   });
 
+  // Calculate MLO Assessment Coverage
+  const mloCoverages: MLOAssessmentCoverage[] = (course.mlos || []).map((mlo) => {
+    const parentCLO = course.clos.find((c) => c.id === mlo.linkedCLOId);
+    const targetWeight = Number(mlo.weightage ?? mlo.weight) || 25;
+
+    // Direct assessment links to MLO or via parent CLO
+    const directlyLinked = (course.assessments || []).filter(
+      (a) => (a.linkedMLOIds || []).includes(mlo.id) || (a.linkedMLOIds || []).includes(mlo.code)
+    );
+
+    let assessedWeight = 0;
+    if (directlyLinked.length > 0) {
+      assessedWeight = directlyLinked.reduce((sum, a) => {
+        const count = Math.max(1, (a.linkedMLOIds || []).length);
+        return sum + (Number(a.weightage) || 0) / count;
+      }, 0);
+    } else if (parentCLO) {
+      // Derived from parent CLO proportional share
+      const mlosInCLO = course.mlos.filter((m) => m.linkedCLOId === parentCLO.id);
+      const cloCov = cloCoverages.find((c) => c.cloId === parentCLO.id);
+      if (cloCov && mlosInCLO.length > 0) {
+        assessedWeight = cloCov.assessedWeightage / mlosInCLO.length;
+      }
+    }
+    assessedWeight = Math.round(assessedWeight * 10) / 10;
+    const weightVariance = Math.round((assessedWeight - targetWeight) * 10) / 10;
+
+    let coverageStatus: 'under-assessed' | 'over-assessed' | 'balanced' = 'balanced';
+    if (weightVariance < -5) coverageStatus = 'under-assessed';
+    else if (weightVariance > 5) coverageStatus = 'over-assessed';
+
+    return {
+      mloId: mlo.id,
+      mloCode: mlo.code,
+      mloStatement: mlo.statement,
+      moduleId: mlo.moduleId,
+      parentCLOCode: parentCLO?.code || 'CLO ?',
+      targetWeightage: targetWeight,
+      assessedWeightage: assessedWeight,
+      weightVariance,
+      coverageStatus,
+      linkedAssessmentNames: directlyLinked.map((a) => a.name),
+    };
+  });
+
   const overAssessedCLOs = cloCoverages.filter((c) => c.coverageStatus === 'over-assessed');
   const underAssessedCLOs = cloCoverages.filter((c) => c.coverageStatus === 'under-assessed');
   const balancedCLOs = cloCoverages.filter((c) => c.coverageStatus === 'balanced');
@@ -196,6 +263,7 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
   // Compute Overall Balance Score (0 - 100)
   let balanceScore = 100;
   if (!isTotalWeightageValid) balanceScore -= 15;
+  if (!isCloWeightTotalValid) balanceScore -= 10;
   balanceScore -= overAssessedCLOs.length * 10;
   balanceScore -= underAssessedCLOs.length * 12;
   balanceScore -= cognitiveDeficitCLOs.length * 8;
@@ -209,14 +277,19 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
       `Assessment weights sum to ${totalConfiguredWeightage}%, differing from the mandatory 100% accreditation total.`
     );
   }
+  if (!isCloWeightTotalValid) {
+    systemicFindings.push(
+      `Course Learning Outcome (CLO) target weights sum to ${cloWeightTotal}%. Curricular standards require outcome weights to sum to 100%.`
+    );
+  }
   if (underAssessedCLOs.length > 0) {
     systemicFindings.push(
-      `${underAssessedCLOs.map((c) => c.cloCode).join(', ')} are under-assessed, creating blind spots where students can complete the course without proving competency.`
+      `${underAssessedCLOs.map((c) => `${c.cloCode} (Target ${c.targetWeightage}%, Assessed ${c.assessedWeightage}%)`).join(', ')} are under-assessed, creating blind spots where students can complete the course without proving competency.`
     );
   }
   if (overAssessedCLOs.length > 0) {
     systemicFindings.push(
-      `${overAssessedCLOs.map((c) => c.cloCode).join(', ')} disproportionately dominate overall course grading beyond their curricular weights.`
+      `${overAssessedCLOs.map((c) => `${c.cloCode} (Target ${c.targetWeightage}%, Assessed ${c.assessedWeightage}%)`).join(', ')} disproportionately dominate overall course grading beyond their curricular weights.`
     );
   }
   if (cognitiveDeficitCLOs.length > 0) {
@@ -232,9 +305,14 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
 
   // Concrete Actionable Recommendations
   const concreteRecommendations: string[] = [];
+  if (!isCloWeightTotalValid) {
+    concreteRecommendations.push(
+      `Calibrate CLO outcome weights in Step 04 so their sum is exactly 100% (currently ${cloWeightTotal}%).`
+    );
+  }
   if (underAssessedCLOs.length > 0) {
     concreteRecommendations.push(
-      `Reallocate weight from over-assessed tasks into dedicated formative/summative briefs for ${underAssessedCLOs.map((c) => c.cloCode).join(' & ')}.`
+      `Reallocate assessment mark weights to increase evaluation of ${underAssessedCLOs.map((c) => c.cloCode).join(' & ')} to align with their assigned percentage weights.`
     );
   }
   if (cognitiveDeficitCLOs.length > 0) {
@@ -243,14 +321,17 @@ export function analyzeAssessmentPlan(course: Course): AssessmentPlanAnalysisRep
     );
   }
   concreteRecommendations.push(
-    'Ensure multi-CLO comprehensive finals allocate explicit score subdivisions mapped 1-to-1 with individual outcomes.'
+    'Ensure multi-CLO comprehensive finals allocate explicit score subdivisions mapped 1-to-1 with individual outcome weights.'
   );
 
   return {
     totalConfiguredWeightage,
     isTotalWeightageValid,
+    cloWeightTotal,
+    isCloWeightTotalValid,
     overallBalanceScore,
     cloCoverages,
+    mloCoverages,
     overAssessedCLOs,
     underAssessedCLOs,
     balancedCLOs,
@@ -397,6 +478,45 @@ export function generateBalancedAssessmentPlan(course: Course): Assessment[] {
 /**
  * Generates an executive Markdown report of the CLO vs Assessment alignment analysis.
  */
+export const ASSESSMENT_EFFORT_HOURS: Record<AssessmentType, number> = {
+  'Quiz': 1.5,
+  'Assignment': 5,
+  'Project': 20,
+  'Presentation': 4,
+  'Case Study': 6,
+  'Portfolio': 15,
+  'Practical': 8,
+  'Discussion': 2,
+  'Midterm': 3,
+  'Midterm Assessment': 3,
+  'Final Assessment': 10,
+};
+
+export interface AssessmentEffortEstimate {
+  totalHours: number;
+  exceedsStandard: boolean;
+  recommendedMaxHours: number;
+}
+
+export function calculateAssessmentEffort(
+  assessments: Assessment[],
+  creditHours: number
+): AssessmentEffortEstimate {
+  // Assume 30 hours of total student effort per credit hour (standard institutional metric)
+  const recommendedMaxHours = creditHours * 30;
+  
+  const totalHours = assessments.reduce((sum, a) => {
+    const hours = ASSESSMENT_EFFORT_HOURS[a.type] || 5;
+    return sum + hours;
+  }, 0);
+
+  return {
+    totalHours,
+    exceedsStandard: totalHours > recommendedMaxHours,
+    recommendedMaxHours,
+  };
+}
+
 export function generateAlignmentAnalysisMarkdown(
   course: Course,
   report: AssessmentPlanAnalysisReport
@@ -453,4 +573,32 @@ export function generateAlignmentAnalysisMarkdown(
   });
 
   return md;
+}
+
+export function validateCognitiveMismatch(course: Course): { mloId: string; mismatched: boolean }[] {
+  return (course.mlos || []).map((mlo) => {
+    const parentCLO = course.clos.find((c) => c.id === mlo.linkedCLOId);
+    if (!parentCLO) return { mloId: mlo.id, mismatched: false };
+
+    // Get assessment linked to MLO
+    const linkedAssessments = (course.assessments || []).filter(
+      (a) => (a.linkedMLOIds || []).includes(mlo.id) || (a.linkedMLOIds || []).includes(mlo.code)
+    );
+
+    if (linkedAssessments.length === 0) return { mloId: mlo.id, mismatched: false };
+
+    // Find highest assessment bloom level
+    let maxAssessmentRank = 0;
+    linkedAssessments.forEach((a) => {
+      const rank = BLOOM_RANK[a.bloomLevel] || 0;
+      if (rank > maxAssessmentRank) maxAssessmentRank = rank;
+    });
+
+    // Mismatched if assessment bloom < MLO bloom
+    const mloRank = BLOOM_RANK[mlo.bloomLevel || 'Remember'] || 1;
+    return {
+      mloId: mlo.id,
+      mismatched: maxAssessmentRank < mloRank,
+    };
+  });
 }

@@ -14,6 +14,9 @@ import {
   Target,
   RefreshCw,
   SlidersHorizontal,
+  Brain,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Course, CLO, BloomLevel, LearningDomain } from '../../../types';
 import { evaluateStage } from '../../../utils/stageProgress';
@@ -28,6 +31,11 @@ import {
 import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
 import { CLOBulkEditorModal } from '../CLOBulkEditorModal';
 import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
+import { StatusBadge } from '../../common/StatusBadge';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
+import { BloomsTaxonomyInteractiveSelector } from '../BloomsTaxonomyInteractiveSelector';
+import { BloomsTaxonomyHelperModal } from '../BloomsTaxonomyHelperModal';
+import { BLOOM_RANK } from '../../../utils/assessmentAnalysis';
 
 interface StepProps {
   course: Course;
@@ -131,6 +139,10 @@ export const Step04CLOManager: React.FC<StepProps> = ({
   const clos = course.clos || [];
   const guideline = getFrameworkGuideline(course.frameworkId);
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
+  const [suggesterModalOpen, setSuggesterModalOpen] = useState(false);
+  const [suggesterTargetCLOId, setSuggesterTargetCLOId] = useState<string | undefined>(undefined);
+  const [bloomsModalOpen, setBloomsModalOpen] = useState(false);
+  const [expandedBloomsCLOId, setExpandedBloomsCLOId] = useState<string | null>(clos[0]?.id || null);
 
   // Live Framework Content Validation Report
   const validationReport = React.useMemo(() => {
@@ -145,9 +157,16 @@ export const Step04CLOManager: React.FC<StepProps> = ({
   const isWeightageBalanced = clos.length === 0 || totalWeightage === 100;
 
   const handleUpdateCLO = (id: string, updates: Partial<CLO>) => {
+    const synced = { ...updates };
+    if (synced.weightage !== undefined && synced.weight === undefined) {
+      synced.weight = synced.weightage;
+    } else if (synced.weight !== undefined && synced.weightage === undefined) {
+      synced.weightage = synced.weight;
+    }
+
     const updated = clos.map((c) => {
       if (c.id !== id) return c;
-      const combined = { ...c, ...updates };
+      const combined = { ...c, ...synced };
 
       // Re-evaluate quality on verb or statement change
       const statement = (combined.statement || '').toLowerCase();
@@ -211,6 +230,7 @@ export const Step04CLOManager: React.FC<StepProps> = ({
     const balanced = clos.map((c, idx) => ({
       ...c,
       weightage: equalShare + (idx === 0 ? remainder : 0),
+      weight: equalShare + (idx === 0 ? remainder : 0),
     }));
 
     onChange({ ...course, clos: balanced });
@@ -568,6 +588,20 @@ export const Step04CLOManager: React.FC<StepProps> = ({
 
           <button
             type="button"
+            id="step04-suggest-tasks-btn"
+            onClick={() => {
+              setSuggesterTargetCLOId(undefined);
+              setSuggesterModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-900 rounded-lg text-xs font-bold transition cursor-pointer"
+            title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>Suggest Assessment Tasks</span>
+          </button>
+
+          <button
+            type="button"
             id="step04-bulk-editor-btn"
             onClick={() => setBulkEditorOpen(true)}
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition cursor-pointer"
@@ -807,6 +841,7 @@ export const Step04CLOManager: React.FC<StepProps> = ({
                   <span className="font-bold text-xs px-2.5 py-1 rounded-md bg-slate-900 text-white font-mono">
                     {clo.code}
                   </span>
+                  <StatusBadge status={clo.status} />
 
                   {/* Learning Domain Selector */}
                   <div className="flex items-center gap-1.5">
@@ -850,9 +885,19 @@ export const Step04CLOManager: React.FC<StepProps> = ({
                       onChange={(e) => {
                         const newLevel = e.target.value as BloomLevel;
                         const levelCfg = BLOOM_LEVELS.find((b) => b.level === newLevel);
+                        const suggestedVerb = levelCfg ? levelCfg.sampleVerbs[0] : clo.bloomVerb;
+                        let newStatement = clo.statement || '';
+                        if (newStatement.trim()) {
+                          const parts = newStatement.trim().split(/\s+/);
+                          parts[0] = suggestedVerb;
+                          newStatement = parts.join(' ');
+                        } else {
+                          newStatement = `${suggestedVerb} `;
+                        }
                         handleUpdateCLO(clo.id, {
                           bloomLevel: newLevel,
-                          bloomVerb: levelCfg ? levelCfg.sampleVerbs[0] : clo.bloomVerb,
+                          bloomVerb: suggestedVerb,
+                          statement: newStatement,
                         });
                       }}
                       className={`text-xs font-bold px-2 py-1 rounded-md border ${bloomCfg.badgeBg} ${bloomCfg.badgeText} focus:outline-none`}
@@ -1032,6 +1077,62 @@ export const Step04CLOManager: React.FC<StepProps> = ({
                 />
               </div>
 
+              {/* Interactive Bloom's Taxonomy Cognitive Selector & Action Verbs */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedBloomsCLOId(expandedBloomsCLOId === clo.id ? null : clo.id)}
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 transition cursor-pointer"
+                  >
+                    <Brain className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{expandedBloomsCLOId === clo.id ? "Hide Bloom's Taxonomy Cognitive Selector" : "Open Interactive Bloom's Taxonomy Cognitive Selector & Action Verbs"}</span>
+                    {expandedBloomsCLOId === clo.id ? <ChevronUp className="w-3.5 h-3.5 text-indigo-600" /> : <ChevronDown className="w-3.5 h-3.5 text-indigo-600" />}
+                  </button>
+                  <span className="text-[10px] text-slate-500 hidden sm:inline">
+                    Active: Level {clo.bloomLevel || 'Apply'} ({bloomCfg.sampleVerbs.slice(0, 3).join(', ')}...)
+                  </span>
+                </div>
+
+                {expandedBloomsCLOId === clo.id && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                    <BloomsTaxonomyInteractiveSelector
+                      targetType="CLO"
+                      targetCode={clo.code}
+                      statement={clo.statement}
+                      currentLevel={clo.bloomLevel}
+                      currentVerb={clo.bloomVerb}
+                      onSelectVerbAndLevel={(verb, level, updatedStatement) => {
+                        handleUpdateCLO(clo.id, {
+                          bloomVerb: verb,
+                          bloomLevel: level,
+                          statement: updatedStatement,
+                        });
+                      }}
+                      onSelectLevelOnly={(level) => {
+                        const levelCfg = BLOOM_LEVELS.find((b) => b.level === level);
+                        const suggestedVerb = levelCfg ? levelCfg.sampleVerbs[0] : clo.bloomVerb;
+                        let newStatement = clo.statement || '';
+                        if (newStatement.trim()) {
+                          const parts = newStatement.trim().split(/\s+/);
+                          parts[0] = suggestedVerb;
+                          newStatement = parts.join(' ');
+                        } else {
+                          newStatement = `${suggestedVerb} `;
+                        }
+                        handleUpdateCLO(clo.id, {
+                          bloomLevel: level,
+                          bloomVerb: suggestedVerb,
+                          statement: newStatement,
+                        });
+                      }}
+                      onOpenFullModal={() => setBloomsModalOpen(true)}
+                      defaultExpanded={true}
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Competency & Assessment Method Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
                 <div>
@@ -1058,6 +1159,22 @@ export const Step04CLOManager: React.FC<StepProps> = ({
                     placeholder="e.g. Midterm Exam, Practical Lab Exam, Capstone Project"
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Level: <strong className="text-slate-700">{clo.bloomLevel || 'Apply'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuggesterTargetCLOId(clo.id);
+                        setSuggesterModalOpen(true);
+                      }}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 transition cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3 text-indigo-500" />
+                      <span>Suggest Tasks by Cognitive Level</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1137,6 +1254,40 @@ export const Step04CLOManager: React.FC<StepProps> = ({
           onChange({ ...course, clos: updatedCLOs });
         }}
         courseTitle={course.title}
+      />
+
+      {/* Bloom's Taxonomy Helper Modal */}
+      <BloomsTaxonomyHelperModal
+        isOpen={bloomsModalOpen}
+        onClose={() => setBloomsModalOpen(false)}
+        selectedLevel={clos[0]?.bloomLevel || 'Analyze'}
+        targetCLO={clos[0]}
+        onSelectVerb={(verb, level) => {
+          if (clos[0]) {
+            let stmt = clos[0].statement || '';
+            if (stmt.trim()) {
+              const parts = stmt.trim().split(/\s+/);
+              parts[0] = verb;
+              stmt = parts.join(' ');
+            } else {
+              stmt = `${verb} `;
+            }
+            handleUpdateCLO(clos[0].id, {
+              bloomVerb: verb,
+              bloomLevel: level,
+              statement: stmt,
+            });
+          }
+        }}
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={suggesterModalOpen}
+        onClose={() => setSuggesterModalOpen(false)}
+        onChangeCourse={onChange}
+        initialCLOId={suggesterTargetCLOId}
       />
     </div>
   );

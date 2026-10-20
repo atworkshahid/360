@@ -15,6 +15,7 @@ import {
   BarChart3,
   MessageSquare,
   Info,
+  Table,
 } from 'lucide-react';
 import { Course, PLO, PLOMappingLevel, OutcomeMappingScale } from '../../../types';
 import { getFrameworkById, getOutcomeTerminology } from '../../../data/frameworksData';
@@ -25,6 +26,10 @@ import {
   FrameworkContentValidationReport,
 } from '../../../services/courseService';
 import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
+import { UnifiedMLOCLOPLOMappingModal } from '../../ConstructiveAlignment/UnifiedMLOCLOPLOMappingModal';
+import { AIAccreditationGapAnalyzerModal } from '../../AccreditationGapAnalyzer/AIAccreditationGapAnalyzerModal';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
+import { Brain } from 'lucide-react';
 
 interface StepProps {
   course: Course;
@@ -60,6 +65,9 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
   const [newPloTitle, setNewPloTitle] = useState('');
   const [newPloDesc, setNewPloDesc] = useState('');
   const [showAddPlo, setShowAddPlo] = useState(false);
+  const [unifiedModalOpen, setUnifiedModalOpen] = useState(false);
+  const [gapModalOpen, setGapModalOpen] = useState(false);
+  const [suggesterModalOpen, setSuggesterModalOpen] = useState(false);
 
   const validationReport = React.useMemo(() => {
     return frameworkValidationReport || CourseService.validateCourseContentAgainstFramework(course);
@@ -265,6 +273,39 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            id="step05-open-single-doc-btn"
+            onClick={() => setUnifiedModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition cursor-pointer shadow-2xs"
+            title="Open Single Doc I.EMLO-CLO-PLO Alignment Specification & Custom Mapping Studio"
+          >
+            <Table className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Single Doc I.EMLO-CLO-PLO &amp; Custom Mapping</span>
+          </button>
+
+          <button
+            type="button"
+            id="step05-open-ai-gap-btn"
+            onClick={() => setGapModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-50 border border-purple-300 text-purple-900 hover:bg-purple-100 text-xs font-bold transition cursor-pointer shadow-2xs"
+            title="Open AI Accreditation Gap Analyzer to compare outcomes against standards"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>AI Gap Analyzer</span>
+          </button>
+
+          <button
+            type="button"
+            id="step05-open-asmt-suggester-btn"
+            onClick={() => setSuggesterModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-300 text-blue-900 hover:bg-blue-100 text-xs font-bold transition cursor-pointer shadow-2xs"
+            title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
+          >
+            <Brain className="w-3.5 h-3.5 text-blue-600" />
+            <span>Assessment Suggester</span>
+          </button>
+
           <button
             type="button"
             id="step05-framework-guidelines-btn"
@@ -714,6 +755,30 @@ export const Step05OutcomeMapping: React.FC<StepProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Single Doc I.EMLO-CLO-PLO & Custom Mapping Modal */}
+      <UnifiedMLOCLOPLOMappingModal
+        course={course}
+        isOpen={unifiedModalOpen}
+        onClose={() => setUnifiedModalOpen(false)}
+        onChangeCourse={(updated) => onChange(updated)}
+      />
+
+      {/* AI Accreditation Gap Analyzer Modal */}
+      <AIAccreditationGapAnalyzerModal
+        course={course}
+        isOpen={gapModalOpen}
+        onClose={() => setGapModalOpen(false)}
+        onChangeCourse={(updated) => onChange(updated)}
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={suggesterModalOpen}
+        onClose={() => setSuggesterModalOpen(false)}
+        onChangeCourse={(updated) => onChange(updated)}
+      />
     </div>
   );
 };

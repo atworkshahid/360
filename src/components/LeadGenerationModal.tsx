@@ -275,7 +275,7 @@ export const LeadGenerationModal: React.FC<LeadGenerationModalProps> = ({
                   Schedule an Institutional Demo &amp; Pilot
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-lg leading-relaxed">
-                  Connect directly with MENTISERA's Academic Solutions Team to equip your faculty, standardize outcome alignment, and guarantee accreditation audit readiness.
+                  Connect directly with Shahid Hussain Soomro's Academic Solutions Team to equip your faculty, standardize outcome alignment, and guarantee accreditation audit readiness.
                 </p>
               </div>
             </div>
@@ -346,12 +346,12 @@ export const LeadGenerationModal: React.FC<LeadGenerationModalProps> = ({
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-slate-600 text-xs pt-1">
                   <a href="mailto:hello@mentisera.pk" className="inline-flex items-center space-x-1.5 text-indigo-700 hover:underline font-medium">
                     <Mail className="w-3.5 h-3.5" />
-                    <span>hello@mentisera.pk</span>
+                    <span>shahidsoomro@msn.com</span>
                   </a>
                   <span className="hidden sm:inline text-slate-300">•</span>
                   <a href="tel:+923348880859" className="inline-flex items-center space-x-1.5 text-emerald-700 hover:underline font-mono font-bold">
                     <Phone className="w-3.5 h-3.5" />
-                    <span>+92 334 8880859</span>
+                    <span>+923009800135</span>
                   </a>
                 </div>
               </div>
@@ -646,16 +646,16 @@ export const LeadGenerationModal: React.FC<LeadGenerationModalProps> = ({
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <LogoMark size={16} />
-            <span className="font-semibold text-slate-700">MENTISERA Technologies</span>
+            <span className="font-semibold text-slate-700">Shahid Hussain Soomro</span>
             <span className="text-slate-400">• Islamabad, Pakistan</span>
           </div>
           <div className="flex items-center space-x-3">
             <a href="mailto:hello@mentisera.pk" className="text-indigo-600 hover:underline">
-              hello@mentisera.pk
+              shahidsoomro@msn.com
             </a>
             <span>•</span>
             <a href="tel:+923348880859" className="text-emerald-700 font-bold hover:underline font-mono">
-              +92 334 8880859
+              +923009800135
             </a>
           </div>
         </div>

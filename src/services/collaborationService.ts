@@ -5,7 +5,7 @@ import {
   DigitalSignOff,
   ReviewerPresence,
 } from '../types/collaboration';
-import { CourseElementComment, StakeholderRole } from '../types';
+import { CourseElementComment, StakeholderRole, CommentTag } from '../types';
 
 const API_BASE = '/api/collaboration';
 const LOCAL_STORAGE_QUEUE_KEY = 'mentisera_approval_queue_v1';
@@ -34,8 +34,10 @@ export interface NewCommentPayload {
   priority?: 'low' | 'medium' | 'high' | 'critical';
   authorName: string;
   authorRole: StakeholderRole | string;
+  authorAffiliation?: string;
   authorAvatarColor?: string;
   category?: string;
+  tags?: CommentTag[];
   content: string;
   suggestedChange?: string;
 }
@@ -201,7 +203,7 @@ export const CollaborationService = {
   async addCommentReply(
     courseId: string,
     commentId: string,
-    payload: { authorName: string; authorRole: string; authorAvatarColor?: string; content: string }
+    payload: { authorName: string; authorRole: string; authorAffiliation?: string; authorAvatarColor?: string; content: string }
   ): Promise<any> {
     const res = await fetch(`${API_BASE}/courses/${courseId}/comments/${commentId}/replies`, {
       method: 'POST',

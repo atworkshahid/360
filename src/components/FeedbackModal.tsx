@@ -254,73 +254,17 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Communicate directly with the MENTISERA engineering team with live course state capture
+                Communicate directly with the Shahid Hussain Soomro engineering team with live course state capture
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Modal Tabs Bar */}
-        <div className="px-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('form')}
-              className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-                activeTab === 'form'
-                  ? 'border-indigo-600 text-indigo-700 bg-white'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Bug className="w-3.5 h-3.5" />
-              <span>Report Issue / Feedback</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('diagnostics')}
-              className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-                activeTab === 'diagnostics'
-                  ? 'border-indigo-600 text-indigo-700 bg-white'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Course State & Telemetry</span>
-              {currentCourse && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                  Active
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-                activeTab === 'history'
-                  ? 'border-indigo-600 text-indigo-700 bg-white'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>My Submissions</span>
-              {historyItems.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
-                  {historyItems.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          <div className="hidden sm:flex items-center text-[11px] text-slate-500 space-x-1">
-            <Mail className="w-3 h-3 text-slate-400" />
-            <span>dev-team@mentisera.org</span>
-          </div>
-        </div>
-
         {/* Modal Scrollable Body */}
         <div className="p-6 overflow-y-auto flex-1 bg-white">
           {/* SUCCESS SCREEN */}

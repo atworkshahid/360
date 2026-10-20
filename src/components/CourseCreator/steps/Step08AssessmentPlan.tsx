@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -12,10 +12,13 @@ import {
   Layers,
   HelpCircle,
   BookOpen,
+  Brain,
+  Clock,
 } from 'lucide-react';
 import { Course, Assessment, AssessmentType, BloomLevel } from '../../../types';
 import { OutcomeAssessmentDependencyAlert } from '../OutcomeAssessmentDependencyAlert';
 import { DependencyConflictModal } from '../DependencyConflictModal';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
 import { getFrameworkGuideline } from '../../../data/frameworkGuidelines';
 import {
   CourseService,
@@ -24,6 +27,11 @@ import {
 } from '../../../services/courseService';
 import { FrameworkFieldWarning } from '../FrameworkFieldWarning';
 import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
+import { CLOAssessmentVisualMapper } from '../CLOAssessmentVisualMapper';
+import { CLOAssessmentMatrix } from '../CLOAssessmentMatrix';
+import { AssessmentTimeline } from '../AssessmentTimeline';
+import { AssessmentEffortEstimator } from '../AssessmentEffortEstimator';
+import { useStudentView } from '../../../contexts/StudentViewContext';
 
 interface StepProps {
   course: Course;
@@ -75,7 +83,11 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
   const clos = course.clos || [];
   const assessments: Assessment[] = course.assessments || [];
   const [isDepModalOpen, setIsDepModalOpen] = useState<boolean>(false);
+  const [isSuggesterOpen, setIsSuggesterOpen] = useState<boolean>(false);
+  const [suggesterTargetCLOId, setSuggesterTargetCLOId] = useState<string | undefined>(undefined);
+  const [planViewMode, setPlanViewMode] = useState<'visual-map' | 'cards' | 'both'>('visual-map');
   const guideline = getFrameworkGuideline(course.frameworkId);
+  const { isStudentView } = useStudentView();
 
   const validationReport = React.useMemo(() => {
     return frameworkValidationReport || CourseService.validateCourseContentAgainstFramework(course);
@@ -162,15 +174,31 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
             <span>{guideline.frameworkCode} Assessment Rules</span>
           </button>
 
+          {!isStudentView && (
+            <button
+              type="button"
+              id="step08-open-dep-auditor-btn"
+              onClick={() => setIsDepModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white border border-rose-300 hover:bg-rose-50 text-rose-800 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+              title="Inspect circular or conflicting dependencies between outcomes and assessments"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>Dependency Auditor</span>
+            </button>
+          )}
+
           <button
             type="button"
-            id="step08-open-dep-auditor-btn"
-            onClick={() => setIsDepModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white border border-rose-300 hover:bg-rose-50 text-rose-800 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
-            title="Inspect circular or conflicting dependencies between outcomes and assessments"
+            id="step08-open-suggester-btn"
+            onClick={() => {
+              setSuggesterTargetCLOId(undefined);
+              setIsSuggesterOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-            <span>Dependency Auditor</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Suggest Tasks by CLO Cognitive Level</span>
           </button>
 
           <button
@@ -185,11 +213,13 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
       </div>
 
       {/* Framework Level Assessment & Direct Measurement Warnings */}
-      <FrameworkFieldWarning
-        field="assessments"
-        report={validationReport}
-        onApplyFix={onApplyFrameworkFix}
-      />
+      {!isStudentView && (
+        <FrameworkFieldWarning
+          field="assessments"
+          report={validationReport}
+          onApplyFix={onApplyFrameworkFix}
+        />
+      )}
 
       {/* Live Weightage Indicator Bar */}
       <div
@@ -242,27 +272,133 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
         </div>
       </div>
 
+      {/* Assessment Effort Estimator */}
+      <AssessmentEffortEstimator course={course} />
+
       {/* Visual Dependency & Conflict Warning Banner */}
-      <OutcomeAssessmentDependencyAlert
-        course={course}
-        onChange={onChange}
-        mode="banner"
-      />
+      {!isStudentView && (
+        <OutcomeAssessmentDependencyAlert
+          course={course}
+          onChange={onChange}
+          mode="banner"
+        />
+      )}
+      <AssessmentTimeline course={course} />
+      <CLOAssessmentMatrix course={course} />
 
       {/* Unassessed Outcome Warning */}
       {unassessedCLOs.length > 0 && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>
-            <strong>Unmeasured Outcomes:</strong> Outcome(s){' '}
-            <strong>{unassessedCLOs.map((c) => c.code).join(', ')}</strong> have no linked assessment instrument. Students cannot demonstrate achievement without direct evaluation.
-          </span>
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Unmeasured Outcomes:</strong> Outcome(s){' '}
+              <strong>{unassessedCLOs.map((c) => c.code).join(', ')}</strong> have no linked assessment instrument. Students cannot demonstrate achievement without direct evaluation.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSuggesterTargetCLOId(unassessedCLOs[0]?.id);
+              setIsSuggesterOpen(true);
+            }}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold text-xs shadow-2xs transition cursor-pointer flex items-center space-x-1 shrink-0"
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>Suggest Tasks for Unassessed CLOs</span>
+          </button>
         </div>
       )}
 
+      {/* View Switcher Toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-2.5 px-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-700">Display View:</span>
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setPlanViewMode('visual-map')}
+              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 cursor-pointer ${
+                planViewMode === 'visual-map'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Visual CLO Mapping &amp; Gaps</span>
+              {unassessedCLOs.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse ml-0.5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPlanViewMode('cards')}
+              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 cursor-pointer ${
+                planViewMode === 'cards'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>Instrument Cards ({assessments.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPlanViewMode('both')}
+              className={`px-3 py-1.5 rounded-md transition-all flex items-center space-x-1.5 cursor-pointer ${
+                planViewMode === 'both'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>Combined View</span>
+            </button>
+          </div>
+        </div>
+
+        {unassessedCLOs.length > 0 ? (
+          <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+            <span>{unassessedCLOs.length} Outcome{unassessedCLOs.length > 1 ? 's' : ''} Lack Assessment</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>All {clos.length} Outcomes Evaluated</span>
+          </span>
+        )}
+      </div>
+
+      {/* Visual CLO ↔ Assessment Mapper & Gap Auditor */}
+      {(planViewMode === 'visual-map' || planViewMode === 'both') && (
+        <CLOAssessmentVisualMapper
+          course={course}
+          onChange={onChange}
+          onOpenTaskSuggester={(cloId) => {
+            setSuggesterTargetCLOId(cloId);
+            setIsSuggesterOpen(true);
+          }}
+        />
+      )}
+
       {/* Assessment Cards List */}
-      <div className="space-y-4">
-        {assessments.map((asmt, idx) => (
+      {(planViewMode === 'cards' || planViewMode === 'both') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-800">
+              Assessment Instruments Configuration ({assessments.length})
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddAssessment}
+              className="inline-flex items-center space-x-1 px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Instrument</span>
+            </button>
+          </div>
+          {assessments.map((asmt, idx) => (
           <div
             key={asmt.id}
             className="p-5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 shadow-2xs space-y-4 transition"
@@ -396,36 +532,52 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
               </div>
             </div>
 
-            {/* Bottom Row: Linked CLOs Checkbox Chips */}
-            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-[11px] font-bold text-slate-600">Assessed CLO(s):</span>
-              {clos.map((clo) => {
-                const isLinked = (asmt.linkedCLOIds || []).includes(clo.id);
-                return (
-                  <button
-                    key={clo.id}
-                    type="button"
-                    onClick={() => {
-                      const current = asmt.linkedCLOIds || [];
-                      const next = isLinked
-                        ? current.filter((id) => id !== clo.id)
-                        : [...current, clo.id];
-                      handleUpdateAssessment(asmt.id, { linkedCLOIds: next });
-                    }}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer border ${
-                      isLinked
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {clo.code} ({clo.bloomLevel})
-                  </button>
-                );
-              })}
+            {/* Bottom Row: Linked CLOs Checkbox Chips & Suggestions */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-600">Assessed CLO(s):</span>
+                {clos.map((clo) => {
+                  const isLinked = (asmt.linkedCLOIds || []).includes(clo.id);
+                  return (
+                    <button
+                      key={clo.id}
+                      type="button"
+                      onClick={() => {
+                        const current = asmt.linkedCLOIds || [];
+                        const next = isLinked
+                          ? current.filter((id) => id !== clo.id)
+                          : [...current, clo.id];
+                        handleUpdateAssessment(asmt.id, { linkedCLOIds: next });
+                      }}
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer border ${
+                        isLinked
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {clo.code} ({clo.bloomLevel})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSuggesterTargetCLOId(asmt.linkedCLOIds?.[0] || clos[0]?.id);
+                  setIsSuggesterOpen(true);
+                }}
+                className="inline-flex items-center space-x-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition cursor-pointer"
+                title="Suggest authentic assessment tasks (rubrics, quizzes, projects) matched to linked CLO cognitive level"
+              >
+                <Brain className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Suggest Tasks for this CLO</span>
+              </button>
             </div>
           </div>
         ))}
       </div>
+      )}
 
       {/* Auto Assessment-CLO Matrix Preview */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs space-y-3">
@@ -472,16 +624,18 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
       </div>
 
       {/* Assessment Plan Collaborative Comments Thread */}
-      <div className="pt-2">
-        <InlineSectionFeedback
-          course={course}
-          onChangeCourse={onChange}
-          sectionKey="step-9-assessments"
-          sectionTitle="Step 9: Summative Assessment Blueprint"
-          stepNumber={9}
-          targetType="Assessment"
-        />
-      </div>
+      {!isStudentView && (
+        <div className="pt-2">
+          <InlineSectionFeedback
+            course={course}
+            onChangeCourse={onChange}
+            sectionKey="step-9-assessments"
+            sectionTitle="Step 9: Summative Assessment Blueprint"
+            stepNumber={9}
+            targetType="Assessment"
+          />
+        </div>
+      )}
 
       {/* Footer Navigation */}
       <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
@@ -508,6 +662,15 @@ export const Step08AssessmentPlan: React.FC<StepProps> = ({
         isOpen={isDepModalOpen}
         onClose={() => setIsDepModalOpen(false)}
         onChange={onChange}
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={isSuggesterOpen}
+        onClose={() => setIsSuggesterOpen(false)}
+        onChangeCourse={onChange}
+        initialCLOId={suggesterTargetCLOId}
       />
     </div>
   );

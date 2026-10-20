@@ -17,12 +17,19 @@ html {
 
 /* Print-Optimized Formatting Rules */
 @media print {
+  @page {
+    margin: 12mm 15mm;
+    size: A4 portrait;
+  }
+
   /* Reassuring clean print layout */
   body, html {
     background: #ffffff !important;
     color: #0f172a !important;
     font-size: 11pt !important;
     line-height: 1.5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Automatically hide non-printable UI chrome */
@@ -51,5 +58,24 @@ html {
   .print-avoid-break {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+  }
+
+  .print-table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
   }
 }

@@ -1,6 +1,6 @@
 {
-  "name": "MENTISERA OBE360™",
-  "description": "Outcome-Based Course Creator enabling teachers, instructional designers, and course developers to design complete, measurable, outcome-aligned courses from CLOs to assessment evidence.",
+  "name": "OBE360™ by Shahid Hussain Soomro",
+  "description": "OBE360™ by Shahid Hussain Soomro is a premier Outcome-Based Education platform for curriculum design, accreditation dossiers, and constructive alignment auditing in higher education.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

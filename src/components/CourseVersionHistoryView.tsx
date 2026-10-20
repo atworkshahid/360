@@ -27,6 +27,7 @@ import {
   computeCourseDiff,
 } from '../services/versionHistoryService';
 import { calculateCourseAudit } from '../utils/obeCalculator';
+import { VersionDiffModal } from './Dashboard/VersionDiffModal';
 
 interface CourseVersionHistoryViewProps {
   courses: Course[];
@@ -46,6 +47,7 @@ export const CourseVersionHistoryView: React.FC<CourseVersionHistoryViewProps> =
   const [confirmRestoreVersion, setConfirmRestoreVersion] = useState<CourseVersion | null>(null);
   const [confirmClearHistory, setConfirmClearHistory] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'info' } | null>(null);
+  const [diffModalState, setDiffModalState] = useState<{ snapshotCourse: Course | null; currentCourse: Course | null }>({ snapshotCourse: null, currentCourse: null });
 
   // Active course reference
   const currentCourse = useMemo(() => {
@@ -445,12 +447,11 @@ export const CourseVersionHistoryView: React.FC<CourseVersionHistoryViewProps> =
                     <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
                       <button
                         type="button"
-                        onClick={() => setExpandedVersionId(isExpanded ? null : ver.id)}
+                        onClick={() => setDiffModalState({ snapshotCourse: ver.snapshot, currentCourse })}
                         className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer"
                         title="Compare details with current course"
                       >
-                        <span>{isExpanded ? 'Hide Diff' : 'Inspect'}</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        <span>Inspect Changes</span>
                       </button>
 
                       {isCurrent ? (
@@ -561,8 +562,16 @@ export const CourseVersionHistoryView: React.FC<CourseVersionHistoryViewProps> =
                       )}
 
                       {/* Restore Action in Drawer */}
+                      <div className="pt-2 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setDiffModalState({ snapshotCourse: ver.course, currentCourse: currentCourse! })}
+                            className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold flex items-center space-x-2 transition cursor-pointer"
+                        >
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Compare Changes</span>
+                        </button>
                       {!isCurrent && (
-                        <div className="pt-2 flex justify-end">
                           <button
                             type="button"
                             onClick={() => setConfirmRestoreVersion(ver)}
@@ -571,8 +580,8 @@ export const CourseVersionHistoryView: React.FC<CourseVersionHistoryViewProps> =
                             <RotateCcw className="w-3.5 h-3.5" />
                             <span>Restore to Version #{ver.versionNumber}</span>
                           </button>
-                        </div>
                       )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -581,6 +590,12 @@ export const CourseVersionHistoryView: React.FC<CourseVersionHistoryViewProps> =
           </div>
         )}
       </div>
+      <VersionDiffModal 
+          isOpen={!!diffModalState.snapshotCourse}
+          onClose={() => setDiffModalState({ snapshotCourse: null, currentCourse: null })}
+          snapshotCourse={diffModalState.snapshotCourse!}
+          currentCourse={diffModalState.currentCourse!}
+      />
     </div>
   );
 };

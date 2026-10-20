@@ -107,6 +107,14 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
       return fw.badge === 'International Recognition Framework';
     if (filterType === 'accreditation')
       return fw.badge === 'Accreditation Commission';
+    if (filterType === 'business')
+      return fw.badge === 'Business Accreditation';
+    if (filterType === 'educator')
+      return fw.badge === 'Teacher Education Accreditation';
+    if (filterType === 'us-regional')
+      return fw.badge === 'US Regional Accreditation';
+    if (filterType === 'european')
+      return fw.badge === 'European Quality Assurance';
     if (filterType === 'national')
       return fw.badge === 'National Higher Education Framework';
     if (filterType === 'general')
@@ -120,6 +128,14 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'Accreditation Commission':
         return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'Business Accreditation':
+        return 'bg-amber-50 text-amber-800 border-amber-300';
+      case 'Teacher Education Accreditation':
+        return 'bg-teal-50 text-teal-800 border-teal-300';
+      case 'US Regional Accreditation':
+        return 'bg-indigo-50 text-indigo-800 border-indigo-300';
+      case 'European Quality Assurance':
+        return 'bg-sky-50 text-sky-800 border-sky-300';
       case 'National Higher Education Framework':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default:
@@ -148,11 +164,15 @@ export const Step01FrameworkSelection: React.FC<StepProps> = ({
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-2 pt-1 border-b border-slate-200 pb-3">
         {[
-          { id: 'all', label: 'All Frameworks (10)' },
-          { id: 'international', label: 'International Accords (3)' },
-          { id: 'accreditation', label: 'ABET Commissions (3)' },
-          { id: 'national', label: 'National Councils (HEC / NBA)' },
-          { id: 'general', label: 'General & Custom Institutional' },
+          { id: 'all', label: `All Accreditations (${INITIAL_FRAMEWORKS.length})` },
+          { id: 'international', label: 'International Accords (WA / SA / DA / Seoul)' },
+          { id: 'accreditation', label: 'ABET (EAC / CAC / ETAC)' },
+          { id: 'business', label: 'Business (AACSB / ACBSP)' },
+          { id: 'educator', label: 'Teacher Education (CAEP / CCTC / CCTP)' },
+          { id: 'us-regional', label: 'US Regional (HLC / MSCHE / SACSCOC / WSCUC...)' },
+          { id: 'european', label: 'European EHEA & QA (FIBAA / ACQUIN / EQAA...)' },
+          { id: 'national', label: 'National Councils (NCAAA / HEC / NBA)' },
+          { id: 'general', label: 'General & Institutional' },
         ].map((tab) => (
           <button
             key={tab.id}

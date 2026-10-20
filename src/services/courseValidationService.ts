@@ -82,6 +82,9 @@ export class CourseValidationService {
     // 5. RULE: CLO_ASSESSMENT_COVERAGE & ASSESSMENT_WEIGHT_TOTAL
     const totalWeight = this.checkAssessmentPlan(course, results);
 
+    // 5b. RULE: OUTCOME_WEIGHT_DISTRIBUTION & OUTCOME_ASSESSMENT_WEIGHT_ALIGNMENT
+    this.checkOutcomeWeights(course, results);
+
     // 6. RULE: RUBRIC_ALIGNMENT (Analytic scoring rubrics for subjective tasks)
     this.checkRubricAlignment(course, results);
 
@@ -511,6 +514,127 @@ export class CourseValidationService {
     return totalWeight;
   }
 
+  private static checkOutcomeWeights(course: Course, results: CourseValidationRuleResult[]) {
+    const clos = course.clos || [];
+    const assessments = course.assessments || [];
+    const mlos = course.mlos || [];
+    const modules = course.modules || [];
+
+    if (clos.length === 0) return;
+
+    // 1. CLO Weight Distribution check
+    const totalCLOWeight = Math.round(
+      clos.reduce((sum, c) => sum + (Number(c.weightage ?? c.weight) || 0), 0) * 10
+    ) / 10;
+
+    if (Math.abs(totalCLOWeight - 100) > 0.05) {
+      results.push({
+        rule: 'OUTCOME_WEIGHT_DISTRIBUTION',
+        ruleTitle: `Outcome Weightage Totals ${totalCLOWeight}% (Must Be Exactly 100%)`,
+        severity: 'Error',
+        message: `The cumulative percentage weight of all Course Learning Outcomes equals ${totalCLOWeight}%. Washington Accord & OBE standards require outcome weights to sum to 100% to ensure mathematically sound student achievement audits.`,
+        affectedEntity: 'CLO',
+        recommendation: 'Adjust individual outcome weights or use the "Auto-Balance" tool in Step 4.',
+        targetStep: 4,
+      });
+    } else {
+      results.push({
+        rule: 'OUTCOME_WEIGHT_DISTRIBUTION',
+        ruleTitle: 'Outcome Weights Perfectly Balanced (100%)',
+        severity: 'Passed',
+        message: `All ${clos.length} course learning outcomes carry calibrated percentage weights summing to exactly 100%.`,
+        affectedEntity: 'CLO',
+        recommendation: 'Outcome weight distribution satisfies accreditation standards.',
+        targetStep: 4,
+      });
+    }
+
+    // 2. Outcome-to-Assessment Weight Alignment
+    if (assessments.length > 0) {
+      const weightDiscrepancies: { code: string; target: number; assessed: number; diff: number }[] = [];
+
+      clos.forEach((c) => {
+        const target = Number(c.weightage ?? c.weight) || Math.round(100 / clos.length);
+        const linked = assessments.filter(
+          (a) =>
+            (a.linkedCLOIds || []).includes(c.id) ||
+            (a.linkedCLOIds || []).includes(c.code) ||
+            (a.cloIds || []).includes(c.id) ||
+            (a.cloIds || []).includes(c.code)
+        );
+
+        const assessed = Math.round(
+          linked.reduce(
+            (sum, a) => sum + (Number(a.weightage) || 0) / Math.max(1, (a.linkedCLOIds || []).length),
+            0
+          ) * 10
+        ) / 10;
+
+        const diff = Math.round((assessed - target) * 10) / 10;
+        if (Math.abs(diff) > 5) {
+          weightDiscrepancies.push({ code: c.code, target, assessed, diff });
+        }
+      });
+
+      if (weightDiscrepancies.length > 0) {
+        results.push({
+          rule: 'OUTCOME_ASSESSMENT_WEIGHT_ALIGNMENT',
+          ruleTitle: `${weightDiscrepancies.length} Outcome(s) Have Assessment Weight Discrepancies`,
+          severity: 'Warning',
+          message: `Assessment mark allocations deviate from target outcome percentage weights: ${weightDiscrepancies
+            .map((w) => `${w.code} (Target ${w.target}%, Assessed ${w.assessed}%, ${w.diff > 0 ? `+${w.diff}%` : `${w.diff}%`})`)
+            .join('; ')}.`,
+          affectedEntity: 'Assessment',
+          recommendation:
+            'Adjust assessment task weightages so that student grades directly reflect the curricular emphasis assigned to each CLO.',
+          targetStep: 8,
+        });
+      } else {
+        results.push({
+          rule: 'OUTCOME_ASSESSMENT_WEIGHT_ALIGNMENT',
+          ruleTitle: 'Assessment Marks Proportional to Outcome Weights',
+          severity: 'Passed',
+          message:
+            'All assessment components evaluate learning outcomes in close alignment with their assigned curricular percentage weights.',
+          affectedEntity: 'Assessment',
+          recommendation: 'Constructive weight alignment verified.',
+          targetStep: 8,
+        });
+      }
+    }
+
+    // 3. Modular MLO Weights check
+    if (modules.length > 0 && mlos.length > 0) {
+      const unbalancedModules: { moduleNum: number; total: number }[] = [];
+
+      modules.forEach((mod) => {
+        const modMLOs = mlos.filter((m) => m.moduleId === mod.id);
+        if (modMLOs.length > 0) {
+          const modTotal = Math.round(
+            modMLOs.reduce((sum, m) => sum + (Number(m.weightage ?? m.weight) || 0), 0) * 10
+          ) / 10;
+          if (modTotal > 0 && Math.abs(modTotal - 100) > 1) {
+            unbalancedModules.push({ moduleNum: mod.number, total: modTotal });
+          }
+        }
+      });
+
+      if (unbalancedModules.length > 0) {
+        results.push({
+          rule: 'MLO_WEIGHT_DISTRIBUTION',
+          ruleTitle: `MLO Weights Unbalanced in ${unbalancedModules.length} Module(s)`,
+          severity: 'Suggestion',
+          message: `Modular outcome weights should sum to 100% within each module: ${unbalancedModules
+            .map((u) => `Module ${u.moduleNum}: ${u.total}%`)
+            .join(', ')}.`,
+          affectedEntity: 'WeeklyPlan',
+          recommendation: 'Auto-balance MLO percentage weights within each module in Step 6.',
+          targetStep: 6,
+        });
+      }
+    }
+  }
+
   private static computeAlignmentTriangle(course: Course, results: CourseValidationRuleResult[]): AlignmentTriangleStatus[] {
     const clos = course.clos || [];
     const weeklyPlan = course.weeklyPlan || [];
@@ -828,14 +952,35 @@ export class CourseValidationService {
     const assessments = course.assessments || [];
     if (assessments.length > 0 && clos.length > 0) {
       const totalWeight = assessments.reduce((acc, a) => acc + (a.weightage || 0), 0);
-      const weightAccuracy = Math.abs(totalWeight - 100) < 0.1 ? 50 : Math.max(0, 50 - Math.abs(totalWeight - 100) * 2);
+      const asmtWeightAccuracy = Math.abs(totalWeight - 100) < 0.1 ? 40 : Math.max(0, 40 - Math.abs(totalWeight - 100) * 2);
 
       const assessedCLOIds = new Set<string>();
       assessments.forEach((a) => (a.linkedCLOIds || []).forEach((id) => assessedCLOIds.add(id)));
       const assessedCLOs = clos.filter((c) => assessedCLOIds.has(c.id) || assessedCLOIds.has(c.code)).length;
-      const cloRatioScore = Math.round((assessedCLOs / clos.length) * 50);
+      const cloRatioScore = Math.round((assessedCLOs / clos.length) * 35);
 
-      assessmentCoverage = Math.min(100, Math.round(weightAccuracy + cloRatioScore));
+      // Outcome Weight Alignment Score (25 pts): rewards constructive alignment between target outcome weight and assessed marks
+      const totalCLOWeight = clos.reduce((sum, c) => sum + (Number(c.weightage ?? c.weight) || 0), 0);
+      let weightVariancePenalty = 0;
+      if (Math.abs(totalCLOWeight - 100) > 0.5) {
+        weightVariancePenalty += Math.min(10, Math.abs(totalCLOWeight - 100) * 0.4);
+      }
+
+      clos.forEach((c) => {
+        const target = Number(c.weightage ?? c.weight) || Math.round(100 / clos.length);
+        const linked = assessments.filter(
+          (a) => (a.linkedCLOIds || []).includes(c.id) || (a.linkedCLOIds || []).includes(c.code)
+        );
+        const assessed = linked.reduce(
+          (sum, a) => sum + (Number(a.weightage) || 0) / Math.max(1, (a.linkedCLOIds || []).length),
+          0
+        );
+        const diff = Math.abs(assessed - target);
+        if (diff > 5) weightVariancePenalty += Math.min(4, (diff - 5) * 0.4);
+      });
+
+      const outcomeWeightAlignmentScore = Math.max(0, Math.round(25 - weightVariancePenalty));
+      assessmentCoverage = Math.min(100, Math.round(asmtWeightAccuracy + cloRatioScore + outcomeWeightAlignmentScore));
     }
 
     // 7. Rubric Alignment (100 pts)

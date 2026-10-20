@@ -16,14 +16,18 @@ import {
   Info,
   ChevronRight,
   Lightbulb,
+  Scale,
+  Sliders,
 } from 'lucide-react';
 import { Course, MLO, BloomLevel } from '../../../types';
+import { StatusBadge } from '../../common/StatusBadge';
 import { generateScaffoldedMLOs } from '../../../services/api';
 import {
   BloomsTaxonomyHelperModal,
   BLOOM_TAXONOMY_DATA,
 } from '../BloomsTaxonomyHelperModal';
 import { BloomsTaxonomyPopover } from '../BloomsTaxonomyPopover';
+import { BloomsTaxonomyInteractiveSelector } from '../BloomsTaxonomyInteractiveSelector';
 import { evaluateStage } from '../../../utils/stageProgress';
 
 interface StepProps {
@@ -84,7 +88,29 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
   ).length;
 
   const handleUpdateMLO = (id: string, updates: Partial<MLO>) => {
-    const updated = course.mlos.map((m) => (m.id === id ? { ...m, ...updates } : m));
+    const synced = { ...updates };
+    if (synced.weightage !== undefined && synced.weight === undefined) {
+      synced.weight = synced.weightage;
+    } else if (synced.weight !== undefined && synced.weightage === undefined) {
+      synced.weightage = synced.weight;
+    }
+    const updated = course.mlos.map((m) => (m.id === id ? { ...m, ...synced } : m));
+    onChange({ ...course, mlos: updated });
+  };
+
+  const handleBalanceModuleMLOWeights = (targetModId?: string) => {
+    const modId = targetModId || selectedModuleId || course.modules[0]?.id;
+    if (!modId) return;
+    const modMLOs = course.mlos.filter((m) => m.moduleId === modId);
+    if (modMLOs.length === 0) return;
+    const equal = Math.floor(100 / modMLOs.length);
+    const rem = 100 - equal * modMLOs.length;
+    const updated = course.mlos.map((m) => {
+      if (m.moduleId !== modId) return m;
+      const idx = modMLOs.findIndex((x) => x.id === m.id);
+      const wt = equal + (idx === 0 ? rem : 0);
+      return { ...m, weightage: wt, weight: wt };
+    });
     onChange({ ...course, mlos: updated });
   };
 
@@ -135,6 +161,8 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
       assessment: 'Diagnostic Quiz / Evaluated Assignment',
       evidence: 'Direct student submission meeting grading criteria threshold',
       studyTimeHours: 4,
+      weightage: Math.max(5, Math.floor(100 / countInMod)),
+      weight: Math.max(5, Math.floor(100 / countInMod)),
     };
 
     const updated = [...course.mlos, newMLO];
@@ -148,6 +176,25 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
     if (selectedMLOId === id) {
       setSelectedMLOId(filtered[0]?.id || '');
     }
+  };
+
+  const handleCloneMLO = (id: string) => {
+    const mloToClone = course.mlos.find((m) => m.id === id);
+    if (!mloToClone) return;
+
+    const mod = course.modules.find((m) => m.id === mloToClone.moduleId);
+    const modNumber = mod?.number || 1;
+    const countInMod = course.mlos.filter((m) => m.moduleId === mloToClone.moduleId).length + 1;
+
+    const newMLO: MLO = {
+      ...mloToClone,
+      id: `mlo-${Date.now()}`,
+      code: `MLO ${modNumber}.${countInMod}`,
+    };
+
+    const updated = [...course.mlos, newMLO];
+    onChange({ ...course, mlos: updated });
+    setSelectedMLOId(newMLO.id);
   };
 
   const handleGenerateScaffolded = async () => {
@@ -174,6 +221,8 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
       assessment: s.assessment || 'Formative assessment item',
       evidence: s.evidence || 'Submitted response evaluated on rubric',
       studyTimeHours: s.studyTimeHours || 4,
+      weightage: Math.max(5, Math.floor(100 / Math.max(1, scaffolded.length))),
+      weight: Math.max(5, Math.floor(100 / Math.max(1, scaffolded.length))),
     }));
 
     onChange({
@@ -343,6 +392,48 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
         ))}
       </div>
 
+      {/* Module Outcome Weightage Balance Bar */}
+      {selectedModuleId && (
+        <div
+          className={`p-3.5 px-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs transition ${
+            Math.abs(
+              moduleMLOs.reduce((acc, m) => acc + (Number(m.weightage ?? m.weight) || 0), 0) - 100
+            ) < 0.1
+              ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+              : 'bg-amber-50/80 border-amber-200 text-amber-950'
+          }`}
+        >
+          <div className="flex items-center space-x-2.5">
+            <Scale className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div>
+              <span className="font-bold">
+                Module Outcome Weights Total:{' '}
+                {moduleMLOs.reduce((acc, m) => acc + (Number(m.weightage ?? m.weight) || 0), 0)}%
+              </span>
+              <span className="text-[11px] opacity-80 block">
+                {Math.abs(
+                  moduleMLOs.reduce((acc, m) => acc + (Number(m.weightage ?? m.weight) || 0), 0) - 100
+                ) < 0.1
+                  ? 'All module outcomes add up to 100%. Calibrated for assessment evidence audit.'
+                  : `Discrepancy: ${
+                      100 -
+                      moduleMLOs.reduce((acc, m) => acc + (Number(m.weightage ?? m.weight) || 0), 0)
+                    }% remaining to balance.`}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleBalanceModuleMLOWeights(selectedModuleId)}
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg font-bold text-xs shadow-2xs transition cursor-pointer flex items-center space-x-1"
+          >
+            <Scale className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Auto-Balance Module Weights</span>
+          </button>
+        </div>
+      )}
+
       {/* MLO Selector Pills */}
       {moduleMLOs.length > 0 ? (
         <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
@@ -372,6 +463,9 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
                 }`}
               >
                 {mlo.bloomLevel}
+              </span>
+              <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                {mlo.weightage ?? mlo.weight ?? 25}% Wt
               </span>
             </button>
           ))}
@@ -411,11 +505,21 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
                 onChange={(e) => handleUpdateMLO(selectedMLO.id, { code: e.target.value })}
                 className="w-28 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-slate-50"
               />
+              <StatusBadge status={selectedMLO.status} />
               <span className="text-xs text-slate-400">|</span>
               <span className="text-xs font-semibold text-slate-700">
                 {course.modules.find((m) => m.id === selectedMLO.moduleId)?.title || 'Module'}
               </span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => handleCloneMLO(selectedMLO.id)}
+              className="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition cursor-pointer"
+              title="Clone MLO"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
 
             <button
               type="button"
@@ -507,86 +611,137 @@ export const Step06MLOCreator: React.FC<StepProps> = ({
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* Bloom Details & Study Time */}
-          <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Bloom Verb</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Weightage (%)</label>
               <input
-                type="text"
-                value={selectedMLO.bloomVerb}
-                onChange={(e) => handleUpdateMLO(selectedMLO.id, { bloomVerb: e.target.value })}
-                placeholder="e.g. Apply, Critique"
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                type="number"
+                min="0"
+                max="100"
+                value={selectedMLO.weightage || ''}
+                onChange={(e) => handleUpdateMLO(selectedMLO.id, { weightage: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 20"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Bloom Level</label>
-              <select
-                value={selectedMLO.bloomLevel}
-                onChange={(e) => handleUpdateMLO(selectedMLO.id, { bloomLevel: e.target.value as BloomLevel })}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
-              >
-                <option value="Remember">Remember (Level 1)</option>
-                <option value="Understand">Understand (Level 2)</option>
-                <option value="Apply">Apply (Level 3)</option>
-                <option value="Analyze">Analyze (Level 4)</option>
-                <option value="Evaluate">Evaluate (Level 5)</option>
-                <option value="Create">Create (Level 6)</option>
-              </select>
+          {/* Interactive Bloom's Taxonomy Selector & Auto-Suggested Action Verbs */}
+          <BloomsTaxonomyInteractiveSelector
+            targetType="MLO"
+            targetCode={selectedMLO.code}
+            statement={selectedMLO.statement}
+            currentLevel={selectedMLO.bloomLevel}
+            currentVerb={selectedMLO.bloomVerb}
+            parentCLOLevel={parentCLO?.bloomLevel}
+            parentCLOCode={parentCLO?.code}
+            onSelectVerbAndLevel={(verb, level, updatedStatement) => {
+              handleUpdateMLO(selectedMLO.id, {
+                bloomVerb: verb,
+                bloomLevel: level,
+                statement: updatedStatement,
+              });
+            }}
+            onSelectLevelOnly={(level) => {
+              const defaultVerb = BLOOM_TAXONOMY_DATA[level]?.categories[0]?.verbs[0] || selectedMLO.bloomVerb || 'Explain';
+              let newStatement = selectedMLO.statement || '';
+              if (newStatement.trim()) {
+                const parts = newStatement.trim().split(/\s+/);
+                parts[0] = defaultVerb;
+                newStatement = parts.join(' ');
+              } else {
+                newStatement = `${defaultVerb} `;
+              }
+              handleUpdateMLO(selectedMLO.id, {
+                bloomLevel: level,
+                bloomVerb: defaultVerb,
+                statement: newStatement,
+              });
+            }}
+            onOpenFullModal={() => setBloomsModalOpen(true)}
+            defaultExpanded={true}
+          />
+
+          {/* Additional MLO Settings: Modular Outcome Weightage & Study Time */}
+          <div className="p-4 bg-gradient-to-r from-indigo-50/70 to-slate-50 border border-indigo-200/80 rounded-xl space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <Scale className="w-4 h-4 text-indigo-600" />
+                <span className="font-bold text-xs text-slate-900">
+                  Granular Outcome Percentage Weight
+                </span>
+              </div>
+              <span className="text-[11px] font-mono font-extrabold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-md border border-indigo-200">
+                {selectedMLO.weightage ?? selectedMLO.weight ?? 25}% of Module
+              </span>
             </div>
 
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Curricular percentage weight allocated to evaluating this outcome. Assessment instruments and audit calculations automatically reflect these weights.
+            </p>
+
+            <div className="flex items-center space-x-4 pt-1">
+              <div className="flex-1">
+                <input
+                  type="range"
+                  min={5}
+                  max={100}
+                  step={5}
+                  value={selectedMLO.weightage ?? selectedMLO.weight ?? 25}
+                  onChange={(e) =>
+                    handleUpdateMLO(selectedMLO.id, {
+                      weightage: Number(e.target.value) || 5,
+                      weight: Number(e.target.value) || 5,
+                    })
+                  }
+                  className="w-full accent-indigo-600 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={selectedMLO.weightage ?? selectedMLO.weight ?? 25}
+                  onChange={(e) =>
+                    handleUpdateMLO(selectedMLO.id, {
+                      weightage: Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                      weight: Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                    })
+                  }
+                  className="w-16 px-2 py-1 text-xs text-center font-bold font-mono rounded-lg border border-slate-300 bg-white"
+                />
+                <span className="text-xs font-bold text-slate-600">%</span>
+
+                <button
+                  type="button"
+                  onClick={() => handleBalanceModuleMLOWeights(selectedMLO.moduleId)}
+                  className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-100/70 hover:bg-indigo-200 rounded-lg transition cursor-pointer"
+                  title="Evenly balance weights across all MLOs in this module"
+                >
+                  Auto-Balance
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional MLO Settings: Study Time Hours */}
+          <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Study Time (Hours)</label>
+              <span className="font-bold text-slate-800">Expected Modular Study Time</span>
+              <p className="text-[11px] text-slate-500">Estimated learner workload to master this modular learning outcome.</p>
+            </div>
+            <div className="flex items-center space-x-2">
               <input
                 type="number"
                 min={1}
                 max={40}
                 value={selectedMLO.studyTimeHours || 4}
-                onChange={(e) => handleUpdateMLO(selectedMLO.id, { studyTimeHours: Number(e.target.value) })}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                onChange={(e) => handleUpdateMLO(selectedMLO.id, { studyTimeHours: Number(e.target.value) || 1 })}
+                className="w-16 px-2 py-1 text-xs text-center font-bold rounded-lg border border-slate-300 bg-white"
               />
-            </div>
-          </div>
-
-          {/* Dynamic Suggested Action Verbs */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1.5">
-                <Brain className="w-3.5 h-3.5 text-indigo-600" />
-                <span className="text-[11px] font-bold text-slate-800">
-                  Observable Action Verbs for {selectedMLO.bloomLevel}:
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBloomsModalOpen(true)}
-                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center space-x-1 cursor-pointer"
-              >
-                <span>Browse Full Matrix</span>
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {(BLOOM_TAXONOMY_DATA[selectedMLO.bloomLevel]?.categories.flatMap((c) => c.verbs).slice(0, 10) || []).map((verb) => {
-                const isSelected = selectedMLO.bloomVerb?.toLowerCase() === verb.toLowerCase();
-                return (
-                  <button
-                    key={verb}
-                    type="button"
-                    onClick={() => handleSelectBloomVerb(verb, selectedMLO.bloomLevel)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
-                      isSelected
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs'
-                        : 'bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 border-slate-200'
-                    }`}
-                    title={`Set MLO verb to "${verb}"`}
-                  >
-                    {verb}
-                  </button>
-                );
-              })}
+              <span className="text-slate-600 font-semibold text-xs">Hours</span>
             </div>
           </div>
 

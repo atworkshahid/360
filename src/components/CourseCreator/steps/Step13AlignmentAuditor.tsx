@@ -31,6 +31,7 @@ import { ConstructiveAlignmentDashboard } from '../../ConstructiveAlignment/Cons
 import { BloomDomainRadarChart } from '../../AlignmentAnalysis/BloomDomainRadarChart';
 import { CoursePDFExportModal } from '../../CoursePDFExportModal';
 import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
+import { AIAccreditationGapAnalyzerModal } from '../../AccreditationGapAnalyzer/AIAccreditationGapAnalyzerModal';
 
 interface StepProps {
   course: Course;
@@ -53,6 +54,7 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [showGapGuidance, setShowGapGuidance] = useState(false);
+  const [gapAnalyzerOpen, setGapAnalyzerOpen] = useState(false);
   const auditReport: CourseAuditReport = calculateCourseAudit(course);
   const assessmentAnalysis = analyzeAssessmentPlan(course);
   const constructiveAlignmentReport = useMemo(() => analyzeConstructiveAlignment(course), [course]);
@@ -109,6 +111,17 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
+            <button
+              type="button"
+              id="step13-ai-gap-analyzer-btn"
+              onClick={() => setGapAnalyzerOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+              title="AI Accreditation Gap Analyzer: Compares competency mapping against national/international standards and remediates cognitive gaps"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+              <span>AI Accreditation Gap Analyzer</span>
+            </button>
+
             <button
               type="button"
               id="step13-export-pdf-btn"
@@ -651,6 +664,14 @@ export const Step13AlignmentAuditor: React.FC<StepProps> = ({
         course={course}
         isOpen={pdfModalOpen}
         onClose={() => setPdfModalOpen(false)}
+      />
+
+      {/* AI Accreditation Gap Analyzer Modal */}
+      <AIAccreditationGapAnalyzerModal
+        course={course}
+        isOpen={gapAnalyzerOpen}
+        onClose={() => setGapAnalyzerOpen(false)}
+        onChangeCourse={onChange}
       />
     </div>
   );

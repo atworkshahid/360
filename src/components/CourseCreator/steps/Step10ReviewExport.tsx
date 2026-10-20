@@ -14,6 +14,9 @@ import {
   History,
   GitBranch,
   BookOpen,
+  HardDriveDownload,
+  Award,
+  Table,
 } from 'lucide-react';
 import { Course, CourseStatus, CourseReviewComment } from '../../../types';
 import { getFrameworkById } from '../../../data/frameworksData';
@@ -22,6 +25,9 @@ import { exportSyllabusPDF, exportSyllabusDOCX } from '../../../utils/syllabusEx
 import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
 import { downloadCourseDocx } from '../../../utils/docxExport';
 import { ReviewLinkModal } from '../ReviewLinkModal';
+import { OfflineProjectService } from '../../../utils/offlineProjectService';
+import { MicroCredentialModal } from '../../MicroCredentials/MicroCredentialModal';
+import { UnifiedMLOCLOPLOMappingModal } from '../../ConstructiveAlignment/UnifiedMLOCLOPLOMappingModal';
 
 interface StepProps {
   course: Course;
@@ -91,6 +97,8 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
   const [versionNote, setVersionNote] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [reviewLinkModalOpen, setReviewLinkModalOpen] = useState(false);
+  const [microCredentialModalOpen, setMicroCredentialModalOpen] = useState(false);
+  const [unifiedMappingModalOpen, setUnifiedMappingModalOpen] = useState(false);
 
   const framework = getFrameworkById(course.frameworkId);
   const comments: CourseReviewComment[] = course.reviewerComments || [];
@@ -587,11 +595,11 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
                   type="button"
                   id="step10-download-blueprint-pdf"
                   onClick={() => exportCourseBlueprintWithGate(course)}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
-                  title="Export printable PDF of current course audit and structure"
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                  title="Download official formatted accreditation dossier PDF aligned with course accreditation criteria"
                 >
-                  <FileDown className="w-4 h-4" />
-                  <span>Export to PDF</span>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Download Accreditation Dossier</span>
                 </button>
                 <button
                   type="button"
@@ -606,7 +614,7 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 flex flex-col justify-between">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold mb-2">
@@ -653,39 +661,94 @@ export const Step10ReviewExport: React.FC<StepProps> = ({
             <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 flex flex-col justify-between">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold mb-2">
-                  JSON
+                  <HardDriveDownload className="w-5 h-5 text-emerald-600" />
                 </div>
                 <h4 className="text-sm font-bold text-slate-900">
-                  OBE360 Course Manifest
+                  Download for Offline (.obe.json)
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
-                  Standardized JSON representation of full course taxonomy, alignment tables, and assessment instruments.
+                  Full JSON project file with complete OBE constructive alignment, Bloom levels, rubrics, and integrity checksum.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  const dataStr =
-                    'data:text/json;charset=utf-8,' +
-                    encodeURIComponent(JSON.stringify(course, null, 2));
-                  const downloadAnchor = document.createElement('a');
-                  downloadAnchor.setAttribute('href', dataStr);
-                  downloadAnchor.setAttribute(
-                    'download',
-                    `${course.code || 'course'}-manifest.json`
-                  );
-                  document.body.appendChild(downloadAnchor);
-                  downloadAnchor.click();
-                  downloadAnchor.remove();
-                }}
-                className="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-bold transition cursor-pointer"
+                id="step10-download-offline-project-btn"
+                onClick={() => OfflineProjectService.downloadOfflineProject(course)}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-2xs"
+                title="Download current course as a JSON-based local project file maintaining full OBE integrity"
               >
-                Download JSON Manifest
+                <HardDriveDownload className="w-3.5 h-3.5" />
+                <span>Download for Offline</span>
+              </button>
+            </div>
+
+            {/* Micro-credential Badges Card */}
+            <div className="p-5 rounded-xl border border-amber-200 bg-amber-50/40 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-2">
+                  <Award className="w-5 h-5 text-amber-700" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  Micro-credential Badges
+                </h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  Generate visual badges for all masterable skills with Open Badges 2.0 / 3.0 assertions and cryptographic hashes.
+                </p>
+              </div>
+              <button
+                type="button"
+                id="step10-open-microcredentials-btn"
+                onClick={() => setMicroCredentialModalOpen(true)}
+                className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-2xs"
+                title="Open Micro-credential Badges Studio for this course"
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Open Badges Studio</span>
+              </button>
+            </div>
+
+            {/* Single Doc I.EMLO-CLO-PLO Alignment Card */}
+            <div className="p-5 rounded-xl border border-emerald-300 bg-emerald-50/50 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold mb-2">
+                  <Table className="w-5 h-5 text-emerald-700" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  Single Doc I.EMLO-CLO-PLO
+                </h4>
+                <p className="text-xs text-slate-600 mt-1">
+                  Unified constructive alignment single document with custom interactive mapping for I.EMLO, PLO, CLO, and Competencies.
+                </p>
+              </div>
+              <button
+                type="button"
+                id="step10-open-unified-mapping-btn"
+                onClick={() => setUnifiedMappingModalOpen(true)}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-2xs"
+                title="Open Single Doc I.EMLO-CLO-PLO & Competencies Alignment Specification"
+              >
+                <Table className="w-3.5 h-3.5" />
+                <span>Single Doc Alignment</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Micro-credential Modal */}
+      <MicroCredentialModal
+        course={course}
+        isOpen={microCredentialModalOpen}
+        onClose={() => setMicroCredentialModalOpen(false)}
+      />
+
+      {/* Unified MLO-CLO-PLO Single Doc / Custom Mapping Modal */}
+      <UnifiedMLOCLOPLOMappingModal
+        course={course}
+        isOpen={unifiedMappingModalOpen}
+        onClose={() => setUnifiedMappingModalOpen(false)}
+        onChangeCourse={onChange}
+      />
 
       {/* Footer Navigation */}
       <div className="pt-4 border-t border-slate-200 flex items-center justify-between">

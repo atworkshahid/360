@@ -138,6 +138,19 @@ const MODELS: Array<{ id: GeminiModelChoice; label: string; desc: string; badge:
   },
 ];
 
+export type PedagogicalStyle = 'constructivist' | 'traditional' | 'competency_based';
+
+interface PedagogicalStyleConfig {
+  id: PedagogicalStyle;
+  label: string;
+}
+
+const PEDAGOGICAL_STYLES: PedagogicalStyleConfig[] = [
+  { id: 'constructivist', label: 'Constructivist' },
+  { id: 'traditional', label: 'Traditional' },
+  { id: 'competency_based', label: 'Competency-Based' },
+];
+
 export const CopilotPanel: React.FC<CopilotPanelProps> = ({
   course,
   isOpen,
@@ -146,6 +159,7 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({
   onClearExternalPrompt,
 }) => {
   const [selectedRole, setSelectedRole] = useState<ChatbotRole>('accreditation_specialist');
+  const [pedagogicalStyle, setPedagogicalStyle] = useState<PedagogicalStyle>('constructivist');
   const [selectedModel, setSelectedModel] = useState<GeminiModelChoice>('gemini-3.5-flash');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isConfirmClear, setIsConfirmClear] = useState<boolean>(false);
@@ -221,7 +235,7 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({
     }));
 
     try {
-      const res = await sendChatMultiTurn(historyPayload, selectedRole, selectedModel, courseContext);
+      const res = await sendChatMultiTurn(historyPayload, selectedRole, selectedModel, courseContext, pedagogicalStyle);
 
       const assistantMsg: ChatHistoryMessage = {
         id: `model-${Date.now()}`,
@@ -418,6 +432,24 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({
               );
             })}
           </div>
+        </div>
+
+        {/* Pedagogical Style Selector */}
+        <div>
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 mt-2">
+            AI Pedagogical Coach Style
+          </span>
+          <select
+            value={pedagogicalStyle}
+            onChange={(e) => setPedagogicalStyle(e.target.value as PedagogicalStyle)}
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+          >
+            {PEDAGOGICAL_STYLES.map((style) => (
+              <option key={style.id} value={style.id}>
+                {style.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Model Selection */}

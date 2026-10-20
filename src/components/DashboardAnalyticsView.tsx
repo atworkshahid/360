@@ -41,12 +41,14 @@ import {
   PieChart as PieIcon,
   Grid,
   Award,
+  Table,
 } from 'lucide-react';
 import { Course, CLO, Assessment, AssessmentType, BloomLevel } from '../types';
 import { BloomTrendReport } from './Dashboard/BloomTrendReport';
 import { CompetencyProgressionDashboard } from './Dashboard/CompetencyProgressionDashboard';
 import { CompetencyMappingMatrix } from './Dashboard/CompetencyMappingMatrix';
 import { SkillGapHeatmap } from './Dashboard/SkillGapHeatmap';
+import { AssessmentActivityHeatmap } from './Dashboard/AssessmentActivityHeatmap';
 import {
   analyzeAssessmentPlan,
   generateBalancedAssessmentPlan,
@@ -57,6 +59,8 @@ import {
 } from '../utils/assessmentAnalysis';
 import { AlignmentMatrixChart } from './AlignmentAnalysis/AlignmentMatrixChart';
 import { BloomHeatmap } from './AlignmentAnalysis/BloomHeatmap';
+import { ProgressTracker } from './Dashboard/ProgressTracker';
+import { AdaptivePathOptimizer } from './Dashboard/AdaptivePathOptimizer';
 
 interface DashboardAnalyticsViewProps {
   courses: Course[];
@@ -112,11 +116,15 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
   const [bloomFilter, setBloomFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [alignmentStatusFilter, setAlignmentStatusFilter] = useState<'all' | 'unaligned' | 'triangulated' | 'single'>('all');
-  const [activeChartTab, setActiveChartTab] = useState<'types' | 'matrix' | 'courses' | 'weightage' | 'trend' | 'mapping' | 'heatmap'>('types');
+  const [activeChartTab, setActiveChartTab] = useState<'types' | 'matrix' | 'courses' | 'weightage' | 'trend' | 'mapping' | 'heatmap' | 'competency' | 'assessmentActivity' | 'competencyTracker' | 'optimizer'>('types');
 
   const d3HeatmapRef = useRef<SVGSVGElement | null>(null);
 
   // 1. Filtered Courses
+  const allMLOs = useMemo(() => {
+      return courses.flatMap(c => (c.courseData as any)?.mlos || []);
+  }, [courses]);
+
   const filteredCourses = useMemo(() => {
     return courses.filter((c) => {
       if (selectedCourseFilter !== 'all' && c.id !== selectedCourseFilter) return false;
@@ -860,6 +868,19 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
             </button>
             <button
               type="button"
+              id="analytics-tab-competency-btn"
+              onClick={() => setActiveChartTab('competency')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'competency'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Competency Dashboard</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveChartTab('heatmap')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                 activeChartTab === 'heatmap'
@@ -870,8 +891,52 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
               <Layers className="w-3.5 h-3.5" />
               <span>Skill Gap Heatmap</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('assessmentActivity')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'assessmentActivity'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Assessment Activity</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('competencyTracker')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'competencyTracker'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Competency Tracker</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveChartTab('optimizer')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                activeChartTab === 'optimizer'
+                  ? 'bg-white text-indigo-600 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Path Optimizer</span>
+            </button>
           </div>
         </div>
+
+        {activeChartTab === 'competencyTracker' && (
+            <ProgressTracker mlos={allMLOs} />
+        )}
+
+        {activeChartTab === 'optimizer' && (
+            <AdaptivePathOptimizer courses={filteredCourses} />
+        )}
 
         {/* VIEW 1: Assessment Types vs Bloom's Level (Recharts Stacked Bar + Radar) */}
         {activeChartTab === 'types' && (
@@ -1009,6 +1074,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
               <svg ref={d3HeatmapRef} className="max-w-full h-auto" />
             </div>
           </div>
+        )}
+        
+        {/* VIEW: Assessment Activity Heatmap */}
+        {activeChartTab === 'assessmentActivity' && (
+            <AssessmentActivityHeatmap courses={filteredCourses} />
         )}
 
         {/* VIEW 3: Course-by-Course Comparison Chart */}
@@ -1161,6 +1231,11 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
         {/* VIEW 7: Skill Gap Heatmap */}
         {activeChartTab === 'heatmap' && (
           <SkillGapHeatmap courses={filteredCourses} />
+        )}
+
+        {/* VIEW 8: Competency Progression & Bloom Cognitive Intensity Dashboard */}
+        {activeChartTab === 'competency' && (
+          <CompetencyProgressionDashboard courses={filteredCourses} />
         )}
       </div>
 

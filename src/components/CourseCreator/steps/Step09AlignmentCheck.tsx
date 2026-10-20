@@ -25,6 +25,8 @@ import {
 import { downloadCoursePDF, exportCourseBlueprintWithGate } from '../../../utils/pdfExport';
 import { OutcomeAssessmentDependencyAlert } from '../OutcomeAssessmentDependencyAlert';
 import { BloomDomainRadarChart } from '../../AlignmentAnalysis/BloomDomainRadarChart';
+import { CLOAssessmentVisualMapper } from '../CLOAssessmentVisualMapper';
+import { LearningObjectMappingTable } from '../LearningObjectMappingTable';
 
 interface StepProps {
   course: Course;
@@ -229,6 +231,19 @@ export const Step09AlignmentCheck: React.FC<StepProps> = ({
         mode="card"
         onNavigateToStep={onJumpToStep}
       />
+
+      {/* CLO ↔ Assessment Visual Mapping & Gap Audit Section */}
+      <CLOAssessmentVisualMapper
+        course={course}
+        onChange={onChange}
+        defaultViewMode="flow"
+      />
+
+      {/* Learning Object Mapping Table */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+        <h3 className="text-sm font-bold text-slate-900">Learning Object Mapping Table</h3>
+        <LearningObjectMappingTable course={course} />
+      </div>
 
       {/* Signature Section: The Alignment Triangle (CLO ↕ TLA ↕ Assessment) */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">

@@ -35,6 +35,9 @@ import {
   getCategoryTagStyle,
   formatFileSize,
 } from '../../../services/resourceLibraryService';
+import { MLUGenerator } from '../MLUGenerator';
+import { ResourceSuggester } from '../ResourceSuggester';
+import { CognitiveDemandHeatmap } from '../CognitiveDemandHeatmap';
 
 interface StepProps {
   course: Course;
@@ -62,6 +65,7 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [moduleResourceLibraryOpen, setModuleResourceLibraryOpen] = useState(false);
   const [moduleResources, setModuleResources] = useState<ResourceItem[]>([]);
+  const [generatedMLUs, setGeneratedMLUs] = useState<any[]>([]);
 
   const selectedModule = course.modules.find((m) => m.id === selectedModuleId) || course.modules[0];
 
@@ -822,6 +826,12 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
                 Every module cascades into granular MLOs, active lessons, formative activities, and evidence.
               </p>
 
+              <MLUGenerator 
+                course={course} 
+                moduleId={selectedModule.id}
+                onMLUGenerated={(mlu) => setGeneratedMLUs([...generatedMLUs, ...mlu])}
+              />
+
               {/* MLOs count */}
               <div className="bg-white p-3.5 rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between">
@@ -854,6 +864,27 @@ export const Step05ModuleCreator: React.FC<StepProps> = ({
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Configured in Stage 08</p>
               </div>
+
+              <CognitiveDemandHeatmap course={course} />
+
+              {/* Generated MLUs list */}
+              {generatedMLUs.length > 0 && (
+                <div className="bg-indigo-50 p-3.5 rounded-xl border border-indigo-100">
+                    <h4 className="text-xs font-bold text-indigo-900 mb-2">Generated MLUs</h4>
+                    <div className="space-y-2">
+                        {generatedMLUs.map((mlu, i) => (
+                            <div key={i} className="bg-white p-2 rounded text-[10px] text-indigo-900">
+                                <span className="font-bold">{mlu.title}</span> - {mlu.description}
+                                <ResourceSuggester 
+                                  mluItem={mlu} 
+                                  onResourcesSuggested={(resources) => console.log('Resources suggested:', resources)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+              )}
+
             </div>
 
             {/* Workload Breakdown Card */}

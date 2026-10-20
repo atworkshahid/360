@@ -23,7 +23,7 @@ import {
   signOutUser,
 } from '../services/authService';
 import { googleSignIn, logout } from '../services/firebaseAuth';
-import { LogoMark, MentiseraLogo } from './Logo';
+import { LogoMark, OBE360Logo } from './Logo';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -131,7 +131,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </div>
           </div>
           <p className="text-xs text-slate-300 mt-1">
-            Access outcome-based course dossiers, curriculum blueprints, and accreditation audit reports with your MENTISERA credentials.
+            Access outcome-based course dossiers, curriculum blueprints, and accreditation audit reports with your institutional credentials.
           </p>
         </div>
 
@@ -446,7 +446,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500 flex items-center justify-between">
           <div className="flex items-center space-x-2 font-medium text-slate-700">
             <LogoMark size={18} />
-            <span>MENTISERA OBE360™ Enterprise IAM</span>
+            <span>OBE360™ Enterprise IAM by Shahid Hussain Soomro</span>
           </div>
           <span className="text-slate-400">FERPA &amp; Higher-Ed Compliant</span>
         </div>

@@ -213,8 +213,18 @@ export const COMMENT_CATEGORIES: { category: CommentCategory; color: string; des
     description: 'ABET / HEC / professional statutory compliance requirements',
   },
   {
+    category: 'Industry Relevance',
+    color: 'bg-amber-50 text-amber-800 border-amber-200',
+    description: 'Workplace applicability, current industry toolsets, and employer competencies',
+  },
+  {
+    category: 'Workplace Readiness',
+    color: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    description: 'Practical job readiness, real-world simulations, and hands-on applied labs',
+  },
+  {
     category: 'Commendation',
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    color: 'bg-teal-50 text-teal-700 border-teal-200',
     description: 'Exemplary constructive alignment or pedagogical innovation',
   },
   {

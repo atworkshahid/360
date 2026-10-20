@@ -31,17 +31,21 @@ import { triggerWithLeadGate } from '../services/leadService';
 import { LogoMark } from './Logo';
 import { InstitutionalLogoUploader } from './InstitutionalLogoUploader';
 import { DossierThemeSelector } from './DossierThemeSelector';
+import { ACCREDITATION_GUIDEBOOKS } from '../data/accreditationGuidebooksData';
+import { OBEFrameworkRegistry } from '../utils/OBEFrameworkRegistry';
 
 interface CoursePDFExportModalProps {
   course: Course;
   isOpen: boolean;
   onClose: () => void;
+  coverBackgroundImageUrl?: string;
 }
 
 export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
   course,
   isOpen,
   onClose,
+  coverBackgroundImageUrl,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
@@ -66,8 +70,10 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
     includeRubrics: true,
     includeEvidenceRules: true,
     includeAuditReport: true,
+    includeAccreditationRequirements: true,
     includeCQIPlan: true,
     includeSignOffSheet: true,
+    accreditationFramework: course.frameworkId || course.frameworkVersionId || course.accreditationFramework || 'Washington Accord (IEA WA-ENG)',
     colorTheme: course.dossierColorTheme || 'navy',
     primaryColor: course.dossierPrimaryColor,
     accentColor: course.dossierAccentColor,
@@ -82,12 +88,24 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
   const auditReport: CourseAuditReport = calculateCourseAudit(course);
   const assessmentAnalysis = analyzeAssessmentPlan(course);
 
+  const activeFrameworkKey =
+    options.accreditationFramework ||
+    course.frameworkId ||
+    course.frameworkVersionId ||
+    course.accreditationFramework ||
+    'Washington Accord (IEA WA-ENG)';
+  const resolvedGuidebookDef = OBEFrameworkRegistry.getGuidebook(activeFrameworkKey);
+  const selectedGuidebook =
+    ACCREDITATION_GUIDEBOOKS.find((b) => b.id === resolvedGuidebookDef?.id) ||
+    ACCREDITATION_GUIDEBOOKS.find((b) => b.code.toLowerCase() === (resolvedGuidebookDef?.code || '').toLowerCase()) ||
+    ACCREDITATION_GUIDEBOOKS[0];
+
   const handleDownloadPDF = () => {
     triggerWithLeadGate(
       () => {
         setIsGenerating(true);
         try {
-          downloadCoursePDF(course, options);
+          downloadCoursePDF(course, { ...options, coverBackgroundImageUrl });
         } catch (err) {
           console.error('Failed to generate PDF:', err);
         } finally {
@@ -96,9 +114,9 @@ export const CoursePDFExportModal: React.FC<CoursePDFExportModalProps> = ({
       },
       {
         featureTitle: 'Accreditation Dossier Export',
-        featureDescription: `Verify your academic affiliation to download the formatted PDF accreditation dossier specification for ${course.title} (${course.code}).`,
+        featureDescription: `Verify your academic affiliation to download the formatted PDF accreditation dossier specification aligned with ${selectedGuidebook?.name || 'accreditation standards'} for ${course.title} (${course.code}).`,
         source: 'pdf_export_modal',
-        framework: course.accreditationFramework,
+        framework: options.accreditationFramework,
       }
     );
   };
@@ -203,6 +221,86 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
           {/* Left Column: Configuration Controls (4 cols on lg) */}
           <div className="lg:col-span-4 p-5 bg-slate-50 border-r border-slate-200 overflow-y-auto space-y-5">
+            {/* Accreditation Body & Framework Alignment */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                  Accreditation Body Alignment
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {selectedGuidebook?.code || 'Accredited'}
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Target Accreditation Framework:
+                </label>
+                <select
+                  value={options.accreditationFramework}
+                  onChange={(e) => setOptions((prev) => ({ ...prev, accreditationFramework: e.target.value }))}
+                  className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <optgroup label="International Engineering & Computing Accords">
+                    <option value="Washington Accord (IEA WA-ENG)">Washington Accord (IEA WA-ENG)</option>
+                    <option value="Seoul Accord (Computing & IT)">Seoul Accord (Computing & IT)</option>
+                    <option value="Sydney Accord (Engineering Technologist)">Sydney Accord (Engineering Technologist)</option>
+                    <option value="Dublin Accord (Engineering Technician)">Dublin Accord (Engineering Technician)</option>
+                  </optgroup>
+                  <optgroup label="ABET Commissions (USA & International)">
+                    <option value="ABET EAC (Engineering Accreditation Commission)">ABET EAC (Engineering)</option>
+                    <option value="ABET CAC (Computing Accreditation Commission)">ABET CAC (Computing)</option>
+                    <option value="ABET ETAC (Engineering Technology Accreditation Commission)">ABET ETAC (Technology)</option>
+                  </optgroup>
+                  <optgroup label="Business & Management Accreditations">
+                    <option value="AACSB (Association to Advance Collegiate Schools of Business)">AACSB International</option>
+                    <option value="ACBSP (Accreditation Council for Business Schools & Programs)">ACBSP Business</option>
+                  </optgroup>
+                  <optgroup label="National Standards Bodies">
+                    <option value="NCAAA (Saudi Arabia ETEC Quality Framework)">NCAAA (Saudi Arabia ETEC)</option>
+                    <option value="HEC Pakistan (Outcome-Based Education Framework)">HEC Pakistan</option>
+                    <option value="NBA India (National Board of Accreditation)">NBA Tier-I/II (India)</option>
+                  </optgroup>
+                  <optgroup label="Teacher Preparation & Educator Accreditations">
+                    <option value="CAEP (Council for the Accreditation of Educator Preparation)">CAEP Educator Preparation</option>
+                    <option value="CCTC (California Commission on Teacher Credentialing)">CCTC California</option>
+                    <option value="CCTP (Continuous Clinical Teacher Preparation)">CCTP Clinical Preparation</option>
+                  </optgroup>
+                  <optgroup label="Regional Institutional Accreditations (USA)">
+                    <option value="HLC (Higher Learning Commission Criteria for Accreditation)">HLC Criteria</option>
+                    <option value="MSCHE (Middle States Commission on Higher Education)">MSCHE Standards</option>
+                    <option value="NECHE (New England Commission of Higher Education)">NECHE Standards</option>
+                    <option value="NWCCU (Northwest Commission on Colleges and Universities)">NWCCU Standards</option>
+                    <option value="SACSCOC (Southern Association of Colleges and Schools)">SACSCOC Standards</option>
+                    <option value="WSCUC (WASC Senior College and University Commission)">WSCUC Standards</option>
+                  </optgroup>
+                  <optgroup label="European & International Higher Education">
+                    <option value="EHEA (European Higher Education Area Bologna Framework)">EHEA Bologna Qualifications</option>
+                    <option value="FIBAA (Foundation for International Business Administration Accreditation)">FIBAA Standards</option>
+                    <option value="ACQUIN (Accreditation, Certification and Quality Assurance Institute)">ACQUIN Standards</option>
+                    <option value="EQAA (European Quality Assurance Agency)">EQAA Standards</option>
+                    <option value="EUA (European University Association QA Guidelines)">EUA Guidelines</option>
+                    <option value="ECA (European Consortium for Accreditation in Higher Education)">ECA Guidelines</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              {selectedGuidebook && (
+                <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[11px] space-y-1">
+                  <div className="font-semibold text-indigo-950 flex items-center justify-between">
+                    <span>{selectedGuidebook.name}</span>
+                    <span className="text-[10px] text-indigo-600 font-bold">{selectedGuidebook.publishedYear || '2026'}</span>
+                  </div>
+                  <div className="text-indigo-800 text-[10.5px]">
+                    <strong>Governing Body:</strong> {selectedGuidebook.governingBody}
+                  </div>
+                  <div className="text-slate-600 text-[10px] leading-tight">
+                    {selectedGuidebook.chapters?.[0]?.summary || selectedGuidebook.description}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Quick Actions Card */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
@@ -211,6 +309,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
 
               <button
                 type="button"
+                id="export-modal-download-dossier-pdf-btn"
                 onClick={handleDownloadPDF}
                 disabled={isGenerating}
                 className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-sm shadow-indigo-200 transition cursor-pointer"
@@ -218,14 +317,51 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                 {isGenerating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Compiling PDF Document...</span>
+                    <span>Compiling Dossier...</span>
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Download Formatted PDF</span>
+                    <span>Download Accreditation Dossier (PDF)</span>
                   </>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGenerating(true);
+                  const profOptions = {
+                    ...options,
+                    includeCoverPage: true,
+                    includeExecutiveSummary: false,
+                    includeCourseInfo: true,
+                    includeCLOs: true,
+                    includePLOMapping: false,
+                    includeModules: true,
+                    includeWeeklyPlan: true,
+                    includeAssessments: true,
+                    includeRubrics: true,
+                    includeEvidenceRules: false,
+                    includeAuditReport: false,
+                    includeAccreditationRequirements: false,
+                    includeCQIPlan: false,
+                    includeSignOffSheet: false,
+                    includeRadarChart: false,
+                  };
+                  try {
+                    downloadCoursePDF(course, profOptions);
+                  } catch (err) {
+                    console.error('Failed to generate Professional Syllabus:', err);
+                  } finally {
+                    setTimeout(() => setIsGenerating(false), 800);
+                  }
+                }}
+                disabled={isGenerating}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-sm shadow-emerald-200 transition cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Download Professional Syllabus (PDF)</span>
               </button>
 
               <button
@@ -410,6 +546,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                       options.includeRubrics,
                       options.includeEvidenceRules,
                       options.includeAuditReport,
+                      options.includeAccreditationRequirements,
                       options.includeCQIPlan,
                       options.includeSignOffSheet,
                     ].every(Boolean);
@@ -428,6 +565,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                       includeRubrics: newSetting,
                       includeEvidenceRules: newSetting,
                       includeAuditReport: newSetting,
+                      includeAccreditationRequirements: newSetting,
                       includeCQIPlan: newSetting,
                       includeSignOffSheet: newSetting,
                     }));
@@ -562,11 +700,23 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
+                    checked={options.includeAccreditationRequirements}
+                    onChange={() => toggleOption('includeAccreditationRequirements')}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-700 font-medium">
+                    11. Accreditation Standards & Evidentiary Checklist ({selectedGuidebook?.code || 'Mandate'})
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
                     checked={options.includeCQIPlan}
                     onChange={() => toggleOption('includeCQIPlan')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">11. CQI Action Plan & Closing the Loop</span>
+                  <span className="text-slate-700 font-medium">12. CQI Action Plan & Closing the Loop</span>
                 </label>
 
                 <label className="flex items-center space-x-2.5 cursor-pointer select-none">
@@ -576,7 +726,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                     onChange={() => toggleOption('includeSignOffSheet')}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-slate-700 font-medium">12. Compliance Certificate & Sign-Off Sheet</span>
+                  <span className="text-slate-700 font-medium">13. Compliance Certificate & Sign-Off Sheet</span>
                 </label>
               </div>
             </div>
@@ -609,7 +759,7 @@ Generated via MENTISERA OBE360™ on ${new Date().toLocaleDateString()}`;
                   <div className="flex items-center space-x-2.5 mb-1.5">
                     <LogoMark size={26} />
                     <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                      MENTISERA OBE360™ • ACCREDITATION QUALITY DOSSIER
+                      OBE360™ by Shahid Hussain Soomro • ACCREDITATION QUALITY DOSSIER
                     </span>
                   </div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif mt-1">

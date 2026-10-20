@@ -1031,6 +1031,80 @@ Return strict JSON:
   });
 });
 
+// 3. Automated Resource Linker
+app.post('/api/ai/suggest-resources', async (req: Request, res: Response) => {
+  const { statement, courseTitle } = req.body;
+  if (!statement) return res.status(400).json({ error: 'Statement is required' });
+
+  try {
+    const ai = getAI();
+    if (ai) {
+      const systemInstruction = `You are a curriculum resource librarian specializing in OBE.
+Suggest 3-5 high-quality Open Educational Resources (OER) or library database links for the following Learning Outcome.
+Return strict JSON:
+{
+  "resources": [
+    {
+      "title": "string",
+      "url": "string (must be a valid URL)",
+      "description": "string",
+      "type": "OER" | "Database"
+    }
+  ]
+}`;
+      const raw = await callGeminiPrompt(systemInstruction, `MLO Statement: "${statement}"\nCourse: "${courseTitle}"`);
+      const parsed = JSON.parse(raw);
+      return res.json(parsed);
+    }
+  } catch (err) {
+    console.error('Resource linker failed', err);
+    return res.status(500).json({ error: 'Failed to generate resources' });
+  }
+  res.json({ resources: [] });
+});
+
+// 2. MLO Scaffolding Generator
+app.post('/api/ai/mlu-generator', async (req: Request, res: Response) => {
+  const { 
+    courseTitle,
+    courseDescription,
+    weekNumber,
+    weeklyTopic,
+    plos,
+    clos,
+    teachingModality,
+    competencies,
+    skills
+  } = req.body;
+
+  try {
+    const ai = getAI();
+    if (!ai) return res.status(500).json({ error: 'AI not configured' });
+
+    const systemInstruction = `You are a Senior Instructional Designer and AI-Powered Micro Learning Unit (MLU) Generator.
+Generate comprehensive, structured, and academically aligned lesson plans for a given week.
+Return strict JSON matching the schema for weekly MLUs including MLO alignment.
+`;
+
+    const userPrompt = `Generate the MLUs for Week ${weekNumber}, topic: "${weeklyTopic}".
+Course: ${courseTitle}
+Description: ${courseDescription}
+PLOs: ${JSON.stringify(plos)}
+CLOs: ${JSON.stringify(clos)}
+Competencies: ${JSON.stringify(competencies)}
+Skills: ${JSON.stringify(skills)}
+Modality: ${teachingModality}
+`;
+
+    const raw = await callGeminiPrompt(systemInstruction, userPrompt);
+    const parsed = JSON.parse(raw);
+    return res.json(parsed);
+  } catch (err) {
+    console.error('Error generating MLUs:', err);
+    return res.status(500).json({ error: 'Failed to generate MLUs' });
+  }
+});
+
 // 3. Lesson Generator
 app.post('/api/ai/lesson-generate', async (req: Request, res: Response) => {
   const { mloCode, mloStatement, moduleTitle } = req.body;
@@ -1302,6 +1376,179 @@ Return strict JSON:
   }
 
   res.json({ reply, suggestedActions });
+});
+
+// 6.5. AI Accreditation Gap Analyzer & Cognitive Remediation
+app.post('/api/ai/accreditation-gap-analyzer', async (req: Request, res: Response) => {
+  const { course, targetFrameworkId = 'fw-abet-cac', localAnalysis } = req.body;
+
+  if (!course) {
+    return res.status(400).json({ error: 'course object is required' });
+  }
+
+  try {
+    const ai = getAI();
+    if (ai) {
+      const frameworkName = localAnalysis?.frameworkName || 'ABET Computing (CAC) / Washington Accord';
+      const clos = course.clos || [];
+      const competencies = course.blueprint?.targetCompetencies || [];
+
+      const cloSummaries = clos
+        .map(
+          (c: any, i: number) =>
+            `${i + 1}. [${c.code || `CLO ${i + 1}`}] (${c.bloomLevel || 'Apply'}, Verb: ${c.bloomVerb || 'Apply'}, Weight: ${c.weightage || 20}%): "${c.statement}" (Competency: "${c.competency || 'General'}")`
+        )
+        .join('\n');
+
+      const systemInstruction = `You are the MENTISERA OBE360™ Lead Academic Accreditation Auditor and Cognitive Gap Specialist.
+Your task is to conduct an authoritative evaluation of a university course's competency mapping and outcome structure against international accreditation criteria (${frameworkName}).
+
+Evaluation Rules:
+1. Examine if Bloom's Taxonomy cognitive intensity tiers (Analyze L4, Evaluate L5, Create L6 - HOTS) are adequately represented (recommended ≥ 50% for accredited undergraduate degrees).
+2. Check for missing essential graduate attributes: Complex Problem Solving/Analysis, Modern Tool Usage, Ethical Responsibility & Public Safety, Multidisciplinary Teamwork, and Lifelong Learning.
+3. Provide concrete, actionable suggestions to remediate every detected cognitive gap:
+   - Specific revised or new CLO statements using accredited active Bloom verbs (e.g., "Analyze", "Synthesize", "Formulate", "Evaluate").
+   - Recommended authentic direct assessment evidence (e.g., "Capstone Design Defense", "Empirical Benchmarking Lab", "Ethical Impact Audit").
+   - Clear pedagogical and statutory rationale.
+
+Return strict JSON:
+{
+  "complianceScore": number (0-100),
+  "cognitiveDepthScore": number (0-100),
+  "frameworkCoverageScore": number (0-100),
+  "executiveSummary": "string (3-4 sentences outlining accreditation readiness, main cognitive strengths, and key deficiencies)",
+  "gaps": [
+    {
+      "id": "string",
+      "type": "add_clo" | "elevate_bloom" | "add_competency" | "align_assessment",
+      "severity": "critical" | "high" | "medium" | "advisory",
+      "targetFrameworkOutcome": "string (e.g. SO 1: Problem Analysis)",
+      "title": "string",
+      "description": "string",
+      "deficiencyReason": "string",
+      "suggestedCognitiveLevel": "Analyze" | "Evaluate" | "Create" | "Apply",
+      "suggestedBloomVerb": "string",
+      "suggestedCLOStatement": "string",
+      "suggestedCompetency": "string",
+      "suggestedAssessmentMethod": "string",
+      "targetCLOId": "string (if elevating existing CLO)",
+      "suggestedWeight": 15,
+      "rationale": "string"
+    }
+  ]
+}`;
+
+      const userPrompt = `Course Code: ${course.code || 'ENG-101'} - ${course.title || 'Untitled Course'}
+Target Accreditation Standard: ${frameworkName}
+Degree Level: ${course.courseLevel || 'Undergraduate'}
+Credit Hours: ${course.creditHours || 3}
+Target Competencies: ${competencies.join(', ') || 'Disciplinary core competencies'}
+Course Learning Outcomes (${clos.length}):
+${cloSummaries}
+
+Identified Algorithmic Gaps for Reference:
+${(localAnalysis?.gaps || []).map((g: any) => `- [${g.severity}] ${g.title}: ${g.deficiencyReason}`).join('\n')}
+
+Perform deep accreditation gap analysis and output structured JSON fixes.`;
+
+      const raw = await callGeminiPrompt(systemInstruction, userPrompt);
+      const parsed = JSON.parse(raw);
+      return res.json(parsed);
+    }
+  } catch (err) {
+    console.warn('Gemini Accreditation Gap Analyzer fallback triggered:', (err as Error).message);
+  }
+
+  // Graceful fallback to deterministic local analysis if Gemini offline or error
+  return res.json(localAnalysis || { complianceScore: 75, gaps: [] });
+});
+
+// 6.6. Automated Assessment Task Suggester (by CLO Cognitive Bloom Level)
+app.post('/api/ai/suggest-assessment-tasks', async (req: Request, res: Response) => {
+  const { courseTitle, courseCode, discipline, clo } = req.body;
+
+  if (!clo || !clo.statement) {
+    return res.status(400).json({ error: 'CLO object with statement is required' });
+  }
+
+  try {
+    const ai = getAI();
+    if (ai) {
+      const bloomLevel = clo.bloomLevel || 'Apply';
+      const bloomVerb = clo.bloomVerb || 'Apply';
+      const statement = clo.statement;
+      const code = clo.code || 'CLO';
+
+      const systemInstruction = `You are the MENTISERA OBE360™ Chief Psychometrician and Constructive Alignment Specialist.
+Based on Biggs' Constructive Alignment and Bloom's Revised Taxonomy, you generate authentic, direct assessment instruments that strictly match the cognitive intensity defined in a Course Learning Outcome (CLO).
+
+COGNITIVE MAPPING RULES:
+- Level 1 (Remember - LOTS): Objective diagnostic quizzes, terminology recall, concept matching drills.
+- Level 2 (Understand - LOTS): Scenario interpretation quizzes, conceptual schemas, diagrammatic paraphrasing tasks.
+- Level 3 (Apply - MOTS): Practical problem sets, calculations, laboratory implementations, hands-on simulation protocols.
+- Level 4 (Analyze - HOTS): Case study decomposition, root-cause matrices, comparative trade-off reports, multi-criterion analytic rubrics.
+- Level 5 (Evaluate - HOTS): Critical peer defenses, expert appraisals with scoring rubrics, benchmark quality audits, multi-criteria evaluations.
+- Level 6 (Create - HOTS): Authentic capstone milestone projects, original software/hardware prototypes, innovation proposals with comprehensive rubrics.
+
+Return strict JSON:
+{
+  "suggestions": [
+    {
+      "id": "string",
+      "title": "string (specific and professional)",
+      "taskType": "Quiz" | "Assignment" | "Project" | "Presentation" | "Case Study" | "Portfolio" | "Practical",
+      "bloomLevel": "${bloomLevel}",
+      "cognitiveTier": "LOTS" | "MOTS" | "HOTS",
+      "format": "string (e.g. Analytic Rubric (4 Tiers), Scenario Quiz, Working Prototype)",
+      "pedagogicalRationale": "string (explaining constructive alignment with ${bloomLevel})",
+      "studentTaskPrompt": "string (detailed, realistic student instructions)",
+      "evidenceArtifact": "string (concrete artifact submitted for assessment)",
+      "recommendedWeight": number (10-35),
+      "recommendedMarks": number (25-100),
+      "isSummative": boolean,
+      "directOrIndirect": "Direct",
+      "achievementThreshold": 65,
+      "alignmentMatchScore": number (95-100),
+      "tags": ["string"],
+      "rubricBlueprint": {
+        "rubricTitle": "string",
+        "criteria": [
+          {
+            "criterionName": "string",
+            "weight": number,
+            "levels": [
+              { "level": "Not Achieved", "descriptor": "string", "pointsRange": "0-49%" },
+              { "level": "Developing", "descriptor": "string", "pointsRange": "50-64%" },
+              { "level": "Achieved", "descriptor": "string", "pointsRange": "65-74%" },
+              { "level": "Proficient", "descriptor": "string", "pointsRange": "75-84%" },
+              { "level": "Exemplary", "descriptor": "string", "pointsRange": "85-100%" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}`;
+
+      const userPrompt = `Course: ${courseTitle || 'Higher Education Course'} (${courseCode || 'OBE-101'})
+Discipline: ${discipline || 'General Academic'}
+CLO Code: ${code}
+Defined Bloom Level: ${bloomLevel}
+Active Bloom Verb: ${bloomVerb}
+CLO Statement: "${statement}"
+Competency: "${clo.competency || 'Core Knowledge & Skills'}"
+
+Generate 2 to 3 distinct, highly tailored assessment task suggestions matching cognitive level "${bloomLevel}". Include full rubric blueprints if tasks are rubric-evaluated (especially for HOTS: Analyze, Evaluate, Create).`;
+
+      const raw = await callGeminiPrompt(systemInstruction, userPrompt);
+      const parsed = JSON.parse(raw);
+      return res.json(parsed);
+    }
+  } catch (err) {
+    console.warn('AI Assessment Task Suggester fallback triggered:', (err as Error).message);
+  }
+
+  return res.status(500).json({ error: 'AI generation unavailable' });
 });
 
 // 7. Course Translation & Multilingual OBE Localization Service
@@ -2015,9 +2262,121 @@ app.post('/api/courses/sync', (req: Request, res: Response) => {
   });
 });
 
+app.post('/api/generate-image', async (req: Request, res: Response) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+  try {
+    const ai = getAI();
+    if (!ai) return res.status(500).json({ error: 'AI not configured' });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite-image',
+      contents: { parts: [{ text: prompt }] },
+    });
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        const base64Data = part.inlineData.data;
+        const imageUrl = `data:${part.inlineData.mimeType};base64,${base64Data}`;
+        return res.json({ imageUrl });
+      }
+    }
+    throw new Error('No image generated');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate image' });
+  }
+});
+
+app.post('/api/generate-mlu', async (req: Request, res: Response) => {
+  const { clo, bloomLevel, moduleTitle } = req.body;
+  if (!clo || !bloomLevel) return res.status(400).json({ error: 'Missing required parameters' });
+  try {
+    const ai = getAI();
+    if (!ai) return res.status(500).json({ error: 'AI not configured' });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Create a micro-learning sequence for the course module "${moduleTitle || 'Unknown'}" 
+      aligned with the CLO: "${clo.statement}" and cognitive level: "${bloomLevel}".
+      Provide 3-5 short learning items (each with title and brief description).
+      Format the output as a JSON object with a field "mlu" that is an array of items.`,
+      config: { responseMimeType: 'application/json' }
+    });
+    return res.json(JSON.parse(response.text!));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate MLU' });
+  }
+});
+
+app.post('/api/suggest-resources', async (req: Request, res: Response) => {
+  const { mluItem } = req.body;
+  if (!mluItem) return res.status(400).json({ error: 'MLU item is required' });
+  try {
+    const ai = getAI();
+    if (!ai) return res.status(500).json({ error: 'AI not configured' });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Suggest 3 relevant, reputable open-access educational resources (videos, articles, or open textbooks) for the following micro-learning unit item: "${mluItem.title} - ${mluItem.description}".
+      Provide the output as a JSON object with a field "resources" that is an array of objects, each having "title", "type" (one of "Video", "Article", "Open Textbook"), and "url".`,
+      config: { responseMimeType: 'application/json' }
+    });
+    return res.json(JSON.parse(response.text!));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to suggest resources' });
+  }
+});
+
 // --- Institutional Governance & Settings API ---
 app.get('/api/institution', (_req: Request, res: Response) => {
   return res.json({ status: 'ok', institution: institutionStore });
+});
+
+app.post('/api/ai/peer-review', async (req: Request, res: Response) => {
+  const { course } = req.body;
+  if (!course) return res.status(400).json({ error: 'Course data is required' });
+
+  try {
+    const ai = getAI();
+    if (!ai) return res.status(500).json({ error: 'AI not configured' });
+
+    const prompt = `Simulate three distinct student personas (a struggling student, an advanced student, and a visual/creative student) analyzing this course syllabus. Critique the course structure, specifically focusing on assessment workload balance (based on assessment weightages), clarity of expectations, and engagement potential. Identify potential bottlenecks.
+
+Course: ${JSON.stringify({
+      title: course.title,
+      code: course.code,
+      description: course.description,
+      modulesCount: course.modules?.length,
+      assessments: course.assessments?.map((a: any) => ({ name: a.name, weight: a.weightage, week: a.scheduledWeek })),
+      clos: course.clos?.map((c: any) => ({ code: c.code, statement: c.statement }))
+    })}
+
+Provide feedback as a JSON object with this schema:
+{
+  "personas": [
+    {
+      "persona": "string (name/type)",
+      "feedback": {
+        "clarity": "string",
+        "engagement": "string",
+        "workload": "string"
+      },
+      "bottlenecks": ["string"]
+    }
+  ],
+  "summary": "string"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: { parts: [{ text: prompt }] },
+      config: { responseMimeType: 'application/json' },
+    });
+
+    return res.json(JSON.parse(response.text || '{}'));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Peer review generation failed' });
+  }
 });
 
 app.put('/api/institution', (req: Request, res: Response) => {

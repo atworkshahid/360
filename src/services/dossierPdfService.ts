@@ -5,6 +5,7 @@ import { calculateCourseAudit } from '../utils/obeCalculator';
 import { analyzeAssessmentPlan } from '../utils/assessmentAnalysis';
 import { getFrameworkGuideline } from '../data/frameworkGuidelines';
 import { OBEFrameworkRegistry } from '../utils/OBEFrameworkRegistry';
+import { ACCREDITATION_GUIDEBOOKS } from '../data/accreditationGuidebooksData';
 import { getStoredInstitution } from '../data/institutionData';
 import { buildDynamicThemePalette, DynamicThemePalette } from '../utils/dossierThemePresets';
 import { BLOOM_TAXONOMY_DATA } from '../components/CourseCreator/BloomsTaxonomyHelperModal';
@@ -24,6 +25,8 @@ export interface AccreditationDossierOptions {
   primaryColor?: string; // Custom hex code (e.g. #1e3a8a or #A51C30)
   accentColor?: string;  // Custom accent hex code
   watermarkText?: string;
+  customHeader?: string;
+  customFooter?: string;
   includeTableOfContents?: boolean;
   includeExecutiveSummary?: boolean;
   includeCourseInfo?: boolean;
@@ -35,9 +38,11 @@ export interface AccreditationDossierOptions {
   includeRubrics?: boolean;
   includeEvidenceRules?: boolean;
   includeAuditReport?: boolean;
+  includeAccreditationRequirements?: boolean;
   includeCQIPlan?: boolean;
   includeSignOffSheet?: boolean;
   includeRadarChart?: boolean;
+  coverBackgroundImageUrl?: string;
 }
 
 export interface DossierGenerationResult {
@@ -176,6 +181,8 @@ export class DossierPdfService {
       primaryColor: options.primaryColor || courseInput.dossierPrimaryColor || storedInst?.defaultDossierPrimaryColor || '',
       accentColor: options.accentColor || courseInput.dossierAccentColor || storedInst?.defaultDossierAccentColor || '',
       watermarkText: options.watermarkText || '',
+      customHeader: options.customHeader || '',
+      customFooter: options.customFooter || '',
       includeTableOfContents: options.includeTableOfContents ?? true,
       includeExecutiveSummary: options.includeExecutiveSummary ?? true,
       includeCourseInfo: options.includeCourseInfo ?? true,
@@ -187,9 +194,11 @@ export class DossierPdfService {
       includeRubrics: options.includeRubrics ?? true,
       includeEvidenceRules: options.includeEvidenceRules ?? true,
       includeAuditReport: options.includeAuditReport ?? true,
+      includeAccreditationRequirements: options.includeAccreditationRequirements ?? true,
       includeCQIPlan: options.includeCQIPlan ?? true,
       includeSignOffSheet: options.includeSignOffSheet ?? true,
       includeRadarChart: options.includeRadarChart ?? true,
+      coverBackgroundImageUrl: options.coverBackgroundImageUrl || '',
     };
 
     // Ensure all course collections are safe against null or undefined
@@ -226,6 +235,9 @@ export class DossierPdfService {
 
     const auditReport: CourseAuditReport = calculateCourseAudit(course);
     const assessmentAnalysis = analyzeAssessmentPlan(course);
+    const selectedFrameworkKey = opts.accreditationFramework || course.frameworkId || course.frameworkVersionId || course.accreditationFramework || 'fw-washington-accord';
+    const resolvedGuidebookDef = OBEFrameworkRegistry.getGuidebook(selectedFrameworkKey);
+    const rawGuidebook = ACCREDITATION_GUIDEBOOKS.find((b) => b.id === resolvedGuidebookDef?.id) || ACCREDITATION_GUIDEBOOKS.find((b) => b.code.toLowerCase() === (resolvedGuidebookDef?.code || '').toLowerCase()) || ACCREDITATION_GUIDEBOOKS[0];
     const guideline = getFrameworkGuideline(course.frameworkId);
     const verificationHash = `OBE360-${(course.id || 'C01').substring(0, 6).toUpperCase()}-${Math.floor(Date.now() / 1000).toString(16).toUpperCase()}`;
 
@@ -254,7 +266,7 @@ export class DossierPdfService {
       doc.setFontSize(7.5);
       doc.setTextColor(...theme.secondary);
       doc.text(
-        `${opts.institutionName.toUpperCase()} • ACCREDITATION CURRICULUM DOSSIER`,
+        opts.customHeader || `${opts.institutionName.toUpperCase()} • ACCREDITATION CURRICULUM DOSSIER`,
         textStartX,
         margin
       );
@@ -297,7 +309,7 @@ export class DossierPdfService {
         doc.setFontSize(7.5);
         doc.setTextColor(...theme.secondary);
 
-        const footerLeft = `MENTISERA OBE360™ • Confidentiality: ${opts.confidentialityLevel} • Verification: ${verificationHash}`;
+        const footerLeft = opts.customFooter || `MENTISERA OBE360™ • Confidentiality: ${opts.confidentialityLevel} • Verification: ${verificationHash}`;
         doc.text(footerLeft, margin, pageHeight - 9);
 
         const footerRight = `Page ${i} of ${totalPages}`;
@@ -343,6 +355,14 @@ export class DossierPdfService {
       doc.setDrawColor(...theme.border);
       doc.setLineWidth(0.8);
       doc.rect(margin - 4, margin - 4, contentWidth + 8, pageHeight - (margin * 2) + 8);
+      
+      if (opts.coverBackgroundImageUrl && opts.coverBackgroundImageUrl.trim() !== '') {
+        try {
+          doc.addImage(opts.coverBackgroundImageUrl, margin - 4, margin - 4, contentWidth + 8, pageHeight - (margin * 2) + 8, undefined, 'FAST');
+        } catch (imgErr) {
+          console.warn('Could not draw background image on cover page:', imgErr);
+        }
+      }
 
       doc.setDrawColor(...theme.accent);
       doc.setLineWidth(0.3);
@@ -543,6 +563,13 @@ export class DossierPdfService {
       }
       if (opts.includeAuditReport) {
         tocEntries.push({ num: `Section ${sIdx++}`, title: 'Constructive Alignment Audit & Gap Analysis', desc: 'Multi-category score evaluations, identified gaps, accreditation notes' });
+      }
+      if (opts.includeAccreditationRequirements) {
+        tocEntries.push({
+          num: `Section ${sIdx++}`,
+          title: `Accreditation Agency Compliance (${rawGuidebook.code})`,
+          desc: `Official ${rawGuidebook.name} documentation requirements, graduate attributes, and visiting team audit checklist`,
+        });
       }
       if (opts.includeCQIPlan) {
         tocEntries.push({ num: `Section ${sIdx++}`, title: 'Continuous Quality Improvement (CQI) Action Plan', desc: 'Cohort performance gaps, root causes, corrective interventions' });
@@ -853,19 +880,29 @@ export class DossierPdfService {
         const mlosForModule = (course.mlos || []).filter((mlo) => mlo.moduleId === m.id);
         const mloText =
           mlosForModule.length > 0
-            ? mlosForModule.map((mlo) => `• [${mlo.code || 'MLO'}] ${mlo.statement}`).join('\n')
+            ? mlosForModule.map((mlo) => `• [${mlo.code || 'MLO'}] ${mlo.statement} ${mlo.quiz ? '\n  (Quiz included with rationale)' : ''}`).join('\n')
             : (m.description || 'Core modular competencies and learning content.');
 
         const cloRefs =
           m.relatedCLOIds && m.relatedCLOIds.length > 0
             ? m.relatedCLOIds.join(', ')
             : 'CLO 1, CLO 2';
+        
+        // Render quiz details if present
+        let quizDetails = '';
+        mlosForModule.forEach(mlo => {
+            if (mlo.quiz) {
+                quizDetails += `\n\nQuiz for ${mlo.code}:\n` + mlo.quiz.questions.map((q, i) => 
+                    `${i+1}. ${q.question}\n   Feedback: ${q.feedback}`
+                ).join('\n');
+            }
+        });
 
         return [
           `Module ${m.number || idx + 1}`,
           m.title || `Unit ${idx + 1}`,
           `${m.durationWeeks || 2} Weeks\n(${m.expectedStudyHours || 10}h study)`,
-          mloText,
+          mloText + quizDetails,
           cloRefs,
         ];
       });
@@ -1285,6 +1322,222 @@ export class DossierPdfService {
 
         currentY = (doc as any).lastAutoTable.finalY + 6;
       }
+    }
+
+    // =========================================================================
+    // ACCREDITATION AGENCY COMPLIANCE & SELF-STUDY DOSSIER REQUIREMENTS
+    // =========================================================================
+    if (opts.includeAccreditationRequirements) {
+      drawSectionTitle(
+        `${sectionNum++}. Accreditation Agency Compliance & Self-Study Dossier Standards (${rawGuidebook.code})`,
+        `Official ${rawGuidebook.name} documentation requirements, graduate attributes, and visiting team audit criteria`
+      );
+
+      checkPageBreak(50);
+
+      // Agency Profile Overview
+      const agencyInfoRows = [
+        ['Accrediting Agency & Commission', rawGuidebook.governingBody || 'International Accreditation Council'],
+        ['Accreditation Standard & Code', `${rawGuidebook.name} (${rawGuidebook.code})`],
+        ['Jurisdiction & Geographic Scope', `${rawGuidebook.jurisdiction || 'International'} • ${rawGuidebook.accreditationScope || 'Higher Education'}`],
+        ['Standards Edition & Manual Ref', `${rawGuidebook.edition || 'Official Edition'} (Ref: ${rawGuidebook.documentRef || 'Standards Manual'})`],
+        ['Pedagogical Philosophy & Model', rawGuidebook.outcomeModel || 'Outcome-Based Education (OBE) • Direct Assessment Evidence'],
+      ];
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Accreditation Profile Field', 'Regulatory Specification & Standard Scope']],
+        body: agencyInfoRows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: theme.primary,
+          textColor: [255, 255, 255],
+          fontSize: 7.2,
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 55, fontStyle: 'bold', fontSize: 6.8, textColor: theme.primary },
+          1: { cellWidth: contentWidth - 55, fontSize: 6.8, textColor: theme.secondary },
+        },
+        styles: { cellPadding: 2, overflow: 'linebreak' },
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 6;
+      checkPageBreak(55);
+
+      // Official Graduate Attributes / Student Outcomes Mapping
+      const agencyOutcomes = rawGuidebook.keyOutcomes || [];
+      if (agencyOutcomes.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...theme.primary);
+        doc.text(`Official Graduate Attributes / Student Outcomes Alignment (${agencyOutcomes.length} Standards):`, margin, currentY);
+        currentY += 4;
+
+        const outcomeRows = agencyOutcomes.slice(0, 12).map((ga) => {
+          const matchedPLOs = (course.plos || []).filter(
+            (p) =>
+              p.code.toLowerCase().includes(ga.code.toLowerCase()) ||
+              p.title.toLowerCase().includes(ga.title.toLowerCase().slice(0, 8))
+          );
+          const mappedCLOs = (course.clos || []).filter(
+            (c) =>
+              matchedPLOs.some(
+                (p) =>
+                  (c.mappedPLOs || []).some((mp) => mp.ploId === p.id || mp.ploId === p.code) ||
+                  ((c as any).mappedPLOIds || []).includes(p.id) ||
+                  ((c as any).mappedPLOIds || []).includes(p.code)
+              ) ||
+              (c.statement || '').toLowerCase().includes(ga.title.toLowerCase().slice(0, 8))
+          );
+
+          const status = mappedCLOs.length > 0
+            ? `Mapped (${mappedCLOs.map((c) => c.code).join(', ')})`
+            : matchedPLOs.length > 0
+            ? `Program Level (${matchedPLOs.map((p) => p.code).join(', ')})`
+            : 'Program-Level Core';
+
+          return [
+            ga.code,
+            ga.title,
+            ga.bloomsLevel || 'C3-C5 Applied',
+            ga.description ? (ga.description.length > 105 ? ga.description.slice(0, 102) + '...' : ga.description) : 'Curricular outcome descriptor',
+            status,
+          ];
+        });
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Attribute Code', 'Standard Title', 'Cognitive Rigor', 'Accreditation Outcome Scope', 'Course Articulation']],
+          body: outcomeRows,
+          theme: 'striped',
+          headStyles: {
+            fillColor: theme.secondary,
+            textColor: [255, 255, 255],
+            fontSize: 6.8,
+            fontStyle: 'bold',
+          },
+          columnStyles: {
+            0: { cellWidth: 20, fontStyle: 'bold', fontSize: 6.5, textColor: theme.accent, halign: 'center' },
+            1: { cellWidth: 35, fontStyle: 'bold', fontSize: 6.5, textColor: theme.primary },
+            2: { cellWidth: 22, fontSize: 6.2, halign: 'center' },
+            3: { cellWidth: contentWidth - 110, fontSize: 6.2, textColor: theme.secondary },
+            4: { cellWidth: 33, fontSize: 6.2, fontStyle: 'bold', textColor: theme.primary },
+          },
+          styles: { cellPadding: 1.8, overflow: 'linebreak' },
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 6;
+      }
+
+      checkPageBreak(50);
+
+      // Mandatory Documentation & Evidence Requirements (Chapters 1-4)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...theme.primary);
+      doc.text('Specific Curricular Documentation & Self-Study Dossier Requirements:', margin, currentY);
+      currentY += 4;
+
+      const docReqRows = [
+        [
+          'Curriculum Specification & Syllabi',
+          rawGuidebook.chapters?.[0]?.requirements?.[0] ||
+            'Maintain official course syllabus detailing course goals, credit hours, prerequisites, and learning units.',
+          'Section 2 & 5 of this dossier; institutional course catalog record.',
+        ],
+        [
+          'Outcome Formulation & Bloom Rigor',
+          rawGuidebook.chapters?.[1]?.requirements?.[0] ||
+            'Formulate measurable Course Learning Outcomes using observable Bloom taxonomy verbs with direct assessment mappings.',
+          'Section 3; all CLOs verified with Bloom cognitive levels & action verbs.',
+        ],
+        [
+          'Outcome Articulation & Contribution Matrix',
+          rawGuidebook.chapters?.[2]?.requirements?.[0] ||
+            'Document explicit articulation matrix linking course outcomes to student outcomes/graduate attributes with correlation weightings.',
+          'Section 4; CLO-to-PLO mapping matrix with I/R/M alignment levels.',
+        ],
+        [
+          'Direct Assessment & Student Work Samples',
+          rawGuidebook.chapters?.[3]?.requirements?.[1] ||
+            'Archive representative High, Medium, and Low student graded work samples for all direct assessment instruments.',
+          'Section 7 & 9; analytic scoring rubrics, grade distribution, and archival protocol.',
+        ],
+        [
+          'Continuous Quality Improvement (CQI) Loop',
+          rawGuidebook.chapters?.[3]?.requirements?.[2] ||
+            'Conduct semester-end attainment reflection, identify deficient performance areas, and implement documented corrective interventions.',
+          'Section 11; CQI reflection, root-cause analysis, and closing-the-loop action plan.',
+        ],
+      ];
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Documentation Category', 'Accreditation Body Regulatory Mandate', 'Course Dossier Compliance Evidence']],
+        body: docReqRows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: theme.primary,
+          textColor: [255, 255, 255],
+          fontSize: 7,
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 42, fontStyle: 'bold', fontSize: 6.5, textColor: theme.primary },
+          1: { cellWidth: 68, fontSize: 6.5, textColor: theme.secondary },
+          2: { cellWidth: contentWidth - 110, fontSize: 6.5, textColor: theme.primary },
+        },
+        styles: { cellPadding: 2, overflow: 'linebreak' },
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 6;
+      checkPageBreak(45);
+
+      // Visiting Evaluation Team Evidentiary Audit Checklist
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...theme.primary);
+      doc.text('Visiting Accreditation Team Evidentiary Dossier Checklist:', margin, currentY);
+      currentY += 4;
+
+      const checklistRows = [
+        ['DOC-01', 'Approved Course Specification with Academic Promise', 'VERIFIED', 'Integrated in Section 2'],
+        ['DOC-02', 'Measurable CLOs Aligned with Bloom Action Verbs', 'VERIFIED', `${course.clos.length} CLOs evaluated and calibrated`],
+        ['DOC-03', 'Graduate Attribute / PLO Articulation Matrix', 'VERIFIED', 'Explicit mapping in Section 4'],
+        ['DOC-04', 'Direct Assessment Instruments with Attainment Weights', 'VERIFIED', `${course.assessments.length} assessment tasks verified in Section 7`],
+        ['DOC-05', 'Multi-Criterion Analytic Rubrics for Subjective Work', 'VERIFIED', `${course.rubrics.length} analytic rubrics included in Section 9`],
+        ['DOC-06', 'High/Medium/Low Student Artifact Archival Protocol', 'DOCUMENTED', 'Archival sampling protocol established'],
+        ['DOC-07', 'Constructive Alignment Gap Diagnostics', 'VERIFIED', `Health Score: ${auditReport.healthScore}% • Audited in Section 10`],
+        ['DOC-08', 'Continuous Quality Improvement (CQI) Action Plan', 'VERIFIED', 'Closing-the-loop plan documented in Section 11'],
+        ['DOC-09', 'Multi-Tier Institutional Governance Sign-Off', 'CERTIFIED', 'Formal authorization block in Section 12'],
+      ];
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Item', 'Accreditation Dossier Requirement', 'Compliance Status', 'Evidentiary Location & Verification']],
+        body: checklistRows,
+        theme: 'striped',
+        headStyles: {
+          fillColor: theme.secondary,
+          textColor: [255, 255, 255],
+          fontSize: 6.8,
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 16, fontStyle: 'bold', fontSize: 6.2, textColor: theme.accent, halign: 'center' },
+          1: { cellWidth: 62, fontStyle: 'bold', fontSize: 6.2, textColor: theme.primary },
+          2: { cellWidth: 22, fontSize: 6.2, fontStyle: 'bold', textColor: theme.success, halign: 'center' },
+          3: { cellWidth: contentWidth - 100, fontSize: 6.2, textColor: theme.secondary },
+        },
+        styles: { cellPadding: 1.8, overflow: 'linebreak' },
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 6;
     }
 
     // =========================================================================

@@ -32,8 +32,14 @@ interface MicroLearningUnitsEditorProps {
   defaultExpanded?: boolean;
   onAskCopilot?: (prompt: string) => void;
   courseTitle?: string;
+  courseDescription?: string;
   courseLevel?: string;
   linkedCLOCodes?: string[];
+  plos?: any[];
+  clos?: any[];
+  competencies?: any[];
+  skills?: any[];
+  teachingModality?: string;
 }
 
 const BLOOM_LEVELS: BloomLevel[] = [
@@ -60,8 +66,14 @@ export const MicroLearningUnitsEditor: React.FC<MicroLearningUnitsEditorProps> =
   defaultExpanded = true,
   onAskCopilot,
   courseTitle,
+  courseDescription,
   courseLevel,
   linkedCLOCodes = [],
+  plos = [],
+  clos = [],
+  competencies = [],
+  skills = [],
+  teachingModality = 'Face-to-Face',
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
   const [showQuickAddMenu, setShowQuickAddMenu] = useState<boolean>(false);
@@ -113,35 +125,48 @@ export const MicroLearningUnitsEditor: React.FC<MicroLearningUnitsEditorProps> =
   };
 
   /**
-   * Prompts the AI Copilot to generate 4 micro-learning units and populates placeholders immediately
+   * Generates 4 micro-learning units and MLOs using AI
    */
-  const handleQuickAddWithAICopilot = () => {
-    // 1. Instantly populate 4 high-quality scaffolded placeholders so user isn't stuck waiting
+  const handleQuickAddWithAICopilot = async () => {
+    // 1. Instantly populate placeholders
     const syntheticUnits = synthesize4MicroUnits(
       week.weekNumber,
       week.topic || `Instructional Topic ${week.weekNumber}`,
       week.bloomLevel || 'Understand',
       selectedArchetype
     );
-    const updated = setWeeklyMicroUnits(week, syntheticUnits);
-    onChange(updated);
+    onChange(setWeeklyMicroUnits(week, syntheticUnits));
     setIsExpanded(true);
     setShowQuickAddMenu(false);
+    setJustGeneratedMsg('Generating detailed MLUs with AI...');
 
-    // 2. Invoke AI Copilot if available
-    const cloInfoStr = linkedCLOCodes.length > 0 ? `outcomes ${linkedCLOCodes.join(', ')}` : undefined;
-    const prompt = buildCopilotMicroUnitsPrompt(
-      week.weekNumber,
-      week.topic || `Week ${week.weekNumber}`,
-      cloInfoStr,
-      courseTitle
-    );
+    try {
+      const response = await fetch('/api/ai/mlu-generator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseTitle,
+          courseDescription,
+          weekNumber: week.weekNumber,
+          weeklyTopic: week.topic,
+          plos,
+          clos,
+          teachingModality: 'Face-to-Face',
+          competencies,
+          skills
+        }),
+      });
 
-    if (onAskCopilot) {
-      onAskCopilot(prompt);
-      setJustGeneratedMsg('4 Placeholders Created & AI Copilot Dispatched!');
-    } else {
-      setJustGeneratedMsg('4 Micro-learning Unit Placeholders Generated!');
+      if (!response.ok) throw new Error('AI generation failed');
+      const data = await response.json();
+      
+      // Update with AI generated units
+      const updated = setWeeklyMicroUnits(week, data.mlus);
+      onChange(updated);
+      setJustGeneratedMsg('AI MLU Generation Complete!');
+    } catch (err) {
+      console.error(err);
+      setJustGeneratedMsg('AI generation failed.');
     }
     setTimeout(() => setJustGeneratedMsg(null), 3500);
   };
@@ -374,6 +399,28 @@ export const MicroLearningUnitsEditor: React.FC<MicroLearningUnitsEditorProps> =
                     <span className="text-[10px] font-semibold text-slate-500">
                       Sub-topic {unitNumber}
                     </span>
+                    <div className="flex items-center space-x-0.5">
+                        <button 
+                            onClick={() => {
+                                if (index > 0) {
+                                    const newUnits = [...units];
+                                    [newUnits[index - 1], newUnits[index]] = [newUnits[index], newUnits[index - 1]];
+                                    onChange(setWeeklyMicroUnits(week, newUnits));
+                                }
+                            }}
+                            className="p-0.5 text-slate-400 hover:text-slate-700"
+                        >↑</button>
+                        <button 
+                            onClick={() => {
+                                if (index < units.length - 1) {
+                                    const newUnits = [...units];
+                                    [newUnits[index + 1], newUnits[index]] = [newUnits[index], newUnits[index + 1]];
+                                    onChange(setWeeklyMicroUnits(week, newUnits));
+                                }
+                            }}
+                            className="p-0.5 text-slate-400 hover:text-slate-700"
+                        >↓</button>
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-1.5">

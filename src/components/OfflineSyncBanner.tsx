@@ -84,7 +84,7 @@ export const OfflineSyncBanner: React.FC = () => {
               </span>
             ) : isSyncing ? (
               <span>
-                <strong>Syncing to Firebase Cloud...</strong> Synchronizing {pendingCount} blueprint update{pendingCount === 1 ? '' : 's'} to Firestore.
+                <strong>Syncing to Cloud...</strong> Synchronizing {pendingCount} blueprint update{pendingCount === 1 ? '' : 's'} to Cloud.
               </span>
             ) : pendingCount > 0 ? (
               <span>

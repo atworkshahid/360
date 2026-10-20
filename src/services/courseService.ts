@@ -9,6 +9,7 @@ import {
   AccreditationDossierOptions,
   DossierGenerationResult,
 } from './dossierPdfService';
+import { OfflineProjectService } from '../utils/offlineProjectService';
 
 const API_BASE = '/api/courses';
 const LOCAL_STORAGE_KEY = 'mentisera_obe360_courses_v1';
@@ -639,8 +640,26 @@ export const CourseService = {
   previewDossierInNewTab(course: Course, options: AccreditationDossierOptions = {}): void {
     DossierPdfService.previewDossierInNewTab(course, options);
   },
+
+  // =========================================================================
+  // Offline Project & OBE Integrity JSON Export
+  // =========================================================================
+
+  /**
+   * Exports and initiates a download of the full course as an offline project file (.obe.json)
+   */
+  downloadOfflineProject(course: Course, customFilename?: string): void {
+    OfflineProjectService.downloadOfflineProject(course, customFilename);
+  },
+
+  /**
+   * Generates the offline project manifest and payload preserving full constructive alignment
+   */
+  generateOfflineProject(course: Course) {
+    return OfflineProjectService.generateOfflineProject(course);
+  },
 };
 
-export { DossierPdfService };
+export { DossierPdfService, OfflineProjectService };
 export type { AccreditationDossierOptions, DossierGenerationResult };
 export default CourseService;

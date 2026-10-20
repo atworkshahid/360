@@ -1080,7 +1080,7 @@ export function generateCourseDocx(course: Course, options: DocxExportOptions = 
 
   // Create the complete Document
   const doc = new Document({
-    creator: 'MENTISERA OBE360™',
+    creator: 'OBE360™ by Shahid Hussain Soomro',
     title: `${course.code || 'Course'} - Outcome-Based Course Specification`,
     description: `Formal accreditation dossier and outcome-based curriculum specification for ${course.title}`,
     sections: [
@@ -1110,7 +1110,7 @@ export function generateCourseDocx(course: Course, options: DocxExportOptions = 
                 },
                 children: [
                   new TextRun({
-                    text: 'MENTISERA OBE360™  •  ',
+                    text: 'OBE360™ by Shahid Hussain Soomro  •  ',
                     bold: true,
                     size: 16,
                     color: COLOR_ACCENT,

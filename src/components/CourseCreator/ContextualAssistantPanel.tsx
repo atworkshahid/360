@@ -15,7 +15,7 @@ import {
   Send,
   Clock,
 } from 'lucide-react';
-import { Course, BloomLevel } from '../../types';
+import { Course, BloomLevel, CourseValidationRuleResult } from '../../types';
 import {
   CourseValidationService,
   CourseValidationSummary,

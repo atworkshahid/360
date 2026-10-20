@@ -41,13 +41,18 @@ import {
   Award,
   Users,
   UserCheck,
+  HardDriveDownload,
+  Calendar,
 } from 'lucide-react';
 import { Course, CourseLanguage, UserRole } from '../types';
-import { MentiseraLogo, LogoMark } from './Logo';
+import { OBE360Logo, LogoMark } from './Logo';
 import { calculateCourseAudit } from '../utils/obeCalculator';
 import { downloadCoursesCSV } from '../utils/csvExport';
 import { downloadCourseDocx } from '../utils/docxExport';
 import { downloadCoursePDF } from '../utils/pdfExport';
+import { bulkExportCourses } from '../utils/BulkExportUtility';
+import { downloadBulkRubricsDocx } from '../utils/bulkRubricExport';
+import { OfflineProjectService } from '../utils/offlineProjectService';
 import { triggerWithLeadGate, isLeadGateUnlocked } from '../services/leadService';
 import { TemplateModal } from './TemplateModal';
 import { CourseTemplateGalleryModal } from './CourseTemplateGalleryModal';
@@ -58,6 +63,7 @@ import { AutoSaveStatus } from '../hooks/useAutosave';
 import { formatRelativeTime, formatExactTimestamp } from '../utils/timeFormat';
 import { DashboardSettingsModal, SettingsTab } from './DashboardSettingsModal';
 import { GoogleDriveSyncModal } from './GoogleDriveSyncModal';
+import { IntegrationHubModal } from './IntegrationHubModal';
 import { PDFPreviewModal } from './PDFPreviewModal';
 import { LMSIntegrationModal } from './LMSIntegrationModal';
 import { PrintFriendlyView } from './CourseCreator/PrintFriendlyView';
@@ -78,6 +84,14 @@ import { OBEFrameworkRegistry, FrameworkValidationResult } from '../utils/OBEFra
 import { FrameworkGuidebookModal } from './FrameworkGuidebookModal';
 import { CourseSettingsModal } from './CourseSettingsModal';
 import { LongitudinalBloomTracker } from './Dashboard/LongitudinalBloomTracker';
+import { SummaryDashboardAnalytics } from './Dashboard/SummaryDashboardAnalytics';
+import { CompetencyHeatmap } from './Dashboard/CompetencyHeatmap';
+import { LearningJourneyVisualizer } from './Dashboard/LearningJourneyVisualizer';
+import { AssessmentDistributionMap } from './Dashboard/AssessmentDistributionMap';
+import { ResourceIntegrityChecker } from './Dashboard/ResourceIntegrityChecker';
+import { PeerReviewer } from './Dashboard/PeerReviewer';
+import { StudentCompetencyPortfolio } from './StudentCompetencyPortfolio';
+import { AccreditationReadinessIndicator } from './Dashboard/AccreditationReadinessIndicator';
 
 const HighlightMatch: React.FC<{ text: string; query: string }> = ({ text, query }) => {
   if (!query || !query.trim() || !text) return <>{text}</>;
@@ -205,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'submitted' | 'approved' | 'templates'>('all');
   const [dashboardView, setDashboardView] = useState<
-    'courses' | 'analytics' | 'resources' | 'reviews' | 'users' | 'institution' | 'frameworks'
+    'courses' | 'analytics' | 'resources' | 'reviews' | 'users' | 'institution' | 'frameworks' | 'portfolio'
   >('courses');
   const [currentRole, setCurrentRole] = useState<UserRole>(() => getActiveUserRole());
   const [pendingReviewsCount, setPendingReviewsCount] = useState<number>(() => {
@@ -262,7 +276,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           tab === 'reviews' ||
           tab === 'users' ||
           tab === 'institution' ||
-          tab === 'frameworks'
+          tab === 'frameworks' ||
+          tab === 'portfolio'
         ) {
           setDashboardView(tab);
         } else if (
@@ -311,6 +326,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [settingsCourseId, setSettingsCourseId] = useState<string | undefined>(undefined);
   const [driveEnabled, setDriveEnabled] = useState<boolean>(isGoogleDriveSyncEnabled());
   const [driveModalOpen, setDriveModalOpen] = useState<boolean>(false);
+  const [integrationHubOpen, setIntegrationHubOpen] = useState<boolean>(false);
   const [driveModalCourse, setDriveModalCourse] = useState<Course | undefined>(undefined);
   const [driveModalBulkCourses, setDriveModalBulkCourses] = useState<Course[] | undefined>(undefined);
   const [driveModalMode, setDriveModalMode] = useState<'sync' | 'share'>('sync');
@@ -387,6 +403,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const selectedCoursesList = courses.filter((c) => selectedCourseIds.has(c.id));
 
+  const handleBulkExport = async () => {
+    if (selectedCoursesList.length === 0) return;
+    await bulkExportCourses(selectedCoursesList);
+  };
+
   const handleBulkExportJSON = () => {
     if (selectedCoursesList.length === 0) return;
     const exportData = {
@@ -448,6 +469,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setDriveModalShareable(false);
     setDriveModalOpen(true);
   };
+
+  const handleImportCourse = async (file: File) => {
+    const result = await OfflineProjectService.readProjectFromFile(file);
+    if (result.isValid && result.course) {
+      if (onCourseCreatedFromTemplate) {
+        onCourseCreatedFromTemplate(result.course);
+      }
+    } else {
+      alert(`Import failed: ${result.errors.join(', ')}`);
+    }
+  };
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleOpenSingleDriveSync = (course: Course, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -607,7 +641,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <LogoMark size={40} />
                     <div>
                       <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">
-                        MENTISERA <span className="text-indigo-600">OBE360™</span>
+                        <span className="text-indigo-600">OBE360™</span>
                       </h1>
                     </div>
                   </div>
@@ -632,6 +666,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
               >
                 <Plus className="w-4 h-4" />
                 <span>{experienceMode === 'simple' ? '+ Create New Course (4 Steps)' : 'Create New Course'}</span>
+              </button>
+              
+              <input type="file" ref={fileInputRef} onChange={(e) => e.target.files && handleImportCourse(e.target.files[0])} className="hidden" accept=".json" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-sm transition cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Import Course</span>
               </button>
 
               {/* Template Gallery Fast-Track Button */}
@@ -818,6 +862,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 )}
               </div>
 
+              {/* Google Calendar Integration */}
+              <button
+                type="button"
+                onClick={() => setIntegrationHubOpen(true)}
+                className="inline-flex items-center space-x-2 px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition cursor-pointer"
+                title="Connect Google Calendar for assessment scheduling"
+              >
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                <span>Integration Hub</span>
+              </button>
+
               {/* Settings & Cloud Utility */}
               <button
                 type="button"
@@ -908,6 +963,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </p>
               </button>
             </div>
+          )}
+
+          {dashboardView === 'courses' && (
+            <SummaryDashboardAnalytics courses={courses} />
+          )}
+
+
+          {dashboardView === 'courses' && (
+            <SummaryDashboardAnalytics courses={courses} />
+          )}
+
+          {dashboardView === 'courses' && (
+            <CompetencyHeatmap courses={courses} />
+          )}
+          
+          {dashboardView === 'courses' && courses.length > 0 && (
+            <div className="mt-6 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Learning Journey</h3>
+                <LearningJourneyVisualizer course={courses[0]} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <AssessmentDistributionMap course={courses[0]} />
+                <PeerReviewer course={courses[0]} />
+                <ResourceIntegrityChecker course={courses[0]} onChange={(updated) => console.log('Updated:', updated)} />
+              </div>
+            </div>
+          )}
+
+          {dashboardView === 'portfolio' && (
+            <StudentCompetencyPortfolio course={currentCourse} />
           )}
 
           {/* Quick Metrics Bar */}
@@ -1052,7 +1138,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         title={rc.title}
                       >
                         {rc.title}
-                      </h4>
+                    </h4>
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] pt-2 mt-2 border-t border-slate-100 text-slate-500">
@@ -1091,6 +1177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               { id: 'institution', label: 'Institution', count: 'Model', icon: <Building2 className="w-3.5 h-3.5" />, type: 'view' },
               { id: 'users', label: 'Personnel & Roles', count: 'RBAC', icon: <Users className="w-3.5 h-3.5" />, type: 'view' },
               { id: 'resources', label: 'Resource Library', count: resourceCount, icon: <Folder className="w-3.5 h-3.5" />, type: 'view' },
+              { id: 'portfolio', label: 'Competency Portfolio', count: 'Mastery', icon: <Target className="w-3.5 h-3.5" />, type: 'view' },
             ].map((tab) => {
               const isSelected =
                 (tab.type === 'view' && dashboardView === tab.id) ||
@@ -1517,6 +1604,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     >
                       <HighlightMatch text={course.title} query={searchQuery} />
                     </h3>
+                    <div className="mt-2">
+                      <AccreditationReadinessIndicator course={course} />
+                    </div>
                     <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">
                       <HighlightMatch
                         text={course.description || course.overview || 'No description provided.'}
@@ -1868,6 +1958,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   )}
                                 </div>
                                 <div className="text-[11px] text-slate-500">Fully formatted editable specification</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              id={`dashboard-card-download-offline-${course.id}`}
+                              onClick={() => {
+                                setOpenCardMenuId(null);
+                                OfflineProjectService.downloadOfflineProject(course);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs text-slate-700 hover:text-emerald-900 flex items-start space-x-2.5 transition cursor-pointer"
+                              title="Download current course as a JSON-based local project file maintaining full OBE integrity"
+                            >
+                              <HardDriveDownload className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                              <div className="flex-1">
+                                <div className="font-semibold text-slate-900 flex items-center justify-between">
+                                  <span>Download for Offline (.obe.json)</span>
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Lossless
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-500">Full JSON project with OBE integrity &amp; alignment</div>
                               </div>
                             </button>
                             <button
@@ -2250,12 +2361,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <div className="text-[11px] text-slate-400">Accreditation matrix export</div>
                     </div>
                   </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenBulkExportMenu(false);
+                    downloadBulkRubricsDocx(courses);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Export All Rubrics (DOCX)</div>
+                    <div className="text-[11px] text-slate-400">Standardized printable review format</div>
+                  </div>
+                </button>
                   <button
                     type="button"
                     onClick={() => {
                       setOpenBulkExportMenu(false);
-                      handleBulkExportJSON();
+                      handleBulkExport();
                     }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-blue-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Bulk Zip Export</div>
+                      <div className="text-[11px] text-slate-400">JSON & PDF bundle</div>
+                    </div>
+                  </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenBulkExportMenu(false);
+                    handleBulkExportJSON();
+                  }}
                     className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 hover:text-white flex items-center space-x-2 transition cursor-pointer"
                   >
                     <Download className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -2542,6 +2681,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }}
         />
       )}
+      {/* Integration Hub Modal */}
+      <IntegrationHubModal
+        isOpen={integrationHubOpen}
+        onClose={() => setIntegrationHubOpen(false)}
+      />
+
     </div>
   );
 };

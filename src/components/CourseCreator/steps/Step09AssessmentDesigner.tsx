@@ -25,6 +25,9 @@ import {
   BLOOM_RANK,
 } from '../../../utils/assessmentAnalysis';
 import { AlignmentAnalysisReport } from '../../AlignmentAnalysis/AlignmentAnalysisReport';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
+import { CLOAssessmentVisualMapper } from '../CLOAssessmentVisualMapper';
+import { Brain } from 'lucide-react';
 
 interface StepProps {
   course: Course;
@@ -57,9 +60,10 @@ export const Step09AssessmentDesigner: React.FC<StepProps> = ({
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>(
     course.assessments[0]?.id || ''
   );
-  const [activeSubTab, setActiveSubTab] = useState<'designer' | 'analysis'>('designer');
+  const [activeSubTab, setActiveSubTab] = useState<'designer' | 'analysis' | 'visual-map'>('designer');
   const [previousAssessments, setPreviousAssessments] = useState<Assessment[] | null>(null);
   const [calibrationNotice, setCalibrationNotice] = useState<string>('');
+  const [isSuggesterOpen, setIsSuggesterOpen] = useState<boolean>(false);
 
   const selectedAssessment =
     course.assessments.find((a) => a.id === selectedAssessmentId) || course.assessments[0];
@@ -186,6 +190,17 @@ export const Step09AssessmentDesigner: React.FC<StepProps> = ({
             </div>
 
             <button
+              type="button"
+              id="step09-open-suggester-btn"
+              onClick={() => setIsSuggesterOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
+              title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
+            >
+              <Brain className="w-4 h-4" />
+              <span>Auto-Suggest Tasks</span>
+            </button>
+
+            <button
               onClick={handleAddAssessment}
               className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
             >
@@ -232,6 +247,24 @@ export const Step09AssessmentDesigner: React.FC<StepProps> = ({
             </span>
           )}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('visual-map')}
+          className={`pb-3 text-xs font-bold border-b-2 transition flex items-center space-x-2 cursor-pointer ${
+            activeSubTab === 'visual-map'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-indigo-600" />
+          <span>Visual CLO Mapping &amp; Gaps</span>
+          {analysis.unassessedCLOs.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 font-bold">
+              {analysis.unassessedCLOs.length} Gaps
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Calibration Notice Banner */}
@@ -252,6 +285,14 @@ export const Step09AssessmentDesigner: React.FC<StepProps> = ({
             </button>
           )}
         </div>
+      )}
+
+      {/* VIEW 0: VISUAL CLO MAPPING & GAP AUDITOR */}
+      {activeSubTab === 'visual-map' && (
+        <CLOAssessmentVisualMapper
+          course={course}
+          onChange={onChange}
+        />
       )}
 
       {/* VIEW 1: DESIGNER VIEW */}
@@ -564,6 +605,15 @@ export const Step09AssessmentDesigner: React.FC<StepProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={isSuggesterOpen}
+        onClose={() => setIsSuggesterOpen(false)}
+        onChangeCourse={onChange}
+        initialBloomLevel={selectedAssessment?.bloomLevel}
+      />
     </div>
   );
 };

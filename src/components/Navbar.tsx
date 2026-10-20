@@ -28,7 +28,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Course, CourseAuditReport, SUPPORTED_LANGUAGES, CourseLanguage } from '../types';
-import { MentiseraLogo } from './Logo';
+import { OBE360Logo } from './Logo';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { AutoSaveStatus } from '../hooks/useAutosave';
 import { NavbarAuditWidget } from './NavbarAuditWidget';
@@ -129,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center text-left group focus:outline-none cursor-pointer"
             title="Return to MENTISERA OBE360 Dashboard"
           >
-            <MentiseraLogo
+            <OBE360Logo
               size="sm"
               showText={true}
               showTagline={true}
@@ -340,6 +340,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="flex-1">
                       <div className="font-semibold text-slate-900">Export Word Document (.docx)</div>
                       <div className="text-[10px] text-slate-400">Fully formatted editable specification</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent('open_syllabus_generator_modal'));
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-start space-x-2.5 text-slate-700 hover:text-slate-900 transition cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-900">Course Syllabus (.pdf/.docx)</div>
+                      <div className="text-[10px] text-slate-400">Printable academic syllabus</div>
                     </div>
                   </button>
 

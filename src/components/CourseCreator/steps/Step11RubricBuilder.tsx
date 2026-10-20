@@ -22,6 +22,7 @@ import { RubricGeneratorModal } from '../RubricGeneratorModal';
 import { StructuredRubricGenerator } from '../StructuredRubricGenerator';
 import { CourseResourceLibrary } from '../../ResourceLibrary/CourseResourceLibrary';
 import { InlineSectionFeedback } from '../comments/InlineSectionFeedback';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
 
 interface StepProps {
   course: Course;
@@ -38,6 +39,7 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
   const [generatorModalOpen, setGeneratorModalOpen] = useState<boolean>(false);
   const [generatorCLOId, setGeneratorCLOId] = useState<string | undefined>(course.clos[0]?.id);
   const [resourceLibraryOpen, setResourceLibraryOpen] = useState<boolean>(false);
+  const [suggesterModalOpen, setSuggesterModalOpen] = useState<boolean>(false);
 
   const selectedRubric = course.rubrics.find((r) => r.id === selectedRubricId) || course.rubrics[0];
 
@@ -185,6 +187,16 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
             >
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Structured Matrix Generator</span>
+            </button>
+            <button
+              type="button"
+              id="step11-open-suggester-btn"
+              onClick={() => setSuggesterModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 text-xs font-semibold shadow-sm transition cursor-pointer"
+              title="Suggest Authentic Rubrics by CLO Cognitive Level"
+            >
+              <Brain className="w-4 h-4 text-purple-600" />
+              <span>Suggest Rubrics by Cognitive Level</span>
             </button>
             <button
               type="button"
@@ -683,6 +695,15 @@ export const Step11RubricBuilder: React.FC<StepProps> = ({ course, onChange, onN
         onUpdateCourse={onChange}
         initialCategory="Rubric"
         mode="modal"
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={suggesterModalOpen}
+        onClose={() => setSuggesterModalOpen(false)}
+        onChangeCourse={onChange}
+        initialBloomLevel={course.clos.find((c) => c.id === generatorCLOId)?.bloomLevel || 'Analyze'}
       />
     </div>
   );

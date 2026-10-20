@@ -166,7 +166,7 @@ export const LogoMark: React.FC<{ size?: number; className?: string; variant?: '
   );
 };
 
-export const MentiseraLogo: React.FC<LogoProps> = ({
+export const OBE360Logo: React.FC<LogoProps> = ({
   size = 'md',
   variant = 'default',
   showText = true,
@@ -201,7 +201,7 @@ export const MentiseraLogo: React.FC<LogoProps> = ({
                 isLight ? 'text-white' : 'text-slate-900'
               }`}
             >
-              MENTISERA <span className="text-indigo-600">OBE360™</span>
+              <span className="text-indigo-600">OBE360™</span>
             </span>
 
             {badgeText && (
@@ -223,7 +223,7 @@ export const MentiseraLogo: React.FC<LogoProps> = ({
                 isLight ? 'text-slate-400' : 'text-slate-500'
               }`}
             >
-              {taglineText || 'Outcome-Based Course Creator'}
+              {taglineText || 'Designed, developed, concept, entire product by Shahid Hussain Soomro | shahidsoomro@msn.com | +923009800135'}
             </span>
           )}
         </div>
@@ -234,4 +234,4 @@ export const MentiseraLogo: React.FC<LogoProps> = ({
   return content;
 };
 
-export default MentiseraLogo;
+export default OBE360Logo;

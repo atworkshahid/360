@@ -22,6 +22,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Copy,
+  Target,
 } from 'lucide-react';
 import { Course, CLO, BloomLevel, LearningDomain, CLOStatus } from '../../../types';
 import { analyzeCLOStatement, CLOAnalysisResult } from '../../../services/api';
@@ -31,12 +32,16 @@ import {
   VERBS_TO_AVOID,
 } from '../BloomsTaxonomyHelperModal';
 import { BloomsTaxonomyPopover } from '../BloomsTaxonomyPopover';
+import { BloomsTaxonomyInteractiveSelector } from '../BloomsTaxonomyInteractiveSelector';
 import { BloomsInteractiveReference } from '../BloomsInteractiveReference';
+import { BloomsVerbLookup } from '../BloomsVerbLookup';
+import { BloomsVerbLookupModal } from '../BloomsVerbLookupModal';
 import { CLORefinerModal } from '../CLORefinerModal';
 import { OutcomeDependencyGraph } from '../OutcomeDependencyGraph';
 import { ElementCommentButton } from '../comments/ElementCommentButton';
 import { BulkImportCLOsModal } from '../BulkImportCLOsModal';
 import { CLOBulkEditorModal } from '../CLOBulkEditorModal';
+import { AssessmentTaskSuggestionModal } from '../../AssessmentTaskSuggestions/AssessmentTaskSuggestionModal';
 import { BloomsCLOTagger } from '../BloomsCLOTagger';
 import { BatchCLOTaggerModal } from '../BatchCLOTaggerModal';
 import { BloomsTaxonomyWheel } from '../BloomsTaxonomyWheel';
@@ -67,6 +72,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
   const [selectedCLOId, setSelectedCLOId] = useState<string>(course.clos[0]?.id || '');
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [bloomsModalOpen, setBloomsModalOpen] = useState(false);
+  const [verbLookupModalOpen, setVerbLookupModalOpen] = useState(false);
   const [refinerModalOpen, setRefinerModalOpen] = useState(false);
   const [batchTaggerModalOpen, setBatchTaggerModalOpen] = useState(false);
   const [isWheelModalOpen, setIsWheelModalOpen] = useState(false);
@@ -76,6 +82,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
   const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
   const [bulkEditorModalOpen, setBulkEditorModalOpen] = useState(false);
   const [importNotification, setImportNotification] = useState<string | null>(null);
+  const [suggesterModalOpen, setSuggesterModalOpen] = useState(false);
 
   const selectedCLO = course.clos.find((c) => c.id === selectedCLOId) || course.clos[0];
   const totalWeightage = course.clos.reduce((acc, c) => acc + (c.weightage || 0), 0);
@@ -146,12 +153,20 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
   };
 
   const handleUpdateCLO = (id: string, updates: Partial<CLO>) => {
-    const updated = course.clos.map((c) => (c.id === id ? { ...c, ...updates } : c));
+    const synced = { ...updates };
+    if (synced.weightage !== undefined && synced.weight === undefined) {
+      synced.weight = synced.weightage;
+    } else if (synced.weight !== undefined && synced.weightage === undefined) {
+      synced.weightage = synced.weight;
+    }
+
+    const updated = course.clos.map((c) => (c.id === id ? { ...c, ...synced } : c));
     onChange({ ...course, clos: updated });
   };
 
   const handleAddCLO = () => {
     const nextNum = course.clos.length + 1;
+    const initialWeight = Math.max(5, Math.floor(100 / nextNum));
     const newCLO: CLO = {
       id: `clo-${Date.now()}`,
       code: `CLO ${nextNum}`,
@@ -163,7 +178,8 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
       skills: 'Problem identification, statutory or technical analysis',
       assessmentMethod: 'Analytical Problem Set',
       achievementThreshold: 60,
-      weightage: Math.max(0, 100 - totalWeightage),
+      weightage: initialWeight,
+      weight: initialWeight,
       status: 'Draft',
       qualityScore: 80,
       qualityChecks: [],
@@ -338,6 +354,17 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
             >
               <Compass className="w-4 h-4 text-indigo-600" />
               <span>Bloom's Wheel</span>
+            </button>
+
+            <button
+              type="button"
+              id="clo-suggest-assessment-tasks-btn"
+              onClick={() => setSuggesterModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-purple-200 bg-purple-50/80 hover:bg-purple-100 text-purple-900 text-xs font-bold shadow-2xs transition cursor-pointer"
+              title="Automated Assessment Task Suggester: Suggests rubrics, quizzes, and projects matched to CLO Bloom cognitive levels"
+            >
+              <Brain className="w-4 h-4 text-purple-600" />
+              <span>Suggest Tasks</span>
             </button>
 
             <button
@@ -565,7 +592,6 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                   Outcome Statement <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-2">
                   <BloomsTaxonomyHelperModal
                     isOpen={bloomsModalOpen}
                     onClose={() => setBloomsModalOpen(false)}
@@ -575,10 +601,9 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                     type="button"
                     onClick={() => setBloomsModalOpen(true)}
                     className="inline-flex items-center space-x-1.5 text-xs text-indigo-950 bg-white hover:bg-slate-50 font-bold cursor-pointer py-1.5 px-3 rounded-lg border border-indigo-200 shadow-2xs transition"
-                    title="Open interactive Bloom's Taxonomy verb picker"
                   >
-                    <Target className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Select Bloom's Verb</span>
+                    <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Draft with Bloom's</span>
                   </button>
                   <button
                     type="button"
@@ -606,15 +631,23 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                     onSelectVerb={handleSelectBloomVerb}
                     onOpenFullModal={() => setBloomsModalOpen(true)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setBloomsModalOpen(true)}
-                    className="inline-flex items-center space-x-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer py-1.5 px-2 rounded-lg hover:bg-indigo-50 transition"
-                    title="Open full Bloom's Taxonomy classification and action verbs"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Browse Taxonomy</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setVerbLookupModalOpen(true)}
+                      className="inline-flex items-center space-x-1.5 text-xs text-indigo-950 bg-white hover:bg-slate-50 font-bold cursor-pointer py-1.5 px-3 rounded-lg border border-indigo-300 shadow-2xs transition"
+                    >
+                      <Search className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Lookup Verbs</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBloomsModalOpen(true)}
+                      className="inline-flex items-center space-x-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer py-1.5 px-2 rounded-lg hover:bg-indigo-50 transition"
+                      title="Open full Bloom's Taxonomy classification and action verbs"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Browse Taxonomy</span>
+                    </button>
                 </div>
               </div>
 
@@ -713,7 +746,23 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">Bloom Level</label>
                 <select
                   value={selectedCLO.bloomLevel}
-                  onChange={(e) => handleUpdateCLO(selectedCLO.id, { bloomLevel: e.target.value as BloomLevel })}
+                  onChange={(e) => {
+                    const newLevel = e.target.value as BloomLevel;
+                    const defaultVerb = BLOOM_TAXONOMY_DATA[newLevel]?.categories[0]?.verbs[0] || 'Explain';
+                    let newStatement = selectedCLO.statement || '';
+                    if (newStatement.trim()) {
+                      const parts = newStatement.trim().split(/\s+/);
+                      parts[0] = defaultVerb;
+                      newStatement = parts.join(' ');
+                    } else {
+                      newStatement = `${defaultVerb} `;
+                    }
+                    handleUpdateCLO(selectedCLO.id, {
+                      bloomLevel: newLevel,
+                      bloomVerb: defaultVerb,
+                      statement: newStatement,
+                    });
+                  }}
                   className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium"
                 >
                   <option value="Remember">Remember (L1)</option>
@@ -739,14 +788,67 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
               </div>
             </div>
 
-            {/* Bloom's Taxonomy Interactive Reference */}
-            <BloomsInteractiveReference
-              selectedCLO={selectedCLO}
-              course={course}
-              onSelectVerb={handleSelectBloomVerb}
-              onApplyStem={handleApplyStem}
+            {/* Interactive Bloom's Taxonomy Selector & Auto-Suggested Action Verbs */}
+            <BloomsTaxonomyInteractiveSelector
+              targetType="CLO"
+              targetCode={selectedCLO.code}
+              statement={selectedCLO.statement}
+              currentLevel={selectedCLO.bloomLevel}
+              currentVerb={selectedCLO.bloomVerb}
+              onSelectVerbAndLevel={(verb, level, updatedStatement) => {
+                handleUpdateCLO(selectedCLO.id, {
+                  bloomVerb: verb,
+                  bloomLevel: level,
+                  statement: updatedStatement,
+                });
+              }}
+              onSelectLevelOnly={(lvl) => {
+                const defaultVerb = BLOOM_TAXONOMY_DATA[lvl]?.categories[0]?.verbs[0] || 'Explain';
+                let newStatement = selectedCLO.statement || '';
+                if (newStatement.trim()) {
+                  const parts = newStatement.trim().split(/\s+/);
+                  parts[0] = defaultVerb;
+                  newStatement = parts.join(' ');
+                } else {
+                  newStatement = `${defaultVerb} `;
+                }
+                handleUpdateCLO(selectedCLO.id, {
+                  bloomLevel: lvl,
+                  bloomVerb: defaultVerb,
+                  statement: newStatement,
+                });
+              }}
               onOpenFullModal={() => setBloomsModalOpen(true)}
+              defaultExpanded={true}
             />
+
+            {/* Cognitive Assessment Task Alignment Recommendation */}
+            <div className="p-3.5 bg-gradient-to-r from-indigo-50/90 to-purple-50/80 rounded-xl border border-indigo-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start sm:items-center space-x-2.5">
+                <Brain className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <span className="font-bold text-slate-800">
+                    Constructive Alignment: Level {selectedCLO.bloomLevel} Task Recommendation
+                  </span>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    {selectedCLO.bloomLevel === 'Remember' && 'Suggests objective diagnostic quizzes and terminology recall drills.'}
+                    {selectedCLO.bloomLevel === 'Understand' && 'Suggests scenario-based discrimination quizzes and diagrammatic explanation tasks.'}
+                    {selectedCLO.bloomLevel === 'Apply' && 'Suggests calculation problem sets, practical lab tasks, and execution rubrics.'}
+                    {selectedCLO.bloomLevel === 'Analyze' && 'Suggests analytical case study decomposition with multi-criterion analytic rubrics.'}
+                    {selectedCLO.bloomLevel === 'Evaluate' && 'Suggests oral defense appraisal rubrics, peer reviews, and compliance audits.'}
+                    {selectedCLO.bloomLevel === 'Create' && 'Suggests capstone milestone projects, design prototypes, and innovation proposals.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSuggesterModalOpen(true)}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs shadow-2xs transition cursor-pointer flex items-center space-x-1 shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Suggest Tasks</span>
+              </button>
+            </div>
 
             {/* Competency & Skills */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -944,7 +1046,7 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
             </div>
           </div>
         </div>
-
+      )}
 
       {/* Navigation Buttons */}
       <div className="flex justify-between pt-4">
@@ -1056,6 +1158,19 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
         onApplyStem={handleApplyStem}
       />
 
+      {/* Bloom's Verb Lookup Modal */}
+      <BloomsVerbLookupModal
+        isOpen={verbLookupModalOpen}
+        onClose={() => setVerbLookupModalOpen(false)}
+        initialLevel={selectedCLO?.bloomLevel || 'Remember'}
+        onSelectVerb={(verb) => {
+          // Update the statement with the selected verb (this is a basic implementation)
+          const newStatement = `${verb} ${selectedCLO.statement || ''}`.trim();
+          handleUpdateCLO(selectedCLO.id, { statement: newStatement });
+          setVerbLookupModalOpen(false);
+        }}
+      />
+
       {/* CLO Bulk Editor Modal */}
       <CLOBulkEditorModal
         isOpen={bulkEditorModalOpen}
@@ -1068,6 +1183,16 @@ export const Step03CLOCreator: React.FC<StepProps> = ({
           }
         }}
         courseTitle={course.title}
+      />
+
+      {/* Automated Assessment Task Suggester Modal */}
+      <AssessmentTaskSuggestionModal
+        course={course}
+        isOpen={suggesterModalOpen}
+        onClose={() => setSuggesterModalOpen(false)}
+        onChangeCourse={onChange}
+        initialCLOId={selectedCLO?.id}
+        initialBloomLevel={selectedCLO?.bloomLevel}
       />
     </div>
   );

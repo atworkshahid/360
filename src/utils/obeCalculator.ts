@@ -29,9 +29,13 @@ export function calculateCourseAudit(course: Course): CourseAuditReport {
       } else if (
         r.rule === 'ASSESSMENT_WEIGHT_TOTAL' ||
         r.rule === 'CLO_ASSESSMENT_COVERAGE' ||
-        r.rule === 'ASSESSMENT_BLOOM_ALIGNMENT'
+        r.rule === 'ASSESSMENT_BLOOM_ALIGNMENT' ||
+        r.rule === 'OUTCOME_WEIGHT_DISTRIBUTION' ||
+        r.rule === 'OUTCOME_ASSESSMENT_WEIGHT_ALIGNMENT'
       ) {
         category = 'Assessment Coverage';
+      } else if (r.rule === 'MLO_WEIGHT_DISTRIBUTION') {
+        category = 'Instructional Plan';
       } else if (r.rule === 'RUBRIC_ALIGNMENT') {
         category = 'Rubric Alignment';
       } else if (r.rule === 'EVIDENCE_RULES') {

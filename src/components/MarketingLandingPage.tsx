@@ -38,7 +38,7 @@ import {
   Play,
 } from 'lucide-react';
 import { submitInstitutionalLead } from '../services/leadService';
-import { MentiseraLogo } from './Logo';
+import { LogoMark } from './Logo';
 
 interface MarketingLandingPageProps {
   onLaunchApp: () => void;
@@ -52,6 +52,13 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
   // Interactive ROI Calculator State
   const [facultyCount, setFacultyCount] = useState<number>(45);
   const [coursesPerYear, setCoursesPerYear] = useState<number>(120);
+
+  // New features highlight section
+  const newFeatures = [
+    { title: 'Sync Conflict Resolver', desc: 'Side-by-side diffing, batch resolution, and history logs.' },
+    { title: 'Differential Sync', desc: 'Reduced bandwidth usage by transmitting only changed MLO fields.' },
+    { title: 'Bulk MLO Management', desc: 'Select, tag, and update multiple MLOs simultaneously.' }
+  ];
 
   // Active Feature Tab in Interactive Tour
   const [activeTab, setActiveTab] = useState<
@@ -113,7 +120,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
           Enterprise Release v2.6
         </span>
         <span className="text-slate-300 text-[11px] sm:text-xs">
-          <strong>MENTISERA OBE360™</strong> — Dual-Engine Curriculum Wizard (10-Step OBE &amp; 15-Step Granular), Active Learning Engagement Meter &amp; Automated ABET/Washington Accord Dossiers.
+          <strong>OBE360™ by Shahid Hussain Soomro</strong> — Dual-Engine Curriculum Wizard (10-Step OBE &amp; 15-Step Granular), Active Learning Engagement Meter &amp; Automated ABET/Washington Accord Dossiers.
         </span>
         <button
           onClick={onLaunchApp}
@@ -128,7 +135,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <MentiseraLogo
+            <OBE360Logo
               size="md"
               showText={true}
               showTagline={true}
@@ -265,7 +272,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                   <div className="w-3 h-3 rounded-full bg-slate-300" />
                   <div className="w-3 h-3 rounded-full bg-slate-300" />
                   <span className="ml-2 font-mono text-[11px] text-slate-600 font-medium">
-                    mentisera.pk/obe360/curriculum-editor/CS-301
+                    shahidsoomro.com/obe360/curriculum-editor/CS-301
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -514,7 +521,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                 <Check className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="font-bold text-base text-emerald-900">The MENTISERA OBE360™ Standard</h4>
+                <h4 className="font-bold text-base text-emerald-900">The OBE360™ Standard by Shahid Hussain Soomro</h4>
                 <p className="text-xs text-emerald-700/80">Mathematical alignment and automated quality assurance</p>
               </div>
             </div>
@@ -546,6 +553,21 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               </li>
             </ul>
           </div>
+        </div>
+      </section>
+
+      {/* NEW FEATURES HIGHLIGHT */}
+      <section className="py-20 bg-indigo-50 border-y border-indigo-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h3 className="text-2xl font-bold font-serif text-slate-900 text-center mb-12">New Advanced Capabilities</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {newFeatures.map(feat => (
+                    <div key={feat.title} className="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm">
+                        <h4 className="font-bold text-indigo-900 mb-2">{feat.title}</h4>
+                        <p className="text-sm text-slate-600">{feat.desc}</p>
+                    </div>
+                ))}
+            </div>
         </div>
       </section>
 
@@ -1744,7 +1766,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs text-slate-600">
               <div className="font-bold text-slate-900">Methodology &amp; Benchmark Data:</div>
               <p className="text-[11px] leading-relaxed">
-                Based on time-motion studies across Washington Accord engineering faculties. Traditional manual OBE documentation takes ~65 hours per course per semester. With MENTISERA OBE360™, structured guided workflows reduce this to ~3.5 hours.
+                Based on time-motion studies across Washington Accord engineering faculties. Traditional manual OBE documentation takes ~65 hours per course per semester. With OBE360™ by Shahid Hussain Soomro, structured guided workflows reduce this to ~3.5 hours.
               </p>
             </div>
           </div>
@@ -1959,7 +1981,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-slate-800">
             {/* Column 1: Brand & Credentials */}
             <div className="space-y-4 md:col-span-1">
-              <MentiseraLogo
+              <OBE360Logo
                 size="md"
                 variant="light"
                 showText={true}
@@ -1969,7 +1991,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                 The premier Outcome-Based Education (OBE) curriculum design and accreditation intelligence engine.
               </p>
               <div className="text-[11px] text-slate-400 space-y-1">
-                <p><strong>All rights reserved by MENTISERA.</strong></p>
+                <p><strong>All rights reserved by Shahid Hussain Soomro (shahidsoomro@msn.com | +923009800135).</strong></p>
                 <p>Proprietary Commercial Software License.</p>
               </div>
             </div>
@@ -1980,20 +2002,20 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <p className="text-xs text-slate-400">Send us an email for any inquiry:</p>
               <div className="space-y-2 text-xs">
                 <a
-                  href="mailto:hello@mentisera.pk"
+                  href="mailto:shahidsoomro@msn.com"
                   className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 transition"
                 >
                   <Mail className="w-4 h-4 shrink-0" />
-                  <span>hello@mentisera.pk</span>
+                  <span>shahidsoomro@msn.com</span>
                 </a>
                 <a
-                  href="https://www.mentisera.pk/products/obe360"
+                  href="https://www.shahidsoomro.com/products/obe360"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 transition"
                 >
                   <Globe className="w-4 h-4 shrink-0" />
-                  <span>www.mentisera.pk/products/obe360</span>
+                  <span>www.shahidsoomro.com/products/obe360</span>
                 </a>
               </div>
             </div>
@@ -2020,7 +2042,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <div className="flex items-start space-x-2 text-xs text-slate-400">
                 <MapPin className="w-4 h-4 shrink-0 text-indigo-400 mt-0.5" />
                 <address className="not-italic leading-relaxed">
-                  <strong>MENTISERA Technologies</strong><br />
+                  <strong>Shahid Hussain Soomro</strong><br />
                   Street 11, Ghuari Town, 5-B<br />
                   Islamabad, Pakistan
                 </address>
@@ -2030,7 +2052,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
             <div>
-              © 2026 MENTISERA. All Rights Reserved. Built for global higher education standards.
+              © 2026 Shahid Hussain Soomro. All Rights Reserved. Built for global higher education standards.
             </div>
             <div className="flex space-x-6">
               <button onClick={onLaunchApp} className="hover:text-white transition cursor-pointer">
@@ -2042,7 +2064,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
               <a href="#pricing" className="hover:text-white transition">
                 Pricing
               </a>
-              <a href="mailto:hello@mentisera.pk" className="hover:text-white transition">
+              <a href="mailto:shahidsoomro@msn.com" className="hover:text-white transition">
                 Support
               </a>
             </div>
@@ -2071,7 +2093,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                 </div>
                 <h4 className="text-xl font-bold font-serif">Inquiry Successfully Transmitted</h4>
                 <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Thank you for reaching out to MENTISERA. An academic technology specialist will contact you within 24 business hours to arrange your campus pilot presentation.
+                  Thank you for reaching out to Shahid Hussain Soomro. An academic technology specialist will contact you within 24 business hours to arrange your campus pilot presentation.
                 </p>
                 <div className="pt-2">
                   <button
@@ -2095,7 +2117,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                     Schedule Your Institution's Presentation
                   </h4>
                   <p className="text-xs text-slate-500">
-                    Experience how MENTISERA OBE360™ will streamline your next accreditation visit.
+                    Experience how OBE360™ by Shahid Hussain Soomro will streamline your next accreditation visit.
                   </p>
                 </div>
 
@@ -2187,7 +2209,7 @@ export const MarketingLandingPage: React.FC<MarketingLandingPageProps> = ({
                   </div>
 
                   <div className="text-[10px] text-slate-500 text-center pt-1">
-                    Direct inquiries: <a href="mailto:hello@mentisera.pk" className="text-indigo-600 underline">hello@mentisera.pk</a> | Phone: <a href="tel:+923348880859" className="text-indigo-600 underline">+92 334 8880859</a>
+                    Direct inquiries: <a href="mailto:shahidsoomro@msn.com" className="text-indigo-600 underline">shahidsoomro@msn.com</a> | Phone: <a href="tel:+923009800135" className="text-indigo-600 underline">+923009800135</a>
                   </div>
                 </form>
               </>

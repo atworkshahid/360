@@ -1,4 +1,5 @@
 import { Framework } from '../types';
+import { EXTENDED_FRAMEWORK_GUIDELINES } from './extendedFrameworkGuidelines';
 
 export interface FrameworkStageGuideline {
   stageId: string;
@@ -1251,6 +1252,7 @@ export const FRAMEWORK_GUIDELINES: Record<string, FrameworkDetailedGuideline> = 
       },
     },
   },
+  ...EXTENDED_FRAMEWORK_GUIDELINES,
 };
 
 /**
@@ -1266,6 +1268,63 @@ export function getFrameworkGuideline(frameworkId?: string): FrameworkDetailedGu
 
   // Name or code matching
   const norm = frameworkId.toLowerCase().trim();
+  if (norm.includes('dublin') || norm.includes('da-engtech')) {
+    return FRAMEWORK_GUIDELINES['fw-dublin-accord'];
+  }
+  if (norm.includes('aacsb')) {
+    return FRAMEWORK_GUIDELINES['fw-aacsb'];
+  }
+  if (norm.includes('acbsp')) {
+    return FRAMEWORK_GUIDELINES['fw-acbsp'];
+  }
+  if (norm.includes('ncaaa') || norm.includes('saudi') || norm.includes('etec')) {
+    return FRAMEWORK_GUIDELINES['fw-ncaaa-saudi'];
+  }
+  if (norm.includes('caep')) {
+    return FRAMEWORK_GUIDELINES['fw-caep'];
+  }
+  if (norm.includes('cctc')) {
+    return FRAMEWORK_GUIDELINES['fw-cctc'];
+  }
+  if (norm.includes('cctp')) {
+    return FRAMEWORK_GUIDELINES['fw-cctp'];
+  }
+  if (norm.includes('hlc') || norm.includes('higher learning commission')) {
+    return FRAMEWORK_GUIDELINES['fw-hlc'];
+  }
+  if (norm.includes('msche') || norm.includes('middle states')) {
+    return FRAMEWORK_GUIDELINES['fw-msche'];
+  }
+  if (norm.includes('neche') || norm.includes('new england')) {
+    return FRAMEWORK_GUIDELINES['fw-neche'];
+  }
+  if (norm.includes('nwccu') || norm.includes('northwest')) {
+    return FRAMEWORK_GUIDELINES['fw-nwccu'];
+  }
+  if (norm.includes('sacscoc') || norm.includes('southern association')) {
+    return FRAMEWORK_GUIDELINES['fw-sacscoc'];
+  }
+  if (norm.includes('wscuc') || norm.includes('wasc')) {
+    return FRAMEWORK_GUIDELINES['fw-wscuc'];
+  }
+  if (norm.includes('ehea') || norm.includes('bologna') || norm.includes('esg')) {
+    return FRAMEWORK_GUIDELINES['fw-ehea'];
+  }
+  if (norm.includes('fibaa')) {
+    return FRAMEWORK_GUIDELINES['fw-fibaa'];
+  }
+  if (norm.includes('acquin')) {
+    return FRAMEWORK_GUIDELINES['fw-acquin'];
+  }
+  if (norm.includes('eqaa')) {
+    return FRAMEWORK_GUIDELINES['fw-eqaa'];
+  }
+  if (norm.includes('eua')) {
+    return FRAMEWORK_GUIDELINES['fw-eua'];
+  }
+  if (norm.includes('eca')) {
+    return FRAMEWORK_GUIDELINES['fw-eca'];
+  }
   if (norm.includes('washington') || norm.includes('wa-eng') || norm === 'wa') {
     return FRAMEWORK_GUIDELINES['fw-washington-accord'];
   }
@@ -1278,10 +1337,10 @@ export function getFrameworkGuideline(frameworkId?: string): FrameworkDetailedGu
   if (norm.includes('seoul') || norm.includes('sa-comp')) {
     return FRAMEWORK_GUIDELINES['fw-seoul-accord'] || FRAMEWORK_GUIDELINES['fw-abet-cac'];
   }
-  if (norm.includes('sydney') || norm.includes('sa-et') || norm.includes('technology')) {
-    return FRAMEWORK_GUIDELINES['fw-sydney-accord'] || FRAMEWORK_GUIDELINES['fw-washington-accord'];
+  if (norm.includes('etac') || norm.includes('abet-etac')) {
+    return FRAMEWORK_GUIDELINES['fw-abet-etac'];
   }
-  if (norm.includes('etac')) {
+  if (norm.includes('sydney') || norm.includes('sa-et') || norm.includes('technology')) {
     return FRAMEWORK_GUIDELINES['fw-sydney-accord'] || FRAMEWORK_GUIDELINES['fw-washington-accord'];
   }
   if (norm.includes('hec') || norm.includes('pakistan')) {

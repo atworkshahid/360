@@ -20,7 +20,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db: Firestore = getFirestore(app);
 export const auth = getAuth(app);
 
-export type SharePermissionLevel = 'public_read' | 'restricted' | 'reviewer_only';
+export type SharePermissionLevel = 'public_read' | 'restricted' | 'reviewer_only' | 'co_editor';
 
 export interface SharedCourseRecord {
   shareId: string;
@@ -33,6 +33,8 @@ export interface SharedCourseRecord {
   allowExport: boolean;
   expiresAt: string | null;
   passcode: string | null;
+  stakeholderRolePreset?: string;
+  reviewInstructions?: string;
   createdAt: string;
   createdByEmail: string;
   createdByName: string;
@@ -47,6 +49,8 @@ export interface CreateShareOptions {
   allowExport?: boolean;
   expiresInDays?: number | null; // null for never, 7, 30, 90
   passcode?: string | null;
+  stakeholderRolePreset?: string;
+  reviewInstructions?: string;
 }
 
 enum OperationType {
@@ -86,6 +90,7 @@ const LOCAL_STORAGE_SHARES_KEY = 'mentisera_shared_courses_cache_v1';
 
 function getLocalShares(): SharedCourseRecord[] {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const raw = localStorage.getItem(LOCAL_STORAGE_SHARES_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
@@ -95,6 +100,7 @@ function getLocalShares(): SharedCourseRecord[] {
 
 function saveLocalShare(record: SharedCourseRecord): void {
   try {
+    if (typeof localStorage === 'undefined') return;
     const list = getLocalShares();
     const idx = list.findIndex((s) => s.shareId === record.shareId);
     if (idx !== -1) {
@@ -154,6 +160,8 @@ export const ShareService = {
       allowExport: options.allowExport ?? true,
       expiresAt,
       passcode: options.passcode ? options.passcode.trim() : null,
+      stakeholderRolePreset: options.stakeholderRolePreset,
+      reviewInstructions: options.reviewInstructions,
       createdAt: now.toISOString(),
       createdByEmail: currentUser?.email || auth.currentUser?.email || 'faculty@institution.edu',
       createdByName: currentUser?.name || auth.currentUser?.displayName || 'Faculty Author',
@@ -319,5 +327,55 @@ export const ShareService = {
    */
   async restoreShare(shareId: string): Promise<void> {
     await this.updateShare(shareId, { isActive: true });
+  },
+
+  /**
+   * Appends or updates a section comment on the shared course blueprint
+   */
+  async addCommentToSharedCourse(
+    shareId: string,
+    newComment: import('../types').CourseElementComment
+  ): Promise<void> {
+    const list = getLocalShares();
+    const idx = list.findIndex((s) => s.shareId === shareId);
+    if (idx !== -1) {
+      const currentComments = list[idx].courseData.comments || [];
+      const updatedComments = [newComment, ...currentComments.filter((c) => c.id !== newComment.id)];
+      list[idx].courseData.comments = updatedComments;
+      list[idx].lastAccessedAt = new Date().toISOString();
+      localStorage.setItem(LOCAL_STORAGE_SHARES_KEY, JSON.stringify(list));
+
+      // Also sync to general courses store if course matches
+      try {
+        const storedCoursesRaw = localStorage.getItem('mentisera_obe360_courses_v1');
+        if (storedCoursesRaw) {
+          const coursesList: Course[] = JSON.parse(storedCoursesRaw);
+          const cIdx = coursesList.findIndex((c) => c.id === list[idx].courseId);
+          if (cIdx !== -1) {
+            coursesList[cIdx].comments = updatedComments;
+            coursesList[cIdx].updatedAt = new Date().toISOString();
+            localStorage.setItem('mentisera_obe360_courses_v1', JSON.stringify(coursesList));
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync to local main courses:', err);
+      }
+    }
+
+    try {
+      const docRef = doc(db, 'shared_courses', shareId);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data() as SharedCourseRecord;
+        const currentComments = data.courseData?.comments || [];
+        const updated = [newComment, ...currentComments.filter((c) => c.id !== newComment.id)];
+        await updateDoc(docRef, {
+          'courseData.comments': updated,
+          lastAccessedAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.warn('Could not update Firestore shared comments:', err);
+    }
   },
 };
